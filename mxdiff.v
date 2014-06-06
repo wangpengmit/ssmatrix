@@ -2,17 +2,22 @@
 
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicit Defensive.
+Unset Printing Implicit Defensive. 
 
 Require Import ssreflect.
-Import ssreflect.SsrSyntax.
 Require Import separable.
-
+Require Import vector.
+Require Import fieldext.
 Require Import ssralg.
-Import GRing.
-Import eqtype.
+Require Import seq.
+Require Import falgebra.
+Require Import eqtype.
+Require Import tuple.
+Import ssreflect.SsrSyntax.
 
-Zmodule.eqType : zmodType -> eqType
+Section MxDerivation.
 
-
-Inductive list (A : Type) : Type := nil | cons of A & list A.
+  Variable F : filedType.
+  Variable L : fileExtType F.
+  Variable D : 'End(L).
+  Hypothesis
