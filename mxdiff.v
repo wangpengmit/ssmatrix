@@ -32,11 +32,11 @@ Section MxDerivation.
 
   Require Import matrix.
   Definition Dm m n (A : 'M[E]_(m, n)) := map_mx D A.
-  Variable m n : nat.
-  Definition MXmn := 'M[E]_(m, n).
-  Definition MXnm := 'M[E]_(n, m).
-  Implicit Types A : MXmn.
-  Implicit Types B : MXnm.
+  Variable m n r : nat.
+  Definition Mmn := 'M[E]_(m, n).
+  Definition Mnr := 'M[E]_(n, r).
+  Implicit Types A : Mmn.
+  Implicit Types B : Mnr.
   Lemma Dm_product : forall A B, Dm (A *m B) = Dm A *m B + A *m Dm B.
   Proof.
     move => A B.
