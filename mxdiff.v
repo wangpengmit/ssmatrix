@@ -8,87 +8,272 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
 Require Import ssralg.
-
 Import GRing.
 Import Linear.Exports.
+Import Lmodule.Exports.
+Import Field.Exports.
+Import Lalgebra.Exports.
 Import Algebra.Exports.
 Open Scope ring_scope.
 
-(* A R->R map with Lebniz's product rule *)
-Module Derivative.
+
+(* Differiential Ring *)
+Module DiffRing.
 
 Section ClassDef.
 
-Variables R : ringType.
+(* Derivation *)
+Record mixin_of (R : ringType) := Mixin {
+  der : R -> R;
+  _ : forall a b, der (a * b) = der a * b + a * der b
+}.
 
-Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
+Record class_of (T : Type) := Class {
+  base : Ring.class_of T;
+  mixin : mixin_of (Ring.Pack base T)
+}.
 
-Structure map (phR : phant R) := Pack {apply; _ : axiom apply}.
-Local Coercion apply : map >-> Funclass.
+Local Coercion base : class_of >-> Ring.class_of.
 
-Variables (phR : phant R) (f g : R -> R) (cF : map phR).
-Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
-Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
-  @Pack phR f fA.
+Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (T : Type) (cT : type).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Definition clone c of phant_id class c := @Pack T c T.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack b0 (m0 : mixin_of (@Ring.Pack T b0 T)) :=
+  fun bT b & phant_id (Ring.class bT) b =>
+  fun    m & phant_id m0 m => Pack (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition ringType := @Ring.Pack cT xclass xT.
 
 End ClassDef.
 
 Module Exports.
-Notation derivative f := (axiom f).
-Coercion apply : map >-> Funclass.
-Notation Derivative fA := (Pack (Phant _) fA).
-Notation "{ 'derivative' fRR }" := (map (Phant fRR))
-  (at level 0, format "{ 'derivative'  fRR }") : ring_scope.
-Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
-  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
-Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
-  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
+Coercion base : class_of >-> Ring.class_of.
+Coercion mixin : class_of >-> mixin_of.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion ringType : type >-> Ring.type.
+Canonical ringType.
+Notation diffRingType := type.
+Notation DiffRingType T m := (@pack T _ m _ _ id _ id).
+Notation "[ 'diffRingType' 'of' T 'for' cT ]" := (@clone T cT _ idfun)
+  (at level 0, format "[ 'diffRingType'  'of'  T  'for'  cT ]") : form_scope.
+Notation "[ 'diffRingType' 'of' T ]" := (@clone T _ _ id)
+  (at level 0, format "[ 'diffRingType'  'of'  T ]") : form_scope.
 End Exports.
 
-End Derivative.
+End DiffRing.
 
-Import Derivative.Exports.
+Import DiffRing.Exports.
 
-Section DerivativeTheory.
+Definition der {R : diffRingType} : R -> R := DiffRing.der (DiffRing.class R).
 
-Variable R : ringType.
-Variable f : {derivative R}.
+Local Notation "\d" := (@der _).
 
-Definition der_prod a b : f (a * b) = f a * b + a * f b.
+Section DiffRingTheory.
+
+Variables (R : diffRingType).
+Implicit Types (a b : R).
+
+Definition der_prod a b : \d (a * b) = \d a * b + a * \d b.
 Proof. 
-  by case f.
+  by case: R a b => ? [] ? [].
 Qed.
 
-Lemma der1 : f 1 = 0.
+Lemma der1 : @der R 1 = 0.
 Proof.
-  apply: (addIr (f (1 * 1))).
+  apply: (addIr (\d (1 * 1))).
   rewrite add0r {1}mul1r.
     by rewrite der_prod mulr1 mul1r.
 Qed.
 
-End DerivativeTheory.
+End DiffRingTheory.
+
+(* Differiential Unit Ring *)
+Module UnitDiffRing.
+
+Section ClassDef.
+
+Record class_of (T : Type) := Class {
+  base : UnitRing.class_of T;
+  mixin : DiffRing.mixin_of (Ring.Pack base T)
+}.
+
+Definition base2 R m := DiffRing.Class (@mixin R m).
+Local Coercion base : class_of >-> UnitRing.class_of.
+Local Coercion base2 : class_of >-> DiffRing.class_of.
+
+Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (T : Type) (cT : type).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack :=
+  fun bT b & phant_id (UnitRing.class bT) (b : UnitRing.class_of T) =>
+  fun mT m & phant_id (DiffRing.class mT) (@DiffRing.Class T b m) =>
+  Pack (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition ringType := @Ring.Pack cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
+Definition unitRingType := @UnitRing.Pack cT xclass xT.
+Definition unit_diffRingType := @DiffRing.Pack unitRingType xclass xT.
+
+End ClassDef.
+
+Module Import Exports.
+Coercion base : class_of >-> UnitRing.class_of.
+Coercion mixin : class_of >-> DiffRing.mixin_of.
+Coercion base2 : class_of >-> DiffRing.class_of.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion ringType : type >-> Ring.type.
+Canonical ringType.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
+Coercion unitRingType : type >-> UnitRing.type.
+Canonical unitRingType.
+Canonical unit_diffRingType.
+Notation unitDiffRingType := type.
+Notation "[ 'unitDiffRingType' 'of' T ]" := (@pack T _ _ id _ _ id)
+  (at level 0, format "[ 'unitDiffRingType'  'of'  T ]") : form_scope.
+End Exports.
+
+End UnitDiffRing.
+
+Import UnitDiffRing.Exports.
+
+Section UnitDiffRingTheory.
+
+Variable R : unitDiffRingType.
+Implicit Types x : R.
+
+Lemma der_inv : forall x, x \is a unit -> \d (x^-1) = - x^-1 * \d x / x.
+Proof.
+  move => x Hu.
+  have: \d (x / x) = 0.
+    admit.
+  move => He.
+  rewrite der_prod in He.
+  admit.
+Qed.
+
+End UnitDiffRingTheory.
+
+
+(* Differiential Field *)
+Module DiffField.
+
+Section ClassDef.
+
+Record mixin_of (A : fieldType) := Mixin {
+  mixin_base : DiffRing.mixin_of A;
+  ext : additive (DiffRing.der mixin_base)
+}.
+
+Record class_of (T : Type) := Class {
+  base : Field.class_of T;
+  mixin : mixin_of (Field.Pack base T)
+}.
+
+Local Coercion base : class_of >-> Field.class_of.
+Local Coercion mixin_base : mixin_of >-> DiffRing.mixin_of.
+Definition base2 R m := DiffRing.Class (@mixin R m).
+Local Coercion base2 : class_of >-> DiffRing.class_of.
+
+Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (T : Type) (cT : type).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack b0 (m0 : mixin_of b0) :=
+  fun bT b & phant_id (@Field.class bT) (b : Field.class_of T) =>
+  fun  m & phant_id m0 m =>
+  Pack (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition ringType := @Ring.Pack cT xclass xT.
+Definition fieldType := @Field.Pack cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
+
+End ClassDef.
+
+Module Exports.
+Coercion base : class_of >-> Field.class_of.
+Coercion base2 : class_of >-> DiffRing.class_of.
+Coercion mixin : class_of >-> mixin_of.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion ringType : type >-> Ring.type.
+Canonical ringType.
+Coercion fieldType : type >-> Field.type.
+Canonical fieldType.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
+Notation diffFieldType R := (type (Phant R)).
+Notation "[ 'diffFieldType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
+  (at level 0, format "[ 'diffFieldType'  R  'of'  T ]") : form_scope.
+End Exports.
+
+End DiffField.
+
+Import DiffField.Exports.
+
 
 (* Differiential Algebra *)
 Module DiffAlgebra.
 
 Section ClassDef.
 
-(* Scalars. May need to be field. Not sure *)
 Variable R : ringType.
 
-(* Derivation *)
 Record mixin_of (A : algType R) := Mixin {
-  der : A -> A;
-  _ : linear der;
-  _ : derivative der
+  mixin_base : DiffRing.mixin_of A;
+  ext : linear (DiffRing.der mixin_base)
 }.
 
 Record class_of (T : Type) := Class {
-  base : Algebra.class_of _ T;
+  base : Algebra.class_of R T;
   mixin : mixin_of (Algebra.Pack _ base T)
 }.
 
 Local Coercion base : class_of >-> Algebra.class_of.
+Local Coercion mixin_base : mixin_of >-> DiffRing.mixin_of.
+Definition base2 R m := DiffRing.Class (@mixin R m).
+Local Coercion base2 : class_of >-> DiffRing.class_of.
 
 Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
@@ -109,11 +294,13 @@ Definition ringType := @Ring.Pack cT xclass xT.
 Definition lmodType := @Lmodule.Pack R phR cT xclass xT.
 Definition lalgType := @Lalgebra.Pack R phR cT xclass xT.
 Definition algType := @Algebra.Pack R phR cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
 
 End ClassDef.
 
 Module Exports.
 Coercion base : class_of >-> Algebra.class_of.
+Coercion base2 : class_of >-> DiffRing.class_of.
 Coercion mixin : class_of >-> mixin_of.
 Coercion sort : type >-> Sortclass.
 Bind Scope ring_scope with sort.
@@ -131,40 +318,19 @@ Coercion lalgType : type >-> Lalgebra.type.
 Canonical lalgType.
 Coercion algType : type >-> Algebra.type.
 Canonical algType.
-Notation dalgType R := (type (Phant R)).
-Notation "[ 'dalgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
-  (at level 0, format "[ 'dalgType'  R  'of'  T ]") : form_scope.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
+Notation diffAlgType R := (type (Phant R)).
+Notation "[ 'diffAlgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
+  (at level 0, format "[ 'diffAlgType'  R  'of'  T ]") : form_scope.
 End Exports.
 
 End DiffAlgebra.
 
 Import DiffAlgebra.Exports.
 
-Definition der {R : ringType} {A : dalgType R} : A -> A := fun a => DiffAlgebra.der (DiffAlgebra.class A) a.
 
-Local Notation "\d" := (@der _ _).
-
-Section DiffAlgebraTheory.
-
-Variables (R : ringType) (A : dalgType R).
-Implicit Types (a b : A).
-(*here*)
-Definition der_prod a b : der (a * b) = der a * b + a * der b.
-Proof. 
-  by case: A a b  => ? [] ? [] ? ? ?.
-Qed.
-
-Lemma der1 : @der _ A 1 = 0.
-Proof.
-  apply: (addIr (\d (1 * 1))).
-  rewrite add0r {1}mul1r.
-    by rewrite der_prod mulr1 mul1r.
-Qed.
-
-End DiffAlgebraTheory.
-
-
-(* Unit Differiential Algebra *)
+(* Differiential Unit Algebra *)
 Module UnitDiffAlgebra.
 
 Section ClassDef.
@@ -172,13 +338,13 @@ Section ClassDef.
 Variable R : ringType.
 
 Record class_of (T : Type) := Class {
-  base : DiffAlgebra.class_of R T;
-  mixin : UnitRing.mixin_of (Ring.Pack base T)
+  base : UnitAlgebra.class_of R T;
+  mixin : DiffAlgebra.mixin_of (Algebra.Pack _ base T)
 }.
 
-Definition base2 R m := UnitRing.Class (@mixin R m).
-Local Coercion base : class_of >-> DiffAlgebra.class_of.
-Local Coercion base2 : class_of >-> UnitRing.class_of.
+Definition base2 R m := DiffAlgebra.Class (@mixin R m).
+Local Coercion base : class_of >-> UnitAlgebra.class_of.
+Local Coercion base2 : class_of >-> DiffAlgebra.class_of.
 
 Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
@@ -188,19 +354,21 @@ Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
 Definition pack :=
-  fun bT b & phant_id (@DiffAlgebra.class R phR bT) (b : DiffAlgebra.class_of R T) =>
-  fun mT m & phant_id (UnitRing.mixin (UnitRing.class mT)) m =>
+  fun bT b & phant_id (@UnitAlgebra.class R phR bT) (b : UnitAlgebra.class_of R T) =>
+  fun mT m & phant_id (DiffAlgebra.mixin (@DiffAlgebra.class R phR mT)) m =>
   Pack (Phant R) (@Class T b m) T.
 
 Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
 Definition zmodType := @Zmodule.Pack cT xclass xT.
 Definition ringType := @Ring.Pack cT xclass xT.
+Definition unitRingType := @UnitRing.Pack cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
 Definition lmodType := @Lmodule.Pack R phR cT xclass xT.
 Definition lalgType := @Lalgebra.Pack R phR cT xclass xT.
 Definition algType := @Algebra.Pack R phR cT xclass xT.
-Definition dalgType := @DiffAlgebra.Pack R phR cT xclass xT.
-Definition unitRingType := @UnitRing.Pack cT xclass xT.
+Definition unitAlgType := @UnitAlgebra.Pack R phR cT xclass xT.
+Definition diffAlgType := @DiffAlgebra.Pack R phR cT xclass xT.
 Definition lmod_unitRingType := @Lmodule.Pack R phR unitRingType xclass xT.
 Definition lalg_unitRingType := @Lalgebra.Pack R phR unitRingType xclass xT.
 Definition alg_unitRingType := @Algebra.Pack R phR unitRingType xclass xT.
@@ -208,8 +376,8 @@ Definition alg_unitRingType := @Algebra.Pack R phR unitRingType xclass xT.
 End ClassDef.
 
 Module Exports.
-Coercion base : class_of >-> DiffAlgebra.class_of.
-Coercion base2 : class_of >-> UnitRing.class_of.
+Coercion base : class_of >-> UnitAlgebra.class_of.
+Coercion base2 : class_of >-> DiffAlgebra.class_of.
 Coercion sort : type >-> Sortclass.
 Bind Scope ring_scope with sort.
 Coercion eqType : type >-> Equality.type.
@@ -220,69 +388,53 @@ Coercion zmodType : type >-> Zmodule.type.
 Canonical zmodType.
 Coercion ringType : type >-> Ring.type.
 Canonical ringType.
+Coercion unitRingType : type >-> UnitRing.type.
+Canonical unitRingType.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
 Coercion lmodType : type >-> Lmodule.type.
 Canonical lmodType.
 Coercion lalgType : type >-> Lalgebra.type.
 Canonical lalgType.
 Coercion algType : type >-> Algebra.type.
 Canonical algType.
-Coercion dalgType : type >-> DiffAlgebra.type.
-Canonical dalgType.
-Coercion unitRingType : type >-> UnitRing.type.
-Canonical unitRingType.
+Coercion unitAlgType : type >-> UnitAlgebra.type.
+Canonical unitAlgType.
+Coercion diffAlgType : type >-> DiffAlgebra.type.
+Canonical diffAlgType.
 Canonical lmod_unitRingType.
 Canonical lalg_unitRingType.
 Canonical alg_unitRingType.
 
-Notation udalgType R := (type (Phant R)).
-Notation "[ 'udalgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
-  (at level 0, format "[ 'udalgType'  R  'of'  T ]") : form_scope.
+Notation unitDiffAlgType R := (type (Phant R)).
+Notation "[ 'unitDiffAlgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
+  (at level 0, format "[ 'unitDiffAlgType'  R  'of'  T ]") : form_scope.
 End Exports.
 
 End UnitDiffAlgebra.
 
 Import UnitDiffAlgebra.Exports.
 
-Section UnitDiffAlgebraTheory.
-
-Variable (R : ringType) (A : udalgType R).
-
-Notation "\d" := (@der R A).
-
-Lemma der_inv : forall x : A, x \is a unit -> \d (x^-1) = - x^-1 * \d x * x^-1.
-Proof.
-  move => x Hu.
-  have: \d (x / x) = 0.
-    admit.
-  move => He.
-  rewrite der_prod in He.
-  admit.
-Qed.
-
-End UnitDiffAlgebraTheory.
-
+(*=============================================================*)
+(* Matrix Differentiation *)
 Require Import matrix.
 
 Module MxDiff.
 
-(* Coefficient type *)
-Variable C : fieldType.
 (* Element type *)
-Variable E : udalgType C.
+Variable E : unitDiffRingType.
 
-Notation "\d" := (@der _ E).
+Definition der_matrix m n (A : 'M[E]_(m, n)) := map_mx \d A.
 
-Definition Dm m n (A : 'M[E]_(m, n)) := map_mx \d A.
+Notation "\dm" := (@der_matrix _ _).
 
 Section AnyMatrix.
 
 Variable m n r : nat.
-Definition Mmn := 'M[E]_(m, n).
-Definition Mnr := 'M[E]_(n, r).
-Implicit Types A : Mmn.
-Implicit Types B : Mnr.
+Implicit Types A : 'M[E]_(m, n).
+Implicit Types B : 'M[E]_(n, r).
 
-Lemma Dm_product : forall A B, Dm (A *m B) = Dm A *m B + A *m Dm B.
+Lemma Dm_product : forall A B, \dm (A *m B) = \dm A *m B + A *m \dm B.
 Proof.
   admit.
 Qed.
@@ -291,9 +443,9 @@ End AnyMatrix.
 
 Section SquareMatrix.
 
-(* Square matrices are unit differential algebras *)
+(* Non-trival square matrices are differential unit rings *)
 
 Variable n' : nat.
 Local Notation n := n'.+1.
 
-Definition matrix_udalgType :=
+Definition matrix_unitDiffRingType := ?
