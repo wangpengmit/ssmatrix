@@ -9,11 +9,14 @@ Unset Printing Implicit Defensive.
 
 Require Import ssralg.
 Import GRing.
-Import Linear.Exports.
+Import Zmodule.Exports.
+Import Ring.Exports.
+Import UnitRing.Exports.
 Import Lmodule.Exports.
 Import Field.Exports.
 Import Lalgebra.Exports.
 Import Algebra.Exports.
+Import Linear.Exports.
 Open Scope ring_scope.
 
 
@@ -166,10 +169,27 @@ End UnitDiffRing.
 
 Import UnitDiffRing.Exports.
 
+Section Util.
+
+Variable Z : zmodType.
+Variable R : ringType.
+
+Implicit Types x y : Z.
+
+Lemma addNRL x y : x + y = 0 -> x = -y.
+  move => H.
+  rewrite -sub0r.
+  rewrite -H.
+  rewrite addrK.
+  by done.
+Qed.
+
+End Util.
+
 Section UnitDiffRingTheory.
 
 Variable R : unitDiffRingType.
-Implicit Types x : R.
+Implicit Types x y : R.
 Variable x : R.
 Hypothesis Hu : x \is a unit.
 
@@ -180,7 +200,18 @@ Proof.
       by apply der1.
       by done.
   rewrite der_prod in He.
-  admit.
+  rewrite mulNr.
+  rewrite mulNr.
+  apply addNRL.
+  rewrite addrC.
+  apply (mulrI Hu).
+  rewrite mulr0.
+  rewrite mulrDr.
+  rewrite mulrA.
+  rewrite mulrA.
+  rewrite divrr.
+    by rewrite mul1r.
+    by done.
 Qed.
 
 End UnitDiffRingTheory.
