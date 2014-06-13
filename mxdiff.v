@@ -170,13 +170,15 @@ Section UnitDiffRingTheory.
 
 Variable R : unitDiffRingType.
 Implicit Types x : R.
+Variable x : R.
+Hypothesis Hu : x \is a unit.
 
-Lemma der_inv : forall x, x \is a unit -> \d (x^-1) = - x^-1 * \d x / x.
+Lemma der_inv : \d (x^-1) = - x^-1 * \d x / x.
 Proof.
-  move => x Hu.
-  have: \d (x / x) = 0.
-    admit.
-  move => He.
+  have He: \d (x / x) = 0.
+    rewrite mulrV.
+      by apply der1.
+      by done.
   rewrite der_prod in He.
   admit.
 Qed.
@@ -422,7 +424,7 @@ Require Import matrix.
 Module MxDiff.
 
 (* Element type *)
-Variable E : unitDiffRingType.
+Variable E : diffRingType.
 
 Definition der_matrix m n (A : 'M[E]_(m, n)) := map_mx \d A.
 
