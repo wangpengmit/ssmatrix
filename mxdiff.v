@@ -14,6 +14,61 @@ Import Linear.Exports.
 Import Algebra.Exports.
 Open Scope ring_scope.
 
+(* A R->R map with Lebniz's product rule *)
+Module Derivative.
+
+Section ClassDef.
+
+Variables R : ringType.
+
+Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
+
+Structure map (phR : phant R) := Pack {apply; _ : axiom apply}.
+Local Coercion apply : map >-> Funclass.
+
+Variables (phR : phant R) (f g : R -> R) (cF : map phR).
+Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
+Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
+  @Pack phR f fA.
+
+End ClassDef.
+
+Module Exports.
+Notation derivative f := (axiom f).
+Coercion apply : map >-> Funclass.
+Notation Derivative fA := (Pack (Phant _) fA).
+Notation "{ 'derivative' fRR }" := (map (Phant fRR))
+  (at level 0, format "{ 'derivative'  fRR }") : ring_scope.
+Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
+Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
+End Exports.
+
+End Derivative.
+
+Import Derivative.Exports.
+
+Section DerivativeTheory.
+
+Variable R : ringType.
+Variable f : {derivative R}.
+
+Definition der_prod a b : f (a * b) = f a * b + a * f b.
+Proof. 
+  by case f.
+Qed.
+
+Lemma der1 : f 1 = 0.
+Proof.
+  apply: (addIr (f (1 * 1))).
+  rewrite add0r {1}mul1r.
+    by rewrite der_prod mulr1 mul1r.
+Qed.
+
+End DerivativeTheory.
+
+(* Differiential Algebra *)
 Module DiffAlgebra.
 
 Section ClassDef.
@@ -21,9 +76,11 @@ Section ClassDef.
 (* Scalars. May need to be field. Not sure *)
 Variable R : ringType.
 
+(* Derivation *)
 Record mixin_of (A : algType R) := Mixin {
-  derivation : {linear A -> A};                                       
-  _ : forall a b : A, derivation (a * b) = derivation a * b + a * derivation b
+  der : A -> A;
+  _ : linear der;
+  _ : derivative der
 }.
 
 Record class_of (T : Type) := Class {
@@ -83,20 +140,21 @@ End DiffAlgebra.
 
 Import DiffAlgebra.Exports.
 
-Definition der {R : ringType} {A : dalgType R} : A -> A := fun a => DiffAlgebra.derivation (DiffAlgebra.class A) a.
+Definition der {R : ringType} {A : dalgType R} : A -> A := fun a => DiffAlgebra.der (DiffAlgebra.class A) a.
 
-Definition der_prod : forall {R : ringType} {A : dalgType R} (a b : A), der (a * b) = der a * b + a * der b.
-Proof.
-  admit.
-Qed.
+Local Notation "\d" := (@der _ _).
 
 Section DiffAlgebraTheory.
 
-Variable (R : ringType) (A : dalgType R).
+Variables (R : ringType) (A : dalgType R).
+Implicit Types (a b : A).
+(*here*)
+Definition der_prod a b : der (a * b) = der a * b + a * der b.
+Proof. 
+  by case: A a b  => ? [] ? [] ? ? ?.
+Qed.
 
-Notation "\d" := (@der R A).
-
-Lemma der1 : \d 1 = 0.
+Lemma der1 : @der _ A 1 = 0.
 Proof.
   apply: (addIr (\d (1 * 1))).
   rewrite add0r {1}mul1r.
@@ -105,6 +163,8 @@ Qed.
 
 End DiffAlgebraTheory.
 
+
+(* Unit Differiential Algebra *)
 Module UnitDiffAlgebra.
 
 Section ClassDef.
