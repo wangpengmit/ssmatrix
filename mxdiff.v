@@ -32,24 +32,6 @@ Definition der_matrix m n (A : 'M[E]_(m, n)) := map_mx \d A.
 
 Notation "\dm" := (@der_matrix _ _).
 
-Section Util.
-  Variable R : diffRingType.
-  Lemma der_is_additive (a b : R) : \d (a - b) = \d a - \d b.
-  Proof.
-    by case: R a b => ? [] ? [].
-  Qed.
-
-  Canonical der_additive := Additive der_is_additive.
-
-  Variable V : zmodType.
-
-  Lemma sumr I r (P : pred I) (F1 F2 : I -> V) :
-    \sum_(i <- r | P i) (F1 i + F2 i)
-    = \sum_(i <- r | P i) F1 i + \sum_(i <- r | P i) F2 i.
-  Proof. by rewrite -big_split /=. Qed.
-
-End Util.
-
 Section AnyMatrix.
 
 Variable m n r : nat.
@@ -59,14 +41,10 @@ Implicit Types B : 'M[E]_(n, r).
 Lemma dm_product A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
 Proof.
   apply/matrixP => i k.
-  rewrite !mxE.
-  rewrite raddf_sum.
-  rewrite -big_split.
+  rewrite !mxE !raddf_sum -big_split.
   apply eq_bigr => j.
-  rewrite !mxE.
-  unfold der_additive.
-  simpl.
-  by rewrite der_prod.
+  unfold der_additive; simpl.
+  by rewrite !mxE derM.
 Qed.
 
 End AnyMatrix.

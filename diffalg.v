@@ -93,6 +93,45 @@ End DiffRing.
 Import DiffRing.Exports.
 Open Scope diff_scope.
 
+(* An interface of maps with the Lebniz product rule. Independent of DiffRing *)
+Module Derivative.
+
+Section ClassDef.
+
+Variables R : ringType.
+
+Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
+
+Structure map (phR : phant (R -> R)) := Pack {apply; _ : axiom apply}.
+Local Coercion apply : map >-> Funclass.
+
+Variables (phR : phant (R -> R)) (f g : R -> R) (cF : map phR).
+Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
+Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
+  @Pack phR f fA.
+
+End ClassDef.
+
+Module Exports.
+Notation derivative f := (axiom f).
+Coercion apply : map >-> Funclass.
+Notation Derivative fA := (Pack (Phant _) fA).
+Notation "{ 'derivative' R }" := (map (Phant (R -> R)))
+  (at level 0, format "{ 'derivative'  R }") : ring_scope.
+Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
+Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
+End Exports.
+
+End Derivative.
+Import Derivative.Exports.
+
+Lemma derM {R : ringType} (f : {derivative R}) a b : f (a * b) = f a * b + a * f b.
+Proof.
+  by case f.
+Qed.
+
 Section DiffRingTheory.
 
 Variables (R : diffRingType).
@@ -109,6 +148,16 @@ Proof.
   rewrite add0r {1}mul1r.
     by rewrite der_prod mulr1 mul1r.
 Qed.
+
+Lemma der_is_additive (a b : R) : \d (a - b) = \d a - \d b.
+Proof.
+    by case: R a b => ? [] ? [].
+Qed.
+
+Canonical der_additive := Additive der_is_additive.
+
+Definition der_is_derivative := der_prod.
+Canonical der_derivative := Derivative der_is_derivative.
 
 End DiffRingTheory.
 
