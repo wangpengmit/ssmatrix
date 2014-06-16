@@ -30,6 +30,7 @@ Section ClassDef.
 (* Derivation *)
 Record mixin_of (R : ringType) := Mixin {
   der : R -> R;
+  _ : additive der;
   _ : forall a b, der (a * b) = der a * b + a * der b
 }.
 
@@ -78,15 +79,19 @@ Notation "[ 'diffRingType' 'of' T 'for' cT ]" := (@clone T cT _ idfun)
   (at level 0, format "[ 'diffRingType'  'of'  T  'for'  cT ]") : form_scope.
 Notation "[ 'diffRingType' 'of' T ]" := (@clone T _ _ id)
   (at level 0, format "[ 'diffRingType'  'of'  T ]") : form_scope.
+
+Definition der {R : diffRingType} : R -> R := DiffRing.der (DiffRing.class R).
+
+Delimit Scope diff_scope with diff.
+
+Notation "\d" := (@der _) : diff_scope. 
+
 End Exports.
 
 End DiffRing.
 
 Import DiffRing.Exports.
-
-Definition der {R : diffRingType} : R -> R := DiffRing.der (DiffRing.class R).
-
-Local Notation "\d" := (@der _).
+Open Scope diff_scope.
 
 Section DiffRingTheory.
 
@@ -225,8 +230,7 @@ Module DiffField.
 Section ClassDef.
 
 Record mixin_of (A : fieldType) := Mixin {
-  mixin_base : DiffRing.mixin_of A;
-  ext : additive (DiffRing.der mixin_base)
+  mixin_base : DiffRing.mixin_of A
 }.
 
 Record class_of (T : Type) := Class {
