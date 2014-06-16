@@ -102,10 +102,10 @@ Variables R : ringType.
 
 Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
 
-Structure map (phR : phant (R -> R)) := Pack {apply; _ : axiom apply}.
+Structure map (phR : phant R) := Pack {apply; _ : axiom apply}.
 Local Coercion apply : map >-> Funclass.
 
-Variables (phR : phant (R -> R)) (f g : R -> R) (cF : map phR).
+Variables (phR : phant R) (f g : R -> R) (cF : map phR).
 Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
 Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
   @Pack phR f fA.
@@ -116,7 +116,7 @@ Module Exports.
 Notation derivative f := (axiom f).
 Coercion apply : map >-> Funclass.
 Notation Derivative fA := (Pack (Phant _) fA).
-Notation "{ 'derivative' R }" := (map (Phant (R -> R)))
+Notation "{ 'derivative' R }" := (map (Phant R))
   (at level 0, format "{ 'derivative'  R }") : ring_scope.
 Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
   (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
