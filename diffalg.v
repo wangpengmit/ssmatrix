@@ -273,6 +273,77 @@ Qed.
 End UnitDiffRingTheory.
 
 
+(* Differiential Commutative Unit Ring *)
+Module ComUnitDiffRing.
+
+Section ClassDef.
+
+Record class_of (T : Type) := Class {
+  base : ComUnitRing.class_of T;
+  mixin : DiffRing.mixin_of (Ring.Pack base T)
+}.
+
+Definition base2 R m := DiffRing.Class (@mixin R m).
+Local Coercion base : class_of >-> ComUnitRing.class_of.
+Local Coercion base2 : class_of >-> DiffRing.class_of.
+
+Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (T : Type) (cT : type).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack :=
+  fun bT b & phant_id (ComUnitRing.class bT) (b : ComUnitRing.class_of T) =>
+  fun mT m & phant_id (DiffRing.class mT) (@DiffRing.Class T b m) =>
+  Pack (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition ringType := @Ring.Pack cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
+Definition unitRingType := @UnitRing.Pack cT xclass xT.
+Definition comRingType := @ComRing.Pack cT xclass xT.
+Definition comUnitRingType := @ComUnitRing.Pack cT xclass xT.
+Definition comUnit_diffRingType := @DiffRing.Pack comUnitRingType xclass xT.
+
+End ClassDef.
+
+Module Import Exports.
+Coercion base : class_of >-> ComUnitRing.class_of.
+Coercion mixin : class_of >-> DiffRing.mixin_of.
+Coercion base2 : class_of >-> DiffRing.class_of.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion ringType : type >-> Ring.type.
+Canonical ringType.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
+Coercion comRingType : type >-> ComRing.type.
+Canonical comRingType.
+Coercion unitRingType : type >-> UnitRing.type.
+Canonical unitRingType.
+Coercion comUnitRingType : type >-> ComUnitRing.type.
+Canonical comUnitRingType.
+Canonical comUnit_diffRingType.
+Notation comUnitDiffRingType := type.
+Notation "[ 'comUnitDiffRingType' 'of' T ]" := (@pack T _ _ id _ _ id)
+  (at level 0, format "[ 'comUnitDiffRingType'  'of'  T ]") : form_scope.
+End Exports.
+
+End ComUnitDiffRing.
+
+Import ComUnitDiffRing.Exports.
+
+
 (* Differiential Field *)
 Module DiffField.
 

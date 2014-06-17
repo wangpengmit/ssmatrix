@@ -1,5 +1,6 @@
 MODULES := \
 	diffalg \
+	mxdiff \
 
 VS      := $(MODULES:%=%.v)
 
