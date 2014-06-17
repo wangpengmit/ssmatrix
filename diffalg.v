@@ -19,7 +19,7 @@ Import Field.Exports.
 Import Lalgebra.Exports.
 Import Algebra.Exports.
 Import Linear.Exports.
-Open Scope ring_scope.
+Open Local Scope ring_scope.
 
 
 (* Differiential Ring *)
