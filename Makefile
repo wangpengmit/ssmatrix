@@ -1,5 +1,5 @@
 MODULES := \
-	diffalg \
+	diffalg mxlinear \
 	mxdiff \
 
 VS      := $(MODULES:%=%.v)
