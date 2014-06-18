@@ -76,6 +76,13 @@ Implicit Types c : R.
 Variable m n : nat.
 Implicit Types A : 'M[E]_(m, n).
 
+Local Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
+
+Variable A : 'M[E]_(m,n).
+(*here*)
+Check (invmx (A^T *m A)).
+
+Definition upinv c A := invmx (A^T *m A + c *:: 1%:M).
 Lemma dmAgscalemx c A : \dm (c *:: A) = c *:: \dm A.
 Proof. by rewrite linearZ. Qed.
 
