@@ -7,79 +7,17 @@ Unset Printing Implicit Defensive.
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
 Require Import finfun bigop prime binomial.
 
-Require Import diffalg.
 Require Import matrix.
 Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
-Open Local Scope diff_scope.
-
-Import DiffRing.Exports.
-Import UnitDiffRing.Exports.
-Import ComUnitDiffRing.Exports.
-
-Definition der_mx (E : diffRingType) m n (A : 'M[E]_(m, n)) := map_mx \d A.
-
-Notation "\dm" := (@der_mx _ _ _).
-
-Section AnyMatrix.
-
-(* Element type *)
-Variable E : diffRingType.
-
-Variable m n r : nat.
-Implicit Types A : 'M[E]_(m, n).
-Implicit Types B : 'M[E]_(n, r).
-
-Lemma dmM A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
-Proof.
-  by apply/matrixP => i k; rewrite !mxE !raddf_sum -big_split; apply eq_bigr => j; rewrite /= !mxE derM.
-Qed.
-
-End AnyMatrix.
-
-Section SquareMatrix.
-
-(* Non-trival square matrices are differential rings *)
-
-(* Element type *)
-Variable E : diffRingType.
-
-Variable n' : nat.
-Local Notation n := n'.+1.
-
-Import Derivative.Exports.
-Canonical dm_derivative := Derivative (@dmM E n n n).
-
-Definition matrix_diffRingMixin := DiffRingMixin (@dmM E n n n).
-Canonical matrix_diffRingType := Eval hnf in DiffRingType 'M[E]_n matrix_diffRingMixin.
-
-End SquareMatrix.
-
-Section UnitSquareMatrix.
-
-(* Non-trival square matrices with comUnitDiffRing elements are differential unit rings *)
-
-(* Element type *)
-Variable E : comUnitDiffRingType.
-
-Variable n' : nat.
-Local Notation n := n'.+1.
-
-Canonical matrix_unitDiffRing := Eval hnf in [unitDiffRingType of 'M[E]_n].
-
-End UnitSquareMatrix.
 
 (* Generalized scalemx
    Matrices whose elements are algebras form another Lmodule structure whose scalars are from the underlying ring R, other than the Lmodule structure registered by matrix.matrix_lmodType whose scalars are of the same type as the matrix elements *)
 Section gscalemx.
 
-(* Scalar type *)
 Variable R : ringType.
-
-(* Element type *)
 Variable E : lmodType R.
-
 Variables m n : nat.
 Implicit Types A B : 'M[E]_(m, n).
 Implicit Types c : R.
@@ -126,12 +64,8 @@ End AlgebraTheory.
 (* On algebra-element matrices, gscalemx enjoys right-associativity *)
 Section gscalemx_alg.
 
-(* Scalar type *)
 Variable R : ringType.
-
-(* Element type *)
 Variable E : algType R.
-
 Variables m n r : nat.
 Implicit Types A : 'M[E]_(m, n).
 Implicit Types B : 'M[E]_(n, r).
@@ -167,37 +101,97 @@ Notation "\lift" := (@lift _ _).
 Notation "\liftm" := (@liftm _ _).
 Notation "C %:AM" := (@liftm _ _ C) (at level 8).
 
-Import DiffAlgebra.Exports.
+(* Parametricity over the linear structure. *)
+Section MapLinear.
 
-Section AlgMatrix.
-
-(* Scalar type *)
 Variable R : ringType.
-
-(* Element type *)
-Variable E : diffAlgType R.
-
+Variable E F : lmodType R.
 Implicit Types c : R.
-
 Variables m n : nat.
-Implicit Types A B : 'M[E]_(m, n).
+Implicit Types A : 'M[E]_(m, n).
 Implicit Types C : 'M[R]_(m, n).
+Variable f : {linear E -> F}.
+Local Notation "A ^f" := (map_mx f A) : ring_scope.
 
-Lemma dmAgscalemx c A : \dm (c *:: A) = c *:: \dm A.
+Lemma fAgscalemx c A : (c *:: A)^f = c *:: A^f.
 Proof. by apply/matrixP=> i j; rewrite !mxE linearZ. Qed.
 
-Lemma dm_is_scalable : scalable (@der_mx E m n : gscalemx_lmodType _ _ _ -> gscalemx_lmodType _ _ _).
-Proof. by move => a A; rewrite dmAgscalemx. Qed.
+Lemma f_is_scalable : scalable (@map_mx E F f m n : gscalemx_lmodType _ _ _ -> gscalemx_lmodType _ _ _).
+Proof. by move => a A; rewrite fAgscalemx. Qed.
 
-Canonical dm_linear_const := AddLinear dm_is_scalable.
+Canonical f_linear := AddLinear f_is_scalable.
 
-Lemma dmAscalemx1 c A : \dm (c *: 1 *: A) = c *: 1 *: \dm A.
-Proof. by rewrite !lift_scalemx_gscalemx dmAgscalemx. Qed.
+End MapLinear.
 
-Lemma dmAlift c A : \dm (\lift c *: A) = \lift c *: \dm A.
-Proof. by apply dmAscalemx1. Qed.
+Section MapLinearAlg.
 
-End AlgMatrix.
+Variable R : ringType.
+Variable E F : lalgType R.
+Implicit Types c : R.
+Variables m n : nat.
+Implicit Types A : 'M[E]_(m, n).
+Variable f : {linear E -> F}.
+Local Notation "A ^f" := (map_mx f A) : ring_scope.
+
+Lemma fAscalemx1 c A : (c *: 1 *: A)^f = c *: 1 *: A^f.
+Proof. by rewrite !lift_scalemx_gscalemx fAgscalemx. Qed.
+
+Lemma fAlift c A : (\lift c *: A)^f = \lift c *: A^f.
+Proof. by apply fAscalemx1. Qed.
+
+End MapLinearAlg.
+
+Require Import diffalg.
+Import DiffRing.Exports.
+Import UnitDiffRing.Exports.
+Import ComUnitDiffRing.Exports.
+Open Local Scope diff_scope.
+
+Notation "\dm" := (map_mx \d).
+
+Section AnyMatrix.
+
+(* Element type *)
+Variable E : diffRingType.
+
+Variable m n r : nat.
+Implicit Types A : 'M[E]_(m, n).
+Implicit Types B : 'M[E]_(n, r).
+
+Lemma dmM A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
+Proof.
+  by apply/matrixP => i k; rewrite !mxE !raddf_sum -big_split; apply eq_bigr => j; rewrite /= !mxE derM.
+Qed.
+
+End AnyMatrix.
+
+Section SquareMatrix.
+
+Variable E : diffRingType.
+
+Variable n' : nat.
+Local Notation n := n'.+1.
+
+Import Derivative.Exports.
+Canonical dm_derivative := Derivative (@dmM E n n n).
+
+Definition matrix_diffRingMixin := DiffRingMixin (@dmM E n n n).
+Canonical matrix_diffRingType := Eval hnf in DiffRingType 'M[E]_n matrix_diffRingMixin.
+
+End SquareMatrix.
+
+Section UnitSquareMatrix.
+
+Variable E : comUnitDiffRingType.
+
+Variable n' : nat.
+Local Notation n := n'.+1.
+
+Canonical matrix_unitDiffRing := Eval hnf in [unitDiffRingType of 'M[E]_n].
+
+End UnitSquareMatrix.
+
+Import DiffAlgebra.Exports.
 
 Section Paper.
 
@@ -208,9 +202,9 @@ Variable E : diffAlgType R.
 
 Implicit Types c : R.
 Variable m n : nat.
+Implicit Types A : 'M[E]_(m, n).
 
-Lemma dm_scaleI c : \dm (c *:: 1%:M) = c *:: \dm 1%:M :> 'M[E]_n.
-Proof.
-  rewrite linearZ.
-  by done.
-Qed.
+Lemma dmAgscalemx c A : \dm (c *:: A) = c *:: \dm A.
+Proof. by rewrite linearZ. Qed.
+
+End Paper.
