@@ -31,20 +31,6 @@ Variable m n r : nat.
 Implicit Types A : 'M[E]_(m, n).
 Implicit Types B : 'M[E]_(n, r).
 
-Lemma dmB A1 A2 : \dm (A1 - A2) = \dm A1 - \dm A2.
-Proof.
-  apply/matrixP => i k.
-  by rewrite !mxE raddfB.
-Qed.
-
-Lemma dm_is_additive : additive (@der_mx E m n).
-Proof.
-  case => ? ?.
-  apply dmB.
-Qed.
-
-Canonical dm_additive := Additive dm_is_additive.
-
 Lemma dmM A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
 Proof.
   apply/matrixP => i k.
