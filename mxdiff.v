@@ -33,11 +33,7 @@ Implicit Types B : 'M[E]_(n, r).
 
 Lemma dmM A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
 Proof.
-  apply/matrixP => i k.
-  rewrite !mxE !raddf_sum -big_split.
-  apply eq_bigr => j.
-  unfold der_additive; simpl.
-  by rewrite !mxE derM.
+  by apply/matrixP => i k; rewrite !mxE !raddf_sum -big_split; apply eq_bigr => j; rewrite /= !mxE derM.
 Qed.
 
 End AnyMatrix.
@@ -74,84 +70,104 @@ Canonical matrix_unitDiffRing := Eval hnf in [unitDiffRingType of 'M[E]_n].
 
 End UnitSquareMatrix.
 
-Import DiffAlgebra.Exports.
+(* Generalized scalemx
+   Matrices whose elements are algebras form another Lmodule structure whose scalars are from the underlying ring R, other than the Lmodule structure registered by matrix.matrix_lmodType whose scalars are of the same type as the matrix elements *)
+Section gscalemx.
 
-Section const_scale.
-
-Variable R : ringType.
-Variable E : diffAlgType R.
-Implicit Types c : R.
-Variables m n r : nat.
-Implicit Types A : 'M[E]_(m, n).
-Implicit Types B : 'M[E]_(n, r).
-Implicit Types C : 'M[R]_(m, n).
-
-Definition const c : E := c%:A.
-
-Definition constm C := map_mx const C.
-
-Definition const_scale c A : 'M[E]_(m,n) := const c *: A.
-
-Definition const_mulmx C B : 'M[E]_(m,r) := constm C *m B.
-
-End const_scale.
-
-Notation "c *:: A" := (const_scale c A) (at level 40).
-Notation "C *m: A" := (const_mulmx C A) (at level 40).
-Notation "\const" := (@const _ _).
-Notation "\constm" := (@constm _ _).
-Notation "c %:C" := (@const _ _ c) (at level 8).
-Notation "C %:CM" := (@constm _ _ C) (at level 8).
-
-(* Matrices whose elements are algebras form another Lmodule structure whose scalars are from the underlying ring R, other than the Lmodule structure registered by matrix.matrix_lmodType whose scalars are of the same type as the matrix elements *)
-Section Alg_Lmodule.
-
-(* Scalar (constant) type *)
+(* Scalar type *)
 Variable R : ringType.
 
 (* Element type *)
-Variable E : diffAlgType R.
+Variable E : lmodType R.
 
 Variables m n : nat.
 Implicit Types A B : 'M[E]_(m, n).
 Implicit Types c : R.
 
-(* Fact constscalemx_key : unit. Proof. by []. Qed. *)
-(* Definition constscalemx c A := \matrix[constscalemx_key]_(i, j) (c *: A i j). *)
-(* Local Notation "x *m: A" := (constscalemx x A) (at level 40) : ring_scope. *)
+Fact gscalemx_key : unit. Proof. by []. Qed.
+Definition gscalemx c A := \matrix[gscalemx_key]_(i, j) (c *: A i j).
+Local Notation "x *m: A" := (gscalemx x A) (at level 40) : ring_scope.
 
-Lemma constscale1mx A : 1 *:: A = A.
+Lemma gscale1mx A : 1 *m: A = A.
+Proof. by apply/matrixP=> i j; rewrite !mxE scale1r. Qed.
+
+Lemma gscalemxDl A x y : (x + y) *m: A = x *m: A + y *m: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerDl. Qed.
+
+Lemma gscalemxDr x A B : x *m: (A + B) = x *m: A + x *m: B.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerDr. Qed.
+
+Lemma gscalemxA x y A : x *m: (y *m: A) = (x * y) *m: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerA. Qed.
+
+Definition gscalemx_lmodMixin := 
+  LmodMixin gscalemxA gscale1mx gscalemxDr gscalemxDl.
+
+Definition gscalemx_lmodType :=
+  Eval hnf in LmodType R 'M[E]_(m, n) gscalemx_lmodMixin.
+Canonical gscalemx_lmodType.
+
+End gscalemx.
+
+(* If we can register canonical structure gscalemx_lmodType, we can use the *: notation for gscalemx. But since gscalemx_lmodType overlaps with matrix_lmodType which Coq doesn't allow, here we give gscalemx_lmodType another notation *)
+Notation "c *:: A" := (gscalemx c A) (at level 40).
+
+(* A fix of scalerAr. It doesn't need a commutative ring *)
+Section AlgebraTheory.
+
+Variables (R : ringType) (A : algType R).
+Implicit Types (k : R) (x y : A).
+
+Lemma scalerAr_fix k x y : k *: (x * y) = x * (k *: y).
+Proof. by case: A k x y => T []. Qed.
+
+End AlgebraTheory.
+
+(* On algebra-element matrices, gscalemx enjoys right-associativity *)
+Section gscalemx_alg.
+
+(* Scalar type *)
+Variable R : ringType.
+
+(* Element type *)
+Variable E : algType R.
+
+Variables m n r : nat.
+Implicit Types A : 'M[E]_(m, n).
+Implicit Types B : 'M[E]_(n, r).
+Implicit Types c : R.
+
+Lemma gscalemxAr c A B : c *:: (A *m B) = A *m (c *:: B).
 Proof. 
-  unfold const_scale, const.
-  by rewrite !scale1r.
+  by apply/matrixP=> i j; rewrite !mxE !raddf_sum; apply eq_bigr => k; rewrite /= !mxE scalerAr_fix.
 Qed.
 
-Lemma constscalemxDl A x y : (x + y) *:: A = x *:: A + y *:: A.
-Proof. 
-  unfold const_scale, const.
-  by rewrite !scalerDl.
-Qed.
+End gscalemx_alg.
 
-Lemma constscalemxDr x A B : x *:: (A + B) = x *:: A + x *:: B.
-Proof. 
-  unfold const_scale, const.
-  by rewrite !scalerDr.
-Qed.
+(* Lift a constant scalar or matrix to the correspondent L-algebra scalar or matrix *)
+Section lift.
 
-Lemma constscalemxA x y A : x *:: (y *:: A) = (x * y) *:: A.
-Proof. 
-  unfold const_scale, const.
-  by rewrite scalerA -scalerAl mul1r scalerA.
-Qed.
+Variable R : ringType.
+Variable E : lalgType R.
+Implicit Types c : R.
+Variables m n : nat.
+Implicit Types C : 'M[R]_(m, n).
+Implicit Types A : 'M[E]_(m, n).
 
-Definition matrix_alg_lmodMixin := 
-  LmodMixin constscalemxA constscale1mx constscalemxDr constscalemxDl.
+Definition lift c : E := c%:A.
 
-Definition matrix_alg_lmodType :=
-  Eval hnf in LmodType R 'M[E]_(m, n) matrix_alg_lmodMixin.
-(* Canonical matrix_alg_lmodType. *)
+Definition liftm C := map_mx lift C.
 
-End Alg_Lmodule.
+Lemma lift_scalemx_gscalemx c A : lift c *: A = c *:: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE -scalerAl mul1r. Qed.
+
+End lift.
+
+Notation "\lift" := (@lift _ _).
+Notation "\liftm" := (@liftm _ _).
+Notation "C %:AM" := (@liftm _ _ C) (at level 8).
+
+Import DiffAlgebra.Exports.
 
 Section AlgMatrix.
 
@@ -167,28 +183,19 @@ Variables m n : nat.
 Implicit Types A B : 'M[E]_(m, n).
 Implicit Types C : 'M[R]_(m, n).
 
-Lemma dm_scale1 c A : \dm (c *: 1 *: A) = c *: 1 *: \dm A.
-Proof.
-  by apply/matrixP=> i j; rewrite !mxE -scalerAl linearZ -scalerAl !mul1r.
-Qed.
+Lemma dmAgscalemx c A : \dm (c *:: A) = c *:: \dm A.
+Proof. by apply/matrixP=> i j; rewrite !mxE linearZ. Qed.
 
-Lemma dm_scale_const c A : \dm (c *:: A) = c *:: \dm A.
-Proof.
-  by apply dm_scale1.
-Qed.
-
-Lemma dm_is_scalable : scalable (@der_mx E m n : matrix_alg_lmodType _ _ _ -> matrix_alg_lmodType _ _ _).
-Proof.
-  move => a A.
-  by rewrite dm_scale_const.
-Qed.
-
-Lemma dm_scale c A : \dm (\const c *: A) = \const c *: \dm A.
-Proof.
-  by apply dm_scale1.
-Qed.
+Lemma dm_is_scalable : scalable (@der_mx E m n : gscalemx_lmodType _ _ _ -> gscalemx_lmodType _ _ _).
+Proof. by move => a A; rewrite dmAgscalemx. Qed.
 
 Canonical dm_linear_const := AddLinear dm_is_scalable.
+
+Lemma dmAscalemx1 c A : \dm (c *: 1 *: A) = c *: 1 *: \dm A.
+Proof. by rewrite !lift_scalemx_gscalemx dmAgscalemx. Qed.
+
+Lemma dmAlift c A : \dm (\lift c *: A) = \lift c *: \dm A.
+Proof. by apply dmAscalemx1. Qed.
 
 End AlgMatrix.
 
