@@ -34,6 +34,9 @@ Record mixin_of (R : ringType) := Mixin {
   _ : forall a b, der (a * b) = der a * b + a * der b
 }.
 
+Definition EtaMixin {R : ringType} {f : {additive R -> R}} derM :=
+  @Mixin R _ (Additive.class f) derM.
+
 Record class_of (T : Type) := Class {
   base : Ring.class_of T;
   mixin : mixin_of (Ring.Pack base T)
@@ -73,6 +76,7 @@ Coercion zmodType : type >-> Zmodule.type.
 Canonical zmodType.
 Coercion ringType : type >-> Ring.type.
 Canonical ringType.
+Notation DiffRingMixin := EtaMixin.
 Notation diffRingType := type.
 Notation DiffRingType T m := (@pack T _ m _ _ id _ id).
 Notation "[ 'diffRingType' 'of' T 'for' cT ]" := (@clone T cT _ idfun)
@@ -421,7 +425,7 @@ Variable R : ringType.
 
 Record mixin_of (A : algType R) := Mixin {
   mixin_base : DiffRing.mixin_of A;
-  ext : linear (DiffRing.der mixin_base)
+  _ : scalable (DiffRing.der mixin_base)
 }.
 
 Record class_of (T : Type) := Class {
@@ -461,6 +465,7 @@ Module Exports.
 Coercion base : class_of >-> Algebra.class_of.
 Coercion base2 : class_of >-> DiffRing.class_of.
 Coercion mixin : class_of >-> mixin_of.
+Coercion mixin_base : mixin_of >-> DiffRing.mixin_of.
 Coercion sort : type >-> Sortclass.
 Bind Scope ring_scope with sort.
 Coercion eqType : type >-> Equality.type.
@@ -487,6 +492,20 @@ End Exports.
 End DiffAlgebra.
 
 Import DiffAlgebra.Exports.
+
+Section DiffAlgebraTheory.
+
+Variable R : ringType.
+Variable A : diffAlgType R.
+
+Lemma der_is_scalable : scalable (@der A).
+Proof.
+  by case A => ? [] ? [].
+Qed.
+
+Canonical der_linear := AddLinear der_is_scalable.
+
+End DiffAlgebraTheory.
 
 
 (* Differiential Unit Algebra *)
