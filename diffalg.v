@@ -592,3 +592,104 @@ End Exports.
 End UnitDiffAlgebra.
 
 Import UnitDiffAlgebra.Exports.
+
+
+(* Differiential Commutative Unit Algebra *)
+Module UnitDiffComAlgebra.
+
+Section ClassDef.
+
+Variable R : ringType.
+
+Record class_of (T : Type) := Class {
+  base : UnitDiffAlgebra.class_of R T;
+  mixin : commutative (Ring.mul base)
+}.
+
+Local Coercion base : class_of >-> UnitDiffAlgebra.class_of.
+Definition base2 R m := ComRing.Class (@mixin R m).
+Local Coercion base2 : class_of >-> ComRing.class_of.
+Definition base3 R (m : class_of R) := @ComUnitRing.Class _ m m.
+Local Coercion base3 : class_of >-> ComUnitRing.class_of.
+Definition base4 R (m : class_of R) := @ComUnitDiffRing.Class _ m m.
+Local Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
+
+Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (phR : phant R) (T : Type) (cT : type phR).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack mul0 (m0 : @commutative T T mul0) :=
+  fun bT b & phant_id (@UnitDiffAlgebra.class R phR bT) b =>
+  fun m & phant_id m0 m => Pack (Phant R) (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition ringType := @Ring.Pack cT xclass xT.
+Definition unitRingType := @UnitRing.Pack cT xclass xT.
+Definition diffRingType := @DiffRing.Pack cT xclass xT.
+Definition lmodType := @Lmodule.Pack R phR cT xclass xT.
+Definition lalgType := @Lalgebra.Pack R phR cT xclass xT.
+Definition algType := @Algebra.Pack R phR cT xclass xT.
+Definition unitAlgType := @UnitAlgebra.Pack R phR cT xclass xT.
+Definition diffAlgType := @DiffAlgebra.Pack R phR cT xclass xT.
+Definition lmod_unitRingType := @Lmodule.Pack R phR unitRingType xclass xT.
+Definition lalg_unitRingType := @Lalgebra.Pack R phR unitRingType xclass xT.
+Definition alg_unitRingType := @Algebra.Pack R phR unitRingType xclass xT.
+Definition comRingType := @ComRing.Pack cT xclass xT.
+Definition comUnitRingType := @ComUnitRing.Pack cT xclass xT.
+Definition comUnitDiffRingType := @ComUnitDiffRing.Pack cT xclass xT.
+End ClassDef.
+
+Module Exports.
+Coercion base : class_of >-> UnitDiffAlgebra.class_of.
+Coercion base2 : class_of >-> ComRing.class_of.
+Coercion base3 : class_of >-> ComUnitRing.class_of.
+Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion ringType : type >-> Ring.type.
+Canonical ringType.
+Coercion unitRingType : type >-> UnitRing.type.
+Canonical unitRingType.
+Coercion diffRingType : type >-> DiffRing.type.
+Canonical diffRingType.
+Coercion lmodType : type >-> Lmodule.type.
+Canonical lmodType.
+Coercion lalgType : type >-> Lalgebra.type.
+Canonical lalgType.
+Coercion algType : type >-> Algebra.type.
+Canonical algType.
+Coercion unitAlgType : type >-> UnitAlgebra.type.
+Canonical unitAlgType.
+Coercion diffAlgType : type >-> DiffAlgebra.type.
+Canonical diffAlgType.
+Canonical lmod_unitRingType.
+Canonical lalg_unitRingType.
+Canonical alg_unitRingType.
+Coercion comRingType : type >-> ComRing.type.
+Canonical comRingType.
+Coercion comUnitRingType : type >-> ComUnitRing.type.
+Canonical comUnitRingType.
+Coercion comUnitDiffRingType : type >-> ComUnitDiffRing.type.
+Canonical comUnitDiffRingType.
+
+Notation unitDiffComAlgType R := (type (Phant R)).
+Notation "[ 'unitDiffComAlgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
+  (at level 0, format "[ 'unitDiffComAlgType'  R  'of'  T ]") : form_scope.
+
+End Exports.
+
+End UnitDiffComAlgebra.
+
+Import UnitDiffComAlgebra.Exports.
+
