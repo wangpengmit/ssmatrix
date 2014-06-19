@@ -133,8 +133,6 @@ Lemma swizzle_mx_is_scalable m n p q f g k :
   scalable (@swizzle_mx E m n p q f g k : gscalemx_lmodType _ _ _ -> gscalemx_lmodType _ _ _).
 Proof. by move=> a A; apply/matrixP=> i j; rewrite !mxE. Qed.
 
-Unset Printing Notations.
-
 Definition swizzle_mx_linear m n p q f g k :=
   AddLinear (@swizzle_mx_is_scalable m n p q f g k).
 

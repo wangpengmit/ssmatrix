@@ -1,4 +1,6 @@
-(* Matrix Differentiation *)
+(* Matrix Differentiation Deductions in ECCV 2014 submitted paper from Andrew Fitzgibbon 
+Written by: Peng Wang (wangp.thu@gmail.com)
+*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -27,8 +29,6 @@ Notation "A ** B" := (A *m B) (at level 40, left associativity) : ring_scope.
 Notation "\\d" := \dm : diff_scope.
 Notation "u *** A" := (u *:: A) (at level 40, left associativity) : ring_scope.
 Notation I := (1%:M).
-
-Ltac rhs_goal := match goal with |- _ = ?GOAL => set (goal := GOAL) end.
 
 Section Util.
 
@@ -63,10 +63,10 @@ Implicit Types B : 'M[E]_m.
 Definition sym B := B^T + B.
 
 Lemma fold_sym B : B^T + B = sym B.
-Proof. by done. Qed.
+Proof. by []. Qed.
 
 Definition upinv_def u A := (A^T ** A + u *** I)^^-1 ** A^T.
-Fact upinv_key : unit. by done. Qed. 
+Fact upinv_key : unit. by []. Qed. 
 Definition upinv := locked_with upinv_key upinv_def.
 Canonical upinv_unlockable := [unlockable fun upinv].
 
@@ -79,7 +79,7 @@ Proof. by rewrite unlock. Qed.
 
 Lemma fold_upinvT u A : A ** (A^T ** A + u *** I)^^-1 = (A^-u)^T.
 Proof. 
-  symmetry; rhs_goal.
+  set goal := LHS.
   by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_gscalemx trmx1.
 Qed.
 
@@ -97,21 +97,21 @@ Implicit Types B : 'M[E]_n.
 Variable A : 'M[E]_(m, n).
 Variable u : R.
 
-Notation "'invertable' B" := (B \is a GRing.unit) (at level 8).
+Definition invertible B := B \is a GRing.unit.
 
-Hypothesis h_invertable : invertable (A^T ** A + u *** I).
+Hypothesis h_invertible : invertible (A^T ** A + u *** I).
 
 Lemma to_inv B : B^^-1 = B^-1.
-Proof. by done. Qed.
+Proof. by []. Qed.
 
 Lemma to_der B : \\d B = \d B.
-Proof. by done. Qed.
+Proof. by []. Qed.
 
 Lemma to_der1 : \\d I = \d 1 :> 'M[E]_n.
-Proof. by done. Qed.
+Proof. by []. Qed.
 
 Lemma to_mulmx B1 B2 : B1 * B2 = B1 ** B2.
-Proof. by done. Qed.
+Proof. by []. Qed.
 
 Lemma B_CA {Z : zmodType} (a b c : Z) : a + b + c = b + (c + a).
 Proof. by rewrite addrA addrC addrA addrC addrA. Qed.
@@ -121,9 +121,9 @@ Proof. by rewrite trmx_mul -fold_upinvT -fold_upinv mulmxA. Qed.
 
 Lemma dm_upinv : \\d (A^-u) = -A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 ** (\\d A)^T ** (I - A ** A^-u).
 Proof.
-  rhs_goal.
+  set goal := RHS.
   rewrite unlock dmM.
-  rewrite !to_inv !to_der (der_inv h_invertable).
+  rewrite !to_inv !to_der (der_inv h_invertible).
   rewrite linearD /= linearZ /= to_der1 der1 scaler0 addr0 dmM.
   rewrite -mulmxA fold_upinv mulrDr mulmxDl !mulNr !mulNmx -mulNmx -mulNr !to_mulmx !mulmxA.
   by rewrite fold_upinv B_CA !mulNmx -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx -mulNmx -mulNmx.
@@ -131,7 +131,7 @@ Qed.
 
 Lemma dm_AupinvA : \\d (A ** A^-u) = sym ((I - A ** A^-u) ** \\d A ** A^-u).
 Proof.
-  rhs_goal.
+  set goal := RHS.
   rewrite dmM.
   rewrite dm_upinv !(mulmxDr A) !mulmxA !addrA mulmxN !mulNmx.
   rewrite fold_upinvT.

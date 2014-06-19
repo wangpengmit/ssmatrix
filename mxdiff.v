@@ -12,7 +12,6 @@ Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
 
-Require Import mxlinear.
 Require Import diffalg.
 Import DiffRing.Exports.
 Import UnitDiffRing.Exports.

@@ -241,7 +241,7 @@ Lemma addNRL x y : x + y = 0 -> x = -y.
   rewrite -sub0r.
   rewrite -H.
   rewrite addrK.
-  by done.
+  by [].
 Qed.
 
 End Util.
@@ -258,7 +258,7 @@ Proof.
   have He: \d (x / x) = 0.
     rewrite mulrV.
       by apply der1.
-      by done.
+      by [].
   rewrite der_prod in He.
   rewrite mulNr.
   rewrite mulNr.
@@ -271,7 +271,7 @@ Proof.
   rewrite mulrA.
   rewrite divrr.
     by rewrite mul1r.
-    by done.
+    by [].
 Qed.
 
 End UnitDiffRingTheory.
