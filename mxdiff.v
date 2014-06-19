@@ -116,13 +116,13 @@ Notation "\\d" := \dm.
 Notation "u *** A" := (u *:: A) (at level 40, left associativity).
 Notation I := 1%:M.
 
-Lemma fold_upinv : (A^T ** A + u *** I)^-1 ** A^T = upinv u A.
+Lemma fold_upinv : (A^T ** A + u *** I)^-1 ** A^T = A^-u.
 Proof. by rewrite unlock. Qed.
 
 Lemma to_inv B : B^^-1 = B^-1.
 Proof. by done. Qed.
 
-Lemma to_der_inv B : \\d (B^^-1) = \d (B^-1).
+Lemma to_der B : \\d B = \d B.
 Proof. by done. Qed.
 
 Lemma to_der1 : \\d I = \d 1 :> 'M[E]_n.
@@ -134,15 +134,43 @@ Proof. by done. Qed.
 Lemma B_CA {Z : zmodType} (a b c : Z) : a + b + c = b + (c + a).
 Proof. by rewrite addrA addrC addrA addrC addrA. Qed.
 
+Ltac rhs_goal := match goal with |- _ = ?GOAL => set (goal := GOAL) end.
+
 Lemma dm_upinv : \\d (A^-u) = -A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 ** (\\d A)^T ** (I - A ** A^-u).
 Proof.
-  set (goal := _ + _) at 1.
+  rhs_goal.
   rewrite unlock dmM.
-  rewrite to_der_inv der_inv.
+  rewrite !to_inv !to_der der_inv.
   rewrite linearD /= linearZ /= to_der1 der1 scaler0 addr0 dmM.
   rewrite -mulmxA fold_upinv mulrDr mulmxDl !mulNr !mulNmx -mulNmx -mulNr !to_mulmx !mulmxA.
-  by rewrite fold_upinv B_CA !mulNmx to_inv -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx -mulNmx -mulNmx.
+  by rewrite fold_upinv B_CA !mulNmx -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx -mulNmx -mulNmx.
   by done.
+Qed.
+
+Lemma trmx_gscalemx : forall u B, (u *** B)^T = u *** B^T.
+Proof. by move=> c B; apply/matrixP=> i j; rewrite !mxE. Qed.
+
+Lemma fold_upinvT : A ** (A^T ** A + u *** I)^-1 = (A^-u)^T.
+Proof. 
+  symmetry; rhs_goal.
+  by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_gscalemx trmx1.
+Qed.
+
+Lemma AupinvA_sym : (A ** A^-u)^T = A ** A^-u.
+Proof. by rewrite trmx_mul -fold_upinvT -fold_upinv mulmxA. Qed.
+
+Lemma fold_sym : forall m (A : 'M_m), A^T + A = sym A.
+Proof. by done. Qed.
+
+Lemma dm_AupinvA : \\d (A ** A^-u) = sym ((I - A ** A^-u) ** \\d A ** A^-u).
+Proof.
+  match goal with |- _ = ?GOAL => set (goal := GOAL) end.
+  rewrite dmM.
+  rewrite dm_upinv !(mulmxDr A) !mulmxA !addrA mulmxN !mulNmx.
+  rewrite fold_upinvT.
+  rewrite !mulmxDr mulmx1 mulmxN !mulmxA !addrA.
+  rewrite -trmx_mul -(mulmxA _ A) -{2}AupinvA_sym -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
+  by rewrite -{1}(mul1mx (\\d A ** _)) -mulmxA -mulmxBl !mulmxA.
 Qed.
 
 End Appendix.
