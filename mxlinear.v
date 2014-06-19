@@ -109,7 +109,6 @@ Variable E F : lmodType R.
 Implicit Types c : R.
 Variables m n : nat.
 Implicit Types A : 'M[E]_(m, n).
-Implicit Types C : 'M[R]_(m, n).
 Variable f : {linear E -> F}.
 Local Notation "A ^f" := (map_mx f A) : ring_scope.
 
@@ -122,6 +121,27 @@ Proof. by move => a A; rewrite fAgscalemx. Qed.
 Canonical f_linear := AddLinear f_is_scalable.
 
 End MapLinear.
+
+(* Swizzle over the linear structure. *)
+Module SwizzleLinear.
+Section SwizzleLinear.
+
+Variable RR : ringType.
+Variable E : lmodType RR.
+
+Lemma swizzle_mx_is_scalable m n p q f g k :
+  scalable (@swizzle_mx E m n p q f g k : gscalemx_lmodType _ _ _ -> gscalemx_lmodType _ _ _).
+Proof. by move=> a A; apply/matrixP=> i j; rewrite !mxE. Qed.
+
+Unset Printing Notations.
+
+Definition swizzle_mx_linear m n p q f g k :=
+  AddLinear (@swizzle_mx_is_scalable m n p q f g k).
+
+(* Canonical swizzle_mx_linear. *)
+
+End SwizzleLinear.
+End SwizzleLinear.
 
 Section MapLinearAlg.
 
