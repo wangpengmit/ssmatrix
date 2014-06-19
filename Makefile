@@ -1,6 +1,6 @@
 MODULES := \
 	diffalg mxlinear \
-	# mxdiff \
+	mxdiff \
 
 VS      := $(MODULES:%=%.v)
 
