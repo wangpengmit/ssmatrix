@@ -65,7 +65,7 @@ Definition sym B := B^T + B.
 Lemma fold_sym B : B^T + B = sym B.
 Proof. by done. Qed.
 
-Definition upinv_def c A := invmx (A^T *m A + c *:: 1%:M) *m A^T.
+Definition upinv_def u A := (A^T ** A + u *** I)^^-1 ** A^T.
 Fact upinv_key : unit. by done. Qed. 
 Definition upinv := locked_with upinv_key upinv_def.
 Canonical upinv_unlockable := [unlockable fun upinv].
@@ -123,16 +123,15 @@ Lemma dm_upinv : \\d (A^-u) = -A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 *
 Proof.
   rhs_goal.
   rewrite unlock dmM.
-  rewrite !to_inv !to_der der_inv.
+  rewrite !to_inv !to_der (der_inv h_invertable).
   rewrite linearD /= linearZ /= to_der1 der1 scaler0 addr0 dmM.
   rewrite -mulmxA fold_upinv mulrDr mulmxDl !mulNr !mulNmx -mulNmx -mulNr !to_mulmx !mulmxA.
   by rewrite fold_upinv B_CA !mulNmx -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx -mulNmx -mulNmx.
-  by done.
 Qed.
 
 Lemma dm_AupinvA : \\d (A ** A^-u) = sym ((I - A ** A^-u) ** \\d A ** A^-u).
 Proof.
-  match goal with |- _ = ?GOAL => set (goal := GOAL) end.
+  rhs_goal.
   rewrite dmM.
   rewrite dm_upinv !(mulmxDr A) !mulmxA !addrA mulmxN !mulNmx.
   rewrite fold_upinvT.
