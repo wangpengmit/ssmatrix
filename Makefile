@@ -1,6 +1,7 @@
 MODULES := \
 	diffalg mxlinear \
 	mxdiff \
+	eccv_paper \
 
 VS      := $(MODULES:%=%.v)
 
