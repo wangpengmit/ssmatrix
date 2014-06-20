@@ -106,7 +106,7 @@ Implicit Types B : 'M[E]_n.
 Variable A : 'M[E]_(m, n).
 Variable u : R.
 
-Definition invertible B := B \is a GRing.unit.
+Notation invertible B := (B \is a GRing.unit).
 
 Hypothesis h_invertible : invertible (A^T ** A + u *** I).
 
@@ -170,7 +170,7 @@ Notation elemprod := (map2_mx *%R).
 Notation rvec := mxvec.
 
 (* Column-major vectorization *)
-Notation cvec A := (rvec A^T)^T.
+Notation vec A := (rvec A^T)^T.
 
 Section KroneckerProduct.
 
@@ -183,7 +183,7 @@ Implicit Types B : 'M[R]_(m2,n2).
 Definition kron A B := lin_mx ((mulmxr B) \o (mulmx A^T)).
 Notation "A *o B" := (kron A B) (at level 40, left associativity).
 
-Lemma kronP A B C : rvec C *m (A *o B) = rvec (A^T *m C *m B).
+Lemma kronP A B C : rvec C ** (A *o B) = rvec (A^T ** C ** B).
   by rewrite mul_vec_lin.
 Qed.
 
@@ -200,23 +200,23 @@ Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
 Implicit Types B : 'M[R]_(m2,n2).
 
-Lemma colE j A : col j A = A *m delta_mx j 0.
+Lemma colE j A : col j A = A ** delta_mx j 0.
 Proof.
   apply/colP=> i; rewrite !mxE (bigD1 j) //= mxE !eqxx mulr1.
   by rewrite big1 ?addr0 // => i' ne_i'i; rewrite mxE /= (negbTE ne_i'i) mulr0.
 Qed.
 
-Lemma rowcolE i j A B : A *m delta_mx i j *m B = col i A *m row j B.
+Lemma rowcolE i j A B : A ** delta_mx i j ** B = col i A ** row j B.
 Proof.
   by rewrite rowE colE !mulmxA -(mulmxA _ (delta_mx i 0)) mul_delta_mx.
 Qed.
 
-Lemma cVMrV m n (c : 'cV[R]_m) (r : 'rV_n) i j : (c *m r) i j = c i 0 * r 0 j.
+Lemma cVMrV m n (c : 'cV[R]_m) (r : 'rV_n) i j : (c ** r) i j = c i 0 * r 0 j.
 Proof.
   by rewrite !mxE big_ord1.
 Qed.
 
-Lemma colMrowP i j A B ii jj : (col j A *m row i B) ii jj = A ii j * B i jj.
+Lemma colMrowP i j A B ii jj : (col j A ** row i B) ii jj = A ii j * B i jj.
 Proof.
   by rewrite cVMrV !mxE.
 Qed.
@@ -243,19 +243,56 @@ Qed.
 
 End TrmxKron.
 
+Section KronPColumn.
+
 Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types C : 'M[R]_(m2,n2).
 
-Lemma kronPc A B (C : 'M_(m2,n2)) : cvec (A *m B *m C) = (C^T *o A) *m cvec B.
+Lemma kronPc A B C : vec (A ** B ** C) = (C^T *o A) ** vec B.
 Proof.
   by rewrite !trmx_mul !mulmxA -kronP !trmx_mul trmx_kron trmxK.
 Qed.
 
+End KronPColumn.
+
+Section Corollaries.
+
+Variables m n r : nat.
+Implicit Types A : 'M[R]_(m,n).
+Implicit Types B : 'M[R]_(n,r).
+
+Corollary vec_kron A B : vec (A ** B) = (I *o A) ** vec B.
+Proof.
+  by rewrite -(mulmx1 (A ** B)) kronPc trmx1.
+Qed.
+
+Corollary vec_kron2 A B : vec (A ** B) = (B^T *o I) ** vec A.
+Proof.
+  by rewrite -(mul1mx (A ** B)) !mulmxA kronPc.
+Qed.
+
+Corollary kron_shift A B : (I *o A) ** vec B = (B^T *o I) ** vec A.
+Proof.
+  by rewrite -vec_kron vec_kron2.
+Qed.
+
+End Corollaries.
+
 End KroneckerProductTheory.
 
-Section Section3.
+Notation "A .* B" := (elemprod A B) (at level 40, left associativity).
 
-Section Definitions.
+Lemma cowP : forall (R : Type) (n : nat) (u v : 'cV[R]_n), (forall i, u i 0 = v i 0) <-> u = v.
+Proof. by split=> [eq_uv | -> //]; apply/matrixP=> i j; rewrite ord1. Qed.
+
+Lemma vec_elemprod {R : ringType} {m n} (A B : 'M[R]_(m,n)) : vec (A .* B) = diag_mx (vec A)^T ** vec B.
+Proof.
+  apply/cowP=> k; case/mxvec_indexP: k => i j.
+  by rewrite mul_diag_mx !mxE !mxvecE !mxE.
+Qed.
+
+Section Section3.
 
 (* Constants *)
 Variable C : ringType.
@@ -268,9 +305,22 @@ Local Notation n := n'.+1.
 Local Notation r := r'.+1.
 (* W : weight matrix 
    M : target matrix *)
-Variable W M : 'M[C]_(m, n).
+Variable cW cM : 'M[C]_(m, n).
+Notation W := (\liftm cW).
+Notation M := (\liftm cM).
 Variable U : 'M[E]_(m, r).
 Variable V : 'M[E]_(n, r).
+Notation "~W" := (diag_mx (vec W)^T).
+Notation "\m" := (vec M).
+Notation "~U" := (I *o U).
 
+Lemma eq_10_13 : vec (W .* (M - U ** V^T)) = ~W ** \m - ~W ** ~U ** vec V^T.
+Proof.
+  set goal := RHS.
+  rewrite vec_elemprod.
+  rewrite !raddfB /=.
+  by rewrite vec_kron !mulmxA.
+Qed.
 
-End Paper.
+End Section3.
+
