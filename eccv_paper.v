@@ -45,25 +45,29 @@ Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
 
 End Util.
 
-Section Paper.
+Section Sym.
 
-(* Scalar type *)
 Variable R : ringType.
-(* Element type *)
-Variable E : unitDiffComAlgType R.
-
-Implicit Types u : R.
-
-Section Definitions.
-
-Variable m n : nat.
-Implicit Types A : 'M[E]_(m, n).
-Implicit Types B : 'M[E]_m.
+Variable n : nat.
+Implicit Types B : 'M[R]_n.
 
 Definition sym B := B^T + B.
 
 Lemma fold_sym B : B^T + B = sym B.
 Proof. by []. Qed.
+
+End Sym.
+
+Section upinv.
+
+Variable R : ringType.
+(* invmx requires comRing, don't know why *)
+Variable E : unitDiffComAlgType R.
+
+Implicit Types u : R.
+Variable m n : nat.
+Implicit Types A : 'M[E]_(m, n).
+Implicit Types B : 'M[E]_m.
 
 Definition upinv_def u A := (A^T ** A + u *** I)^^-1 ** A^T.
 Fact upinv_key : unit. by []. Qed. 
@@ -83,11 +87,16 @@ Proof.
   by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_gscalemx trmx1.
 Qed.
 
-End Definitions.
+End upinv.
 
 Notation "A ^- u" := (upinv u A) : ring_scope.
 
 Section Appendix.
+
+(* Scalar type *)
+Variable R : ringType.
+(* Element type *)
+Variable E : unitDiffComAlgType R.
 
 Variable m n' : nat.
 Local Notation n := n'.+1.
@@ -141,5 +150,127 @@ Proof.
 Qed.
 
 End Appendix.
+
+Section Map2Matrix.
+
+Variables (aT bT rT : Type) (f : aT -> bT -> rT).
+Variable m n : nat.
+Implicit Types A : 'M[aT]_(m,n).
+Implicit Types B : 'M[bT]_(m,n).
+
+Fact map2_mx_key : unit. Proof. by []. Qed.
+Definition map2_mx A B := \matrix[map2_mx_key]_(i, j) f (A i j) (B i j).
+
+End Map2Matrix.
+
+(* Hadamard (element-wise) product *)
+Notation elemprod := (map2_mx *%R).
+
+(* Row-major vectorizatin *)
+Notation rvec := mxvec.
+
+(* Column-major vectorization *)
+Notation cvec A := (rvec A^T)^T.
+
+Section KroneckerProduct.
+
+(* mulmx_linear requires comRing, don't know why *)
+Variable R : comRingType.
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[R]_(m2,n2).
+
+Definition kron A B := lin_mx ((mulmxr B) \o (mulmx A^T)).
+Notation "A *o B" := (kron A B) (at level 40, left associativity).
+
+Lemma kronP A B C : rvec C *m (A *o B) = rvec (A^T *m C *m B).
+  by rewrite mul_vec_lin.
+Qed.
+
+End KroneckerProduct.
+
+Notation "A *o B" := (kron A B) (at level 40, left associativity).
+
+Require Import zmodp.
+
+Section DeltaMxTheory.
+
+Variable R : comRingType.
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[R]_(m2,n2).
+
+Lemma colE j A : col j A = A *m delta_mx j 0.
+Proof.
+  apply/colP=> i; rewrite !mxE (bigD1 j) //= mxE !eqxx mulr1.
+  by rewrite big1 ?addr0 // => i' ne_i'i; rewrite mxE /= (negbTE ne_i'i) mulr0.
+Qed.
+
+Lemma rowcolE i j A B : A *m delta_mx i j *m B = col i A *m row j B.
+Proof.
+  by rewrite rowE colE !mulmxA -(mulmxA _ (delta_mx i 0)) mul_delta_mx.
+Qed.
+
+Lemma cVMrV m n (c : 'cV[R]_m) (r : 'rV_n) i j : (c *m r) i j = c i 0 * r 0 j.
+Proof.
+  by rewrite !mxE big_ord1.
+Qed.
+
+Lemma colMrowP i j A B ii jj : (col j A *m row i B) ii jj = A ii j * B i jj.
+Proof.
+  by rewrite cVMrV !mxE.
+Qed.
+
+End DeltaMxTheory.
+
+Section KroneckerProductTheory.
+
+Variable R : comRingType.
+
+Section TrmxKron.
+
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[R]_(m2,n2).
+
+Lemma trmx_kron A B : (A *o B)^T = (A^T *o B^T).
+Proof.
+  apply/matrixP=> i j; rewrite !mxE trmxK /=.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  by rewrite !vec_mx_delta !mxvecE !rowcolE !colMrowP !mxE.
+Qed.
+
+End TrmxKron.
+
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+
+Lemma kronPc A B (C : 'M_(m2,n2)) : cvec (A *m B *m C) = (C^T *o A) *m cvec B.
+Proof.
+  by rewrite !trmx_mul !mulmxA -kronP !trmx_mul trmx_kron trmxK.
+Qed.
+
+End KroneckerProductTheory.
+
+Section Section3.
+
+Section Definitions.
+
+(* Constants *)
+Variable C : ringType.
+(* Variables *)
+Variable E : unitDiffComAlgType C.
+
+Variable m' n' r' : nat.
+Local Notation m := m'.+1.
+Local Notation n := n'.+1.
+Local Notation r := r'.+1.
+(* W : weight matrix 
+   M : target matrix *)
+Variable W M : 'M[C]_(m, n).
+Variable U : 'M[E]_(m, r).
+Variable V : 'M[E]_(n, r).
+
 
 End Paper.
