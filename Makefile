@@ -2,7 +2,8 @@ MODULES := \
 	diffalg mxlinear \
 	mxdiff \
 	kronprod \
-	# eccv_paper \
+	eccv_paper_appendix \
+	eccv_paper \
 
 VS      := $(MODULES:%=%.v)
 

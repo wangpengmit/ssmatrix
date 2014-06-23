@@ -607,11 +607,7 @@ Record class_of (T : Type) := Class {
 }.
 
 Local Coercion base : class_of >-> UnitDiffAlgebra.class_of.
-Definition base2 R m := ComRing.Class (@mixin R m).
-Local Coercion base2 : class_of >-> ComRing.class_of.
-Definition base3 R (m : class_of R) := @ComUnitRing.Class _ m m.
-Local Coercion base3 : class_of >-> ComUnitRing.class_of.
-Definition base4 R (m : class_of R) := @ComUnitDiffRing.Class _ m m.
+Definition base4 R (m : class_of R) := @ComUnitDiffRing.Class _ (@ComUnitRing.Class _ (ComRing.Class (@mixin R m)) m) m.
 Local Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
 
 Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
@@ -646,8 +642,6 @@ End ClassDef.
 
 Module Exports.
 Coercion base : class_of >-> UnitDiffAlgebra.class_of.
-Coercion base2 : class_of >-> ComRing.class_of.
-Coercion base3 : class_of >-> ComUnitRing.class_of.
 Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
 Coercion sort : type >-> Sortclass.
 Bind Scope ring_scope with sort.

@@ -86,7 +86,7 @@ Section KroneckerProductTheory.
 
 Variable R : comRingType.
 
-Section TrmxKron.
+Section Basics.
 
 Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
@@ -100,7 +100,21 @@ Proof.
   by rewrite !vec_mx_delta !mxvecE !rowcolE !colMrowP !mxE.
 Qed.
 
-End TrmxKron.
+Lemma kron0mx A : (0 : 'M_(m2,n2)) *o A = 0.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /= trmx0 !mul0mx /=.
+  case/mxvec_indexP: j => x y.
+  by rewrite mxvecE !mxE.
+Qed.
+
+Lemma kronmx0 A : A *o (0 : 'M_(m2,n2)) = 0.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /= !mulmx0 /=.
+  case/mxvec_indexP: j => x y.
+  by rewrite mxvecE !mxE.
+Qed.
+
+End Basics.
 
 Section KronPColumn.
 

@@ -18,7 +18,7 @@ Import UnitDiffRing.Exports.
 Import ComUnitDiffRing.Exports.
 Open Local Scope diff_scope.
 
-Notation "\dm" := (map_mx \d).
+Notation "\\d" := (map_mx \d).
 
 Section AnyMatrix.
 
@@ -29,12 +29,21 @@ Variable m n r : nat.
 Implicit Types A : 'M[E]_(m, n).
 Implicit Types B : 'M[E]_(n, r).
 
-Lemma dmM A B : \dm (A *m B) = \dm A *m B + A *m \dm B.
+Lemma dmM A B : \\d (A *m B) = \\d A *m B + A *m \\d B.
 Proof.
   by apply/matrixP => i k; rewrite !mxE !raddf_sum -big_split; apply eq_bigr => j; rewrite /= !mxE derM.
 Qed.
 
 End AnyMatrix.
+
+Local Notation I := (1%:M).
+
+Lemma dmI {E : diffRingType} {n} : \\d I = 0 :> 'M[E]_n.
+Proof.
+  apply: (addIr (\\d (I *m I))).
+  rewrite add0r {1}mul1mx.
+    by rewrite dmM mulmx1 mul1mx.
+Qed.
 
 Section SquareMatrix.
 
@@ -49,7 +58,13 @@ Canonical dm_derivative := Derivative (@dmM E n n n).
 Definition matrix_diffRingMixin := DiffRingMixin (@dmM E n n n).
 Canonical matrix_diffRingType := Eval hnf in DiffRingType 'M[E]_n matrix_diffRingMixin.
 
+Lemma to_der (A : 'M[E]_n) : \\d A = \d A.
+Proof. by []. Qed.
+
 End SquareMatrix.
+
+Lemma to_inv {R : comUnitRingType} {n} (A : 'M[R]_n.+1) : invmx A = A^-1.
+Proof. by []. Qed.
 
 Section UnitSquareMatrix.
 

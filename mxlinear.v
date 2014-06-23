@@ -88,17 +88,14 @@ Variables m n : nat.
 Implicit Types C : 'M[R]_(m, n).
 Implicit Types A : 'M[E]_(m, n).
 
-Definition lift c : E := c%:A.
+Definition liftm C := map_mx (in_alg E) C.
 
-Definition liftm C := map_mx lift C.
-
-Lemma lift_scalemx_gscalemx c A : lift c *: A = c *:: A.
+Lemma lift_scalemx_gscalemx c A : in_alg _ c *: A = c *:: A.
 Proof. by apply/matrixP=> i j; rewrite !mxE -scalerAl mul1r. Qed.
 
 End lift.
 
 Notation "C %:AM" := (liftm _ C) (at level 8).
-Notation "\lift" := (lift _).
 Notation "\liftm" := (liftm _).
 
 (* Parametricity over the linear structure. *)
@@ -154,7 +151,7 @@ Local Notation "A ^f" := (map_mx f A) : ring_scope.
 Lemma fAscalemx1 c A : (c *: 1 *: A)^f = c *: 1 *: A^f.
 Proof. by rewrite !lift_scalemx_gscalemx fAgscalemx. Qed.
 
-Lemma fAlift c A : (\lift c *: A)^f = \lift c *: A^f.
+Lemma fAlift c A : (in_alg _ c *: A)^f = in_alg _ c *: A^f.
 Proof. by apply fAscalemx1. Qed.
 
 End MapLinearAlg.
