@@ -97,9 +97,9 @@ Proof. by apply/matrixP=> i j; rewrite !mxE -scalerAl mul1r. Qed.
 
 End lift.
 
-Notation "\lift" := (@lift _ _).
-Notation "\liftm" := (@liftm _ _).
-Notation "C %:AM" := (@liftm _ _ C) (at level 8).
+Notation "C %:AM" := (liftm _ C) (at level 8).
+Notation "\lift" := (lift _).
+Notation "\liftm" := (liftm _).
 
 (* Parametricity over the linear structure. *)
 Section MapLinear.
