@@ -65,6 +65,9 @@ Qed.
 
 End ConstantMatrix.
 
+Lemma map_mxE {aT rT} {f : aT -> rT} {m n} (A : 'M_(m,n)) i j : (map_mx f A) i j = f (A i j).
+Proof. by rewrite !mxE /=. Qed.
+
 Section DerKronProd.
 
 Variable E : comUnitDiffRingType.
@@ -75,9 +78,20 @@ Variable m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[E]_(m1,n1).
 Implicit Types B : 'M[E]_(m2,n2).
 
+Lemma dm_delta m n i j : \\d (delta_mx i j) = 0 :> 'M[E]_(m,n).
+Proof.
+  apply/matrixP=> i' j'; rewrite !mxE /=.
+  case (_ && _).
+  - by rewrite der1.
+  - by rewrite raddf0.
+Qed.
+
 Lemma dm_kron A B : \\d (A *o B) = \\d A *o B + A *o \\d B.
 Proof.
-  admit.
+  apply/matrixP=> i j; rewrite !mxE /=.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  by rewrite !vec_mx_delta !mxvecE map_trmx -map_mxE !dmM dm_delta mulmx0 addr0 !mxE.
 Qed.
 
 End dm_kron.
