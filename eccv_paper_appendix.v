@@ -109,30 +109,27 @@ Notation invertible B := (B \is a GRing.unit).
 
 Hypothesis h_invertible : invertible (A^T ** A + u *** I).
 
-Lemma B_CA {Z : zmodType} (a b c : Z) : a + b + c = b + (c + a).
-Proof. by rewrite addrA addrC addrA addrC addrA. Qed.
-
 Lemma AupinvA_sym : (A ** A^-u)^T = A ** A^-u.
 Proof. by rewrite trmx_mul -fold_upinvT -fold_upinv mulmxA. Qed.
 
-Lemma dm_upinv : \\d (A^-u) = -A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 ** (\\d A)^T ** (I - A ** A^-u).
+Lemma dm_upinv : \\d (A^-u) = 0 - A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 ** (\\d A)^T ** (I - A ** A^-u).
 Proof.
   set goal := RHS.
   rewrite unlock dmM.
   rewrite !to_inv !to_der (der_inv h_invertible).
   rewrite linearD /= linearZ /= !to_der der1 scaler0 addr0 -!to_der dmM.
-  rewrite -mulmxA fold_upinv mulrDr mulmxDl !mulNr !mulNmx -mulNmx -mulNr -!mulmxE !mulmxA.
-  by rewrite fold_upinv B_CA !mulNmx -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx -mulNmx -mulNmx.
+  rewrite -mulmxA fold_upinv mulrDr mulmxDl -!mulmxE !mulNmx !mulmxA.
+  by rewrite fold_upinv -addrA (addrC _ (_ ** _)) !addrA (addrC (-_)) -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx addrC -sub0r.
 Qed.
 
 Lemma dm_AupinvA : \\d (A ** A^-u) = sym ((I - A ** A^-u) ** \\d A ** A^-u).
 Proof.
   set goal := RHS.
   rewrite dmM.
-  rewrite dm_upinv !(mulmxDr A) !mulmxA !addrA mulmxN !mulNmx.
+  rewrite dm_upinv sub0r !(mulmxDr A) !mulmxA !addrA mulmxN.
   rewrite fold_upinvT.
   rewrite !mulmxDr mulmx1 mulmxN !mulmxA !addrA.
-  rewrite -trmx_mul -(mulmxA _ A) -{2}AupinvA_sym -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
+  rewrite -trmx_mul -(mulmxA _ A) -!mulmxA -AupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
   by rewrite -{1}(mul1mx (\\d A ** _)) -mulmxA -mulmxBl !mulmxA.
 Qed.
 
