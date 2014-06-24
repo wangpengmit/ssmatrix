@@ -191,7 +191,7 @@ Proof.
   by rewrite -!lift_vec /liftm map_trmx -map_diag_mx /= !dmcl.
 Qed.
 
-Lemma eq_2_26 : \\d eps1 = 0 - H ** ~W ** (I *o \\d U) ** ((~W ** ~U)^-v ** ~W ** \m) - ((~W ** ~U)^-v)^T ** (I *o (\\d U)^T) ** (~W^T ** H ** ~W ** \m).
+Lemma eq_20_26 : \\d eps1 = 0 - H ** ~W ** (I *o \\d U) ** ((~W ** ~U)^-v ** ~W ** \m) - ((~W ** ~U)^-v)^T ** (I *o (\\d U)^T) ** (~W^T ** H ** ~W ** \m).
 Proof.
   set goal := RHS.
   rewrite raddfB /= -(mul1mx (~W ** \m)) !mulmxA !dmWmr to_der der1 !mul0mx.
@@ -209,7 +209,7 @@ Qed.
 
 Notation R := (W .* (M - U ** V*^T)).
 
-Lemma eq_2_31 : ~W^T ** H ** ~W ** \m = vec (W .* R).
+Lemma eq_28_31 : ~W^T ** H ** ~W ** \m = vec (W .* R).
 Proof.
   set goal := RHS.
   rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
@@ -221,10 +221,17 @@ Qed.
 Notation "~V*" := (V* *o I).
 Notation T := (trT _ _ _).
 
+Lemma map_vec aT rT (f : aT -> rT) m n (A : 'M_(m,n)) : map_mx f (vec A) = vec (map_mx f A).
+Proof.
+  by rewrite map_trmx -map_mxvec map_trmx.
+Qed.
+
 Lemma eq_32_35 : \\d eps1 = - (H ** ~W ** ~V* + ((~W ** ~U)^-v)^T ** ((W .* R)^T *o I) ** T) ** \\d (vec U).
 Proof.
   set goal := RHS.
-
+  rewrite eq_20_26 eq_28_31 {1}to_Vstar.
+  rewrite -(mulmxA _ _ (vec _)) kron_shift (trmxK V*) -(mulmxA _ _ (vec (_ .* _))) kron_shift !mulmxA.
+  by rewrite -trTPc !mulmxA -(mul0mx _ (vec (\\d U))) -!mulmxBl sub0r -opprD -map_vec.
 Qed.
 
 End Section3.
