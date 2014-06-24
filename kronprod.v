@@ -31,6 +31,24 @@ Local Notation rvec := mxvec.
 (* Column-major vectorization *)
 Local Notation vec A := (rvec A^T)^T.
 
+Lemma map_vec aT rT (f : aT -> rT) m n (A : 'M_(m,n)) : map_mx f (vec A) = vec (map_mx f A).
+Proof.
+  by rewrite map_trmx -map_mxvec map_trmx.
+Qed.
+
+Section ColumnVectorToMatrix.
+
+Variable E : Type.
+
+Definition cvec_mx m n (v : 'cV[E]_(n * m)) : 'M_(m,n) := (vec_mx v^T)^T.
+
+Lemma cvec_mxK m n c : vec (@cvec_mx m n c) = c.
+Proof.
+  by rewrite trmxK vec_mxK trmxK.
+Qed.
+
+End ColumnVectorToMatrix.
+
 Section KroneckerProduct.
 
 (* mulmx_linear requires comRing, don't know why *)
@@ -166,6 +184,25 @@ Proof.
   apply/cowP=> k; case/mxvec_indexP: k => i j.
   by rewrite mul_diag_mx !mxE !mxvecE !mxE.
 Qed.
+
+Section TransPerm.
+
+Variable E : comRingType.
+
+Variable m n : nat.
+
+Definition trT := (lin_mx (@trmx E m n))^T.
+
+Lemma trTP A : rvec A *m trT^T = rvec A^T.
+  by rewrite trmxK mul_vec_lin.
+Qed.
+
+Lemma trTPc A : trT *m vec A = vec A^T.
+Proof.
+  by apply trmx_inj; rewrite !trmx_mul (trmxK (rvec A^T)) trTP !trmxK.
+Qed.
+
+End TransPerm.
 
 Module Notations.
 

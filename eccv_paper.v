@@ -45,7 +45,7 @@ Proof.
 Qed.
 
 Lemma lift_vec C : \liftm (vec C) = vec (\liftm C).
-  by rewrite map_trmx -map_mxvec map_trmx.
+  by rewrite /liftm map_vec.
 Qed.
 
 Lemma dmc C : \\d (\liftm C) = 0.
@@ -111,38 +111,6 @@ Qed.
 
 End DerKronProd.
 
-Section ColumnVectorToMatrix.
-
-Variable E : Type.
-
-Definition cvec_mx m n (v : 'cV[E]_(n * m)) : 'M_(m,n) := (vec_mx v^T)^T.
-
-Lemma cvec_mxK m n c : vec (@cvec_mx m n c) = c.
-Proof.
-  by rewrite trmxK vec_mxK trmxK.
-Qed.
-
-End ColumnVectorToMatrix.
-
-Section TransPerm.
-
-Variable E : comRingType.
-
-Variable m n : nat.
-
-Definition trT := (lin_mx (@trmx E m n))^T.
-
-Lemma trTP A : rvec A *m trT^T = rvec A^T.
-  by rewrite trmxK mul_vec_lin.
-Qed.
-
-Lemma trTPc A : trT ** vec A = vec A^T.
-Proof.
-  by apply trmx_inj; rewrite !trmx_mul (trmxK (rvec A^T)) trTP !trmxK.
-Qed.
-
-End TransPerm.
-
 Section Section3.
 
 (* Constants *)
@@ -176,12 +144,15 @@ Variable v : C.
 
 Definition eps1 := ~W ** \m - ~W ** ~U ** (~W ** ~U)^-v ** ~W ** \m.
 Notation H := (I - ~W ** ~U ** (~W ** ~U)^-v).
-
 Notation invertible B := (B \is a GRing.unit).
-
 Hypothesis h_invertible : invertible ((~W ** ~U)^T ** (~W ** ~U) + v *** I).
 
-Lemma dmWmr {p} (A : 'M[E]_(p, _)) : \\d (A ** ~W ** \m) = \\d A ** ~W ** \m.
+Lemma dmmr {p} (A : 'M[E]_(p, _)) : \\d (A ** \m) = \\d A ** \m.
+Proof.
+  by rewrite -!lift_vec /liftm /= !dmcr.
+Qed.
+
+Lemma dmWr {p} (A : 'M[E]_(p, _)) : \\d (A ** ~W) = \\d A ** ~W.
 Proof.
   by rewrite -!lift_vec /liftm map_trmx -map_diag_mx /= !dmcr.
 Qed.
@@ -194,7 +165,7 @@ Qed.
 Lemma eq_20_26 : \\d eps1 = 0 - H ** ~W ** (I *o \\d U) ** ((~W ** ~U)^-v ** ~W ** \m) - ((~W ** ~U)^-v)^T ** (I *o (\\d U)^T) ** (~W^T ** H ** ~W ** \m).
 Proof.
   set goal := RHS.
-  rewrite raddfB /= -(mul1mx (~W ** \m)) !mulmxA !dmWmr to_der der1 !mul0mx.
+  rewrite raddfB /= -(mul1mx (~W ** \m)) !mulmxA !dmmr !dmWr to_der der1 !mul0mx.
   rewrite (dm_AupinvA h_invertible). (* (22) *)
   rewrite dmWl (dm_kron1mx _ U) !mulmxA. (* (25) *)
   by rewrite /sym (addrC _^T) !trmx_mul (trmx_kron I (\\d U)) raddfB /= AupinvA_sym !trmx1 !mulmxA (mulmxDl _ _ ~W) (mulmxDl _ _ \m) opprD addrA -(mulmxA _ _ ~W) -(mulmxA _ _ \m) -(mulmxA _ _ H) -(mulmxA _ _ ~W) -(mulmxA _ (_ ** _) \m).
@@ -220,11 +191,6 @@ Qed.
 
 Notation "~V*" := (V* *o I).
 Notation T := (trT _ _ _).
-
-Lemma map_vec aT rT (f : aT -> rT) m n (A : 'M_(m,n)) : map_mx f (vec A) = vec (map_mx f A).
-Proof.
-  by rewrite map_trmx -map_mxvec map_trmx.
-Qed.
 
 Lemma eq_32_35 : \\d eps1 = - (H ** ~W ** ~V* + ((~W ** ~U)^-v)^T ** ((W .* R)^T *o I) ** T) ** \\d (vec U).
 Proof.
