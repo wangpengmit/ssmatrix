@@ -146,14 +146,13 @@ Proof.
   by rewrite -!lift_vec /liftm map_trmx -map_diag_mx /= !dmcl.
 Qed.
 
-Lemma eq_2_26 : \\d eps1 = -H ** ~W ** (I *o \\d U) ** ((~W ** ~U)^-v ** ~W ** \m) - ((~W ** ~U)^-v)^T ** (I *o (\\d U)^T) ** (~W^T ** H ** ~W ** \m).
+Lemma eq_2_26 : \\d eps1 = 0 - H ** ~W ** (I *o \\d U) ** (~W ** ~U)^-v ** ~W ** \m - ((~W ** ~U)^-v)^T ** (I *o (\\d U)^T) ** ~W^T ** H ** ~W ** \m.
 Proof.
   set goal := RHS.
-  rewrite raddfB /= -(mul1mx (~W ** \m)) !mulmxA !dmWmr to_der der1 !mul0mx sub0r -!mulNmx.
-  rewrite (dm_AupinvA h_invertible).
+  rewrite raddfB /= -(mul1mx (~W ** \m)) !mulmxA !dmWmr to_der der1 !mul0mx.
+  rewrite (dm_AupinvA h_invertible). (* (22) *)
   rewrite dmWl (dm_kron1mx _ U) !mulmxA. (* (25) *)
-  rewrite /sym.
-  admit.
+  by rewrite /sym (addrC _^T) !trmx_mul (trmx_kron I (\\d U)) raddfB /= AupinvA_sym !trmx1 !mulmxA (mulmxDl _ _ ~W) (mulmxDl _ _ \m) opprD addrA.
 Qed.
 
 End Section3.
