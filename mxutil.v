@@ -1,3 +1,41 @@
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+Some matrix operations and lemmas: column-wise vectorization, Kronecker 
+product, Hadamard (element-wise) product, the permutation matrix for transposing, lifting, etc.
+
+      rvec A == row-wise vectorization of A, synonym of mxvec
+       vec A == column-wise vectorization A, reshaping an m x n matrix into 
+                a column vector of height n * m
+   cvec_mx v == the inverse of vec, reshaping a column vector of height n * m 
+                back into an m x n rectangular matrix.
+      A *o B == Kronecker product of A and B. Its type is 'M_(m1,n1) -> 
+                'M_(m2,n2) -> 'M_(m1*m2,n1*n2). Its characteristic properties are:
+                (1) in terms of rvec:
+                  kronP : rvec C *m (A *o B) = rvec (A^T *m C *m B) 
+                (2) in terms of vec:
+                  kronPc : vec (A *m B *m C) = (C^T *o A) *m vec B 
+                Another viewpoint of Kronecker product is:
+                  | a11 a12 |        | a11*:B  a12*:B |
+                  |         | *o B = |                |
+                  | a21 a22 |        | a21*:B  a22*:B |
+ map2_mx f A B == the pointwise operation of A and B by f, i.e., 
+                  (map2_mx f A B) i j = f (A i j) (B i j) for all i and j. 
+                  A and B must have the same size.
+      A .* B == Hadamard (element-wise) product
+         trT == the permutation matrix for transposing, whose characteristic properties are:
+                (1) in terms of rvec:
+                  trTP : rvec A *m trT^T = rvec A^T
+                (2) in terms of vec:
+                  trTPc : trT *m vec A = vec A^T 
+ lift_to E A == lift A : 'M[R]_(m,n) to 'M[E]_(m,n), where E : lalgType R
+      lift A == lift_to _ A
+           I == identity matrix, synonym of 1%:M
+      A ^^-1 == the inverse of square matrix A, synonym of (invmx A)
+invertible A == square matrix A is invertible, synonym of (A \is a unit)
+
+******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
@@ -11,26 +49,7 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 
 Local Notation I := (1%:M).
-
-Section Map2Matrix.
-
-Variables (aT bT rT : Type) (f : aT -> bT -> rT).
-Variable m n : nat.
-Implicit Types A : 'M[aT]_(m,n).
-Implicit Types B : 'M[bT]_(m,n).
-
-Fact map2_mx_key : unit. Proof. by []. Qed.
-Definition map2_mx A B := \matrix[map2_mx_key]_(i, j) f (A i j) (B i j).
-
-End Map2Matrix.
-
-(* Hadamard (element-wise) product *)
-Local Notation elemprod := (map2_mx *%R).
-
-(* Row-major vectorizatin *)
 Local Notation rvec := mxvec.
-
-(* Column-major vectorization *)
 Local Notation vec A := (rvec A^T)^T.
 
 Lemma map_vec aT rT (f : aT -> rT) m n (A : 'M_(m,n)) : map_mx f (vec A) = vec (map_mx f A).
@@ -42,6 +61,7 @@ Section ColumnVectorToMatrix.
 
 Variable E : Type.
 
+(* Reshape a column vector back into a matrix *)
 Definition cvec_mx m n (v : 'cV[E]_(n * m)) : 'M_(m,n) := (vec_mx v^T)^T.
 
 Lemma cvec_mxK m n c : vec (@cvec_mx m n c) = c.
@@ -51,29 +71,6 @@ Qed.
 
 End ColumnVectorToMatrix.
 
-Section Lift.
-
-Variable R : ringType.
-Variable E : lalgType R.
-Variable m n r : nat.
-Implicit Types C : 'M[R]_(m,n).
-Implicit Types D : 'M[R]_(n,r).
-
-Notation lift := (map_mx (in_alg E)).
-
-Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
-Proof.
-  apply/matrixP=> i j; rewrite !mxE raddf_sum.
-  apply eq_bigr => k.
-  by rewrite !mxE -scalerAl mul1r scalerA.
-Qed.
-
-Lemma lift_vec C : lift (vec C) = vec (lift C).
-  by rewrite map_vec.
-Qed.
-
-End Lift.
-
 Section KroneckerProduct.
 
 (* mulmx_linear requires comRing, don't know why *)
@@ -82,9 +79,11 @@ Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
 Implicit Types B : 'M[R]_(m2,n2).
 
+(* Kronecker product *)
 Definition kron A B := lin_mx ((mulmxr B) \o (mulmx A^T)).
 Local Notation "A *o B" := (kron A B) (at level 40, left associativity).
 
+(* The characteristic property of Kronecker product, in terms of rvec *)
 Lemma kronP A B C : rvec C *m (A *o B) = rvec (A^T *m C *m B).
   by rewrite mul_vec_lin.
 Qed.
@@ -165,6 +164,7 @@ Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
 Implicit Types C : 'M[R]_(m2,n2).
 
+(* The characteristic property of Kronecker product, in terms of vec *)
 Lemma kronPc A B C : vec (A *m B *m C) = (C^T *o A) *m vec B.
 Proof.
   by rewrite !trmx_mul !mulmxA -kronP !trmx_mul trmx_kron trmxK.
@@ -172,6 +172,7 @@ Qed.
 
 End KronPColumn.
 
+(* Corollaries from the characteristic properties *)
 Section Corollaries.
 
 Variables m n r : nat.
@@ -197,6 +198,21 @@ End Corollaries.
 
 End KroneckerProductTheory.
 
+Section Map2Matrix.
+
+Variables (aT bT rT : Type) (f : aT -> bT -> rT).
+Variable m n : nat.
+Implicit Types A : 'M[aT]_(m,n).
+Implicit Types B : 'M[bT]_(m,n).
+
+(* Element-wise operation *)
+Fact map2_mx_key : unit. Proof. by []. Qed.
+Definition map2_mx A B := \matrix[map2_mx_key]_(i, j) f (A i j) (B i j).
+
+End Map2Matrix.
+
+(* Hadamard (element-wise) product *)
+Local Notation elemprod := (map2_mx *%R).
 Local Notation "A .* B" := (elemprod A B) (at level 40, left associativity).
 
 Lemma cowP : forall (R : Type) (n : nat) (u v : 'cV[R]_n), (forall i, u i 0 = v i 0) <-> u = v.
@@ -214,8 +230,10 @@ Variable E : comRingType.
 
 Variable m n : nat.
 
+(* Permutation matrix for transposing *)
 Definition trT := (lin_mx (@trmx E m n))^T.
 
+(* Characteristic properties *)
 Lemma trTP A : rvec A *m trT^T = rvec A^T.
   by rewrite trmxK mul_vec_lin.
 Qed.
@@ -226,6 +244,32 @@ Proof.
 Qed.
 
 End TransPerm.
+
+(* Lift a matrix of 'M[R]_(m,n) into 'M[E : lalgTyp R]_(m,n) *)
+Section Lift.
+
+Variable R : ringType.
+Variable E : lalgType R.
+Variable m n r : nat.
+Implicit Types C : 'M[R]_(m,n).
+Implicit Types D : 'M[R]_(n,r).
+
+Notation lift := (map_mx (in_alg E)).
+
+Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE raddf_sum.
+  apply eq_bigr => k.
+  by rewrite !mxE -scalerAl mul1r scalerA.
+Qed.
+
+Lemma lift_vec C : lift (vec C) = vec (lift C).
+  by rewrite map_vec.
+Qed.
+
+End Lift.
+
+(* Miscellaneous results *)
 
 Lemma mulmx1Br {E : ringType} m n (A : 'M[E]_(m,n)) B : A *m (I - B) = A - A *m B.
 Proof. by rewrite mulmxBr mulmx1. Qed.
@@ -239,6 +283,7 @@ Proof. by rewrite !mxE /=. Qed.
 Module Notations.
 
 Notation elemprod := (map2_mx *%R).
+Notation ".*%M" := elemprod : ring_scope.
 Notation "A .* B" := (elemprod A B) (at level 40, left associativity) : ring_scope.
 Notation rvec := mxvec.
 Notation vec A := (rvec A^T)^T.
