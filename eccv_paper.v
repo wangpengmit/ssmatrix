@@ -1,6 +1,48 @@
-(* Matrix Differentiation Deductions in ECCV 2014 submitted paper from Andrew Fitzgibbon 
-Written by: Peng Wang (wangp.thu@gmail.com)
-*)
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  Verification of formula deductions in paper "Exact-Wiberg Algorithm for 
+  Matrix Factorization with Missing Data" (ECCV 2014 submission)
+
+  Main definitions:
+                C : ringType. Type of constants.
+                E : unitDiffComAlgType C. Type of variables and matrix elements.
+            m n r : non-zero natural numbers
+              W M : 'M[E]_(m,n), lifted from 'M[C]_(m,n), so they are constant.
+                U : 'M[E]_(m,r)
+                v : C
+               ~W == diag_mx (vec W)^T
+               \m == vec M
+               ~U == I *o U
+             eps1 == ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m
+                H == I - ~W *m ~U *m (~W *m ~U)^-v
+               V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
+                R == W .* (M - U *m V*^T)
+              ~V* == V* *o I
+                T == (trT _ _ _). The permutation matrix for transposing.
+
+  Main results: 
+    eq_10_13 : forall V,
+      vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T
+
+    eq_20_26 : 
+      \\d eps1 = 0 - H *m ~W *m (I *o \\d U) *m ((~W *m ~U)^-v *m ~W *m \m) - 
+                 ((~W *m ~U)^-v)^T *m (I *o (\\d U)^T) *m (~W^T *m H *m ~W *m \m)
+
+    eq_28_31 : 
+      ~W^T *m H *m ~W *m \m = vec (W .* R)
+
+    eq_32_35 : 
+      \\d eps1 = - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) 
+                 *m \\d (vec U)
+
+  All results are under the assumption: invertible (mupinv_core v (~W *m ~U)).
+  The results are named using the responding start and end equation number in the
+  paper.
+  Sometimes I write (0 - a *m b) instead of (- a *m b) because the unary minus 
+  sign binds tighter than *m, which I find counter-intuitive.
+
+******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -32,15 +74,19 @@ Section Section3.
 
 (* Constants *)
 Variable C : ringType.
-(* Variables *)
+(* Variables and matrix elements *)
 Variable E : unitDiffComAlgType C.
 
+(* All dimensions are non-zero. All matrices are non-empty. *)
 Variable m' n' r' : nat.
 Local Notation m := m'.+1.
 Local Notation n := n'.+1.
 Local Notation r := r'.+1.
+
 (* W : weight matrix 
-   M : target matrix *)
+   M : target matrix 
+   They are constant matrices, and are lifted to participate in matrix operations.
+*)
 Variable cW cM : 'M[C]_(m, n).
 Notation W := (lift cW).
 Notation M := (lift cM).
@@ -57,6 +103,7 @@ Proof.
   by rewrite vec_kron !mulmxA.
 Qed.
 
+(* Regularization rate *)
 Variable v : C.
 
 Definition eps1 := ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m.
@@ -106,6 +153,8 @@ Proof.
 Qed.
 
 Notation "~V*" := (V* *o I).
+
+(* The permutation matrix for transposing *)
 Notation T := (trT _ _ _).
 
 Lemma eq_32_35 : \\d eps1 = - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) *m \\d (vec U).

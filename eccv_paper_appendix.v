@@ -21,7 +21,7 @@
    \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u)
                      The second result in Appendix A.
 
-  Both results are under the assumption: invertible (mupinv_core u A)).
+  All results are under the assumption: invertible (mupinv_core u A)).
 
 ******************************************************************************)
 
