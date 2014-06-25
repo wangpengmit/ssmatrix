@@ -66,7 +66,7 @@ Proof. by rewrite unlock. Qed.
 Lemma fold_mupinvT u A : A *m (A^T *m A + u *:: I)^^-1 = (A^-u)^T.
 Proof. 
   set goal := LHS.
-  by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_cscalemx trmx1.
+  by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_cs trmx1.
 Qed.
 
 End MuPseudoinverse.
@@ -97,7 +97,7 @@ Lemma dm_mupinv : \\d (A^-u) = 0 - A^-u *m \\d A *m A^-u + (A^T *m A + u *:: I)^
 Proof.
   set goal := RHS.
   rewrite unlock dmM /mupinv_core.
-  rewrite !to_inv !to_der (der_inv h_invertible) /mupinv_core -!to_inv -!to_der.
+  rewrite !invmx_inv !dm_der (der_inv h_invertible) /mupinv_core -!invmx_inv -!dm_der.
   rewrite raddfD /= dmcs dmI scaler0 addr0 dmM.
   rewrite -mulmxA fold_mupinv mulrDr mulmxDl -!mulmxE !mulNmx !mulmxA.
   by rewrite fold_mupinv -addrA (addrC _ (_ *m _)) !addrA (addrC (-_)) -(mulmxA _ _ (A^-u)) -mulmx1Br -map_trmx addrC -sub0r.

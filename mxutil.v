@@ -1,8 +1,8 @@
 (* (c) Copyright ? *)
 
 (*****************************************************************************
-Some matrix operations and lemmas: column-wise vectorization, Kronecker 
-product, Hadamard (element-wise) product, the permutation matrix for transposing, lifting, etc.
+  Some matrix operations and lemmas: column-wise vectorization, Kronecker 
+product, Hadamard (element-wise) product, the permutation matrix for transposing, etc.
 
       rvec A == row-wise vectorization of A, synonym of mxvec
        vec A == column-wise vectorization A, reshaping an m x n matrix into 
@@ -28,8 +28,8 @@ product, Hadamard (element-wise) product, the permutation matrix for transposing
                   trTP : rvec A *m trT^T = rvec A^T
                 (2) in terms of vec:
                   trTPc : trT *m vec A = vec A^T 
- lift_to E A == lift A : 'M[R]_(m,n) to 'M[E]_(m,n), where E : lalgType R
-      lift A == lift_to _ A
+
+  Some notations:
            I == identity matrix, synonym of 1%:M
       A ^^-1 == the inverse of square matrix A, synonym of (invmx A)
 invertible A == square matrix A is invertible, synonym of (A \is a unit)
@@ -245,30 +245,6 @@ Qed.
 
 End TransPerm.
 
-(* Lift a matrix of 'M[R]_(m,n) into 'M[E : lalgTyp R]_(m,n) *)
-Section Lift.
-
-Variable R : ringType.
-Variable E : lalgType R.
-Variable m n r : nat.
-Implicit Types C : 'M[R]_(m,n).
-Implicit Types D : 'M[R]_(n,r).
-
-Notation lift := (map_mx (in_alg E)).
-
-Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
-Proof.
-  apply/matrixP=> i j; rewrite !mxE raddf_sum.
-  apply eq_bigr => k.
-  by rewrite !mxE -scalerAl mul1r scalerA.
-Qed.
-
-Lemma lift_vec C : lift (vec C) = vec (lift C).
-  by rewrite map_vec.
-Qed.
-
-End Lift.
-
 (* Miscellaneous results *)
 
 Lemma mulmx1Br {E : ringType} m n (A : 'M[E]_(m,n)) B : A *m (I - B) = A - A *m B.
@@ -280,6 +256,9 @@ Proof. by rewrite mulmxBl mul1mx. Qed.
 Lemma map_mxE {aT rT} {f : aT -> rT} {m n} (A : 'M_(m,n)) i j : (map_mx f A) i j = f (A i j).
 Proof. by rewrite !mxE /=. Qed.
 
+Lemma invmx_inv {R : comUnitRingType} {n} (A : 'M[R]_n.+1) : invmx A = A^-1.
+Proof. by []. Qed.
+
 Module Notations.
 
 Notation elemprod := (map2_mx *%R).
@@ -287,8 +266,6 @@ Notation ".*%M" := elemprod : ring_scope.
 Notation "A .* B" := (elemprod A B) (at level 40, left associativity) : ring_scope.
 Notation rvec := mxvec.
 Notation vec A := (rvec A^T)^T.
-Notation lift := (map_mx (in_alg _)).
-Notation lift_to E := (map_mx (in_alg E)).
 Notation "A *o B" := (kron A B) (at level 40, left associativity) : ring_scope.
 Notation I := (1%:M).
 Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
