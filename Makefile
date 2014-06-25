@@ -1,7 +1,7 @@
 MODULES := \
-	diffalg mxlinear \
+	diffalg \
+	mxutil \
 	mxdiff \
-	kronprod \
 	eccv_paper_appendix \
 	eccv_paper \
 

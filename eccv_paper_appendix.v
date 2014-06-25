@@ -14,35 +14,20 @@ Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
 
-Require Import mxlinear.
 Require Import diffalg.
 Import DiffRing.Exports.
 Import UnitDiffRing.Exports.
 Import ComUnitDiffRing.Exports.
+Import UnitDiffComAlgebra.Exports.
 Open Local Scope diff_scope.
 
+Require Import mxutil.
+Import Notations.
 Require Import mxdiff.
-Import UnitDiffComAlgebra.Exports.
+Import Notations.
 
 Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
-Notation "A ** B" := (A *m B) (at level 40, left associativity) : ring_scope.
-Notation "u *** A" := (u *:: A) (at level 40, left associativity) : ring_scope.
 Notation I := (1%:M).
-
-Section Util.
-
-Variable R : ringType.
-Variable E : lalgType R.
-
-Implicit Types u : R.
-
-Variable m : nat.
-Implicit Types B : 'M[E]_m.
-
-Lemma trmx_gscalemx u B : (u *:: B)^T = u *:: B^T.
-Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
-
-End Util.
 
 Section Sym.
 
@@ -57,7 +42,7 @@ Proof. by []. Qed.
 
 End Sym.
 
-Section upinv.
+Section MuPseudoinverse.
 
 Variable R : ringType.
 (* invmx requires comRing, don't know why *)
@@ -68,27 +53,28 @@ Variable m n : nat.
 Implicit Types A : 'M[E]_(m, n).
 Implicit Types B : 'M[E]_m.
 
-Definition upinv_def u A := (A^T ** A + u *** I)^^-1 ** A^T.
-Fact upinv_key : unit. by []. Qed. 
-Definition upinv := locked_with upinv_key upinv_def.
-Canonical upinv_unlockable := [unlockable fun upinv].
+Definition mupinv_core u A := A^T *m A + u *:: I.
+Definition mupinv_def u A := (mupinv_core u A)^^-1 *m A^T.
+Fact mupinv_key : unit. by []. Qed. 
+Definition mupinv := locked_with mupinv_key mupinv_def.
+Canonical mupinv_unlockable := [unlockable fun mupinv].
 
-Definition pinv := upinv 0.
+Definition pinv := mupinv 0.
 
-Notation "A ^- u" := (upinv u A) : ring_scope.
+Notation "A ^- u" := (mupinv u A) : ring_scope.
 
-Lemma fold_upinv u A : (A^T ** A + u *** I)^^-1 ** A^T = A^-u.
+Lemma fold_mupinv u A : (A^T *m A + u *:: I)^^-1 *m A^T = A^-u.
 Proof. by rewrite unlock. Qed.
 
-Lemma fold_upinvT u A : A ** (A^T ** A + u *** I)^^-1 = (A^-u)^T.
+Lemma fold_mupinvT u A : A *m (A^T *m A + u *:: I)^^-1 = (A^-u)^T.
 Proof. 
   set goal := LHS.
-  by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_gscalemx trmx1.
+  by rewrite unlock trmx_mul trmxK trmx_inv linearD /= trmx_mul trmxK trmx_cscalemx trmx1.
 Qed.
 
-End upinv.
+End MuPseudoinverse.
 
-Notation "A ^- u" := (upinv u A) : ring_scope.
+Notation "A ^- u" := (mupinv u A) : ring_scope.
 
 Section Appendix.
 
@@ -107,30 +93,30 @@ Variable u : R.
 
 Notation invertible B := (B \is a GRing.unit).
 
-Hypothesis h_invertible : invertible (A^T ** A + u *** I).
+Hypothesis h_invertible : invertible (mupinv_core u A).
 
-Lemma AupinvA_sym : (A ** A^-u)^T = A ** A^-u.
-Proof. by rewrite trmx_mul -fold_upinvT -fold_upinv mulmxA. Qed.
+Lemma AmupinvA_sym : (A *m A^-u)^T = A *m A^-u.
+Proof. by rewrite trmx_mul -fold_mupinvT -fold_mupinv mulmxA. Qed.
 
-Lemma dm_upinv : \\d (A^-u) = 0 - A^-u ** \\d A ** A^-u + (A^T ** A + u *** I)^-1 ** (\\d A)^T ** (I - A ** A^-u).
+Lemma dm_mupinv : \\d (A^-u) = 0 - A^-u *m \\d A *m A^-u + (A^T *m A + u *:: I)^-1 *m (\\d A)^T *m (I - A *m A^-u).
 Proof.
   set goal := RHS.
-  rewrite unlock dmM.
-  rewrite !to_inv !to_der (der_inv h_invertible).
-  rewrite linearD /= linearZ /= !to_der der1 scaler0 addr0 -!to_der dmM.
-  rewrite -mulmxA fold_upinv mulrDr mulmxDl -!mulmxE !mulNmx !mulmxA.
-  by rewrite fold_upinv -addrA (addrC _ (_ ** _)) !addrA (addrC (-_)) -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx addrC -sub0r.
+  rewrite unlock dmM /mupinv_core.
+  rewrite !to_inv !to_der (der_inv h_invertible) /mupinv_core -!to_inv -!to_der.
+  rewrite raddfD /= dmcs dmI scaler0 addr0 dmM.
+  rewrite -mulmxA fold_mupinv mulrDr mulmxDl -!mulmxE !mulNmx !mulmxA.
+  by rewrite fold_mupinv -addrA (addrC _ (_ *m _)) !addrA (addrC (-_)) -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx addrC -sub0r.
 Qed.
 
-Lemma dm_AupinvA : \\d (A ** A^-u) = sym ((I - A ** A^-u) ** \\d A ** A^-u).
+Lemma dm_AmupinvA : \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u).
 Proof.
   set goal := RHS.
   rewrite dmM.
-  rewrite dm_upinv sub0r !(mulmxDr A) !mulmxA !addrA mulmxN.
-  rewrite fold_upinvT.
+  rewrite dm_mupinv sub0r !(mulmxDr A) !mulmxA !addrA mulmxN.
+  rewrite fold_mupinvT.
   rewrite !mulmxDr mulmx1 mulmxN !mulmxA !addrA.
-  rewrite -trmx_mul -(mulmxA _ A) -!mulmxA -AupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
-  by rewrite -{1}(mul1mx (\\d A ** _)) -mulmxA -mulmxBl !mulmxA.
+  rewrite -trmx_mul -(mulmxA _ A) -!mulmxA -AmupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
+  by rewrite -{1}(mul1mx (\\d A *m _)) -mulmxA -mulmxBl !mulmxA.
 Qed.
 
 End Appendix.

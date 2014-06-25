@@ -49,6 +49,29 @@ Qed.
 
 End ColumnVectorToMatrix.
 
+Section Lift.
+
+Variable R : ringType.
+Variable E : lalgType R.
+Variable m n r : nat.
+Implicit Types C : 'M[R]_(m,n).
+Implicit Types D : 'M[R]_(n,r).
+
+Notation lift := (map_mx (in_alg E)).
+
+Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE raddf_sum.
+  apply eq_bigr => k.
+  by rewrite !mxE -scalerAl mul1r scalerA.
+Qed.
+
+Lemma lift_vec C : lift (vec C) = vec (lift C).
+  by rewrite map_vec.
+Qed.
+
+End Lift.
+
 Section KroneckerProduct.
 
 (* mulmx_linear requires comRing, don't know why *)
@@ -207,9 +230,12 @@ End TransPerm.
 Module Notations.
 
 Notation elemprod := (map2_mx *%R).
+Notation "A .* B" := (elemprod A B) (at level 40, left associativity) : ring_scope.
 Notation rvec := mxvec.
 Notation vec A := (rvec A^T)^T.
-Notation "A *o B" := (kron A B) (at level 40, left associativity).
-Notation "A .* B" := (elemprod A B) (at level 40, left associativity).
+Notation lift := (map_mx (in_alg _)).
+Notation lift_to E := (map_mx (in_alg E)).
+Notation "A *o B" := (kron A B) (at level 40, left associativity) : ring_scope.
 
 End Notations.
+
