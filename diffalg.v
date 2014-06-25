@@ -1,6 +1,33 @@
-(* Differential Algebra *)
-(* Author: Peng Wang *)
-(* Require SSReflect 1.5 and MathComp 1.5 *)
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  Differential Algebra: a parallel hierarchy to ssralg.v, with each algebraic 
+  structure equiped with a derivation. A derivation \d is an additive (and 
+  linear) endomorphism (unary self-map) enjoying the Lebniz product rule:
+
+        \d (a * b) = \d a * b + a * \d b.
+
+  The algebraic structures defined in this file are: 
+    diffRingType, unitDiffRingType, comUnitDiffRingType, diffFieldType,
+    diffAlgType, unitDiffAlgType, unitDiffComAlgType.
+
+  Main contents:
+            \d a == derivation of a : R, where R : diffRingType
+         der_prod : \d (a * b) = \d a * b + a * \d b
+             der1 : \d 1 = 0
+          der_inv : \d (a^-1) = - a^-1 * \d a / a
+                    where a : R and R : unitDiffRingType
+
+  Besides algebraic structures, there is a standalone structure for derivative 
+  operations:
+    derivative f == f : R -> R enjoys Lebniz product rule, where R : ringType
+  {derivative R} == the interface type for a structure (keyed on a function 
+                    f : R -> R) that encapsulates the derivative property. 
+                    R : ringType.
+             derM : f (a * b) = f a * b + a * f b
+                    where f must have a derivative canonical structure
+
+******************************************************************************)
 
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
 Require Import finfun bigop prime binomial.
@@ -97,45 +124,6 @@ End DiffRing.
 Import DiffRing.Exports.
 Open Scope diff_scope.
 
-(* An interface of maps with the Lebniz product rule. Independent of DiffRing *)
-Module Derivative.
-
-Section ClassDef.
-
-Variables R : ringType.
-
-Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
-
-Structure map (phR : phant R) := Pack {apply; _ : axiom apply}.
-Local Coercion apply : map >-> Funclass.
-
-Variables (phR : phant R) (f g : R -> R) (cF : map phR).
-Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
-Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
-  @Pack phR f fA.
-
-End ClassDef.
-
-Module Exports.
-Notation derivative f := (axiom f).
-Coercion apply : map >-> Funclass.
-Notation Derivative fA := (Pack (Phant _) fA).
-Notation "{ 'derivative' R }" := (map (Phant R))
-  (at level 0, format "{ 'derivative'  R }") : ring_scope.
-Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
-  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
-Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
-  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
-End Exports.
-
-End Derivative.
-Import Derivative.Exports.
-
-Lemma derM {R : ringType} (f : {derivative R}) a b : f (a * b) = f a * b + a * f b.
-Proof.
-  by case f.
-Qed.
-
 Section DiffRingTheory.
 
 Variables (R : diffRingType).
@@ -146,7 +134,7 @@ Proof.
   by case: R a b => ? [] ? [].
 Qed.
 
-Lemma der1 : @der R 1 = 0.
+Lemma der1 : \d 1 = 0 :> R.
 Proof.
   apply: (addIr (\d (1 * 1))).
   rewrite add0r {1}mul1r.
@@ -159,9 +147,6 @@ Proof.
 Qed.
 
 Canonical der_additive := Additive der_is_additive.
-
-Definition der_is_derivative := der_prod.
-Canonical der_derivative := Derivative der_is_derivative.
 
 End DiffRingTheory.
 
@@ -607,8 +592,8 @@ Record class_of (T : Type) := Class {
 }.
 
 Local Coercion base : class_of >-> UnitDiffAlgebra.class_of.
-Definition base4 R (m : class_of R) := @ComUnitDiffRing.Class _ (@ComUnitRing.Class _ (ComRing.Class (@mixin R m)) m) m.
-Local Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
+Definition base2 R (m : class_of R) := @ComUnitDiffRing.Class _ (@ComUnitRing.Class _ (ComRing.Class (@mixin R m)) m) m.
+Local Coercion base2 : class_of >-> ComUnitDiffRing.class_of.
 
 Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
@@ -642,7 +627,7 @@ End ClassDef.
 
 Module Exports.
 Coercion base : class_of >-> UnitDiffAlgebra.class_of.
-Coercion base4 : class_of >-> ComUnitDiffRing.class_of.
+Coercion base2 : class_of >-> ComUnitDiffRing.class_of.
 Coercion sort : type >-> Sortclass.
 Bind Scope ring_scope with sort.
 Coercion eqType : type >-> Equality.type.
@@ -687,3 +672,44 @@ End UnitDiffComAlgebra.
 
 Import UnitDiffComAlgebra.Exports.
 
+
+(* A standalone interface of endomorphisms (unary self-maps) with the Lebniz product rule. Independent of DiffRing *)
+Module Derivative.
+
+Section ClassDef.
+
+Variables R : ringType.
+
+Definition axiom (f : R -> R) := forall a b, f (a * b) = f a * b + a * f b.
+
+Structure map (phR : phant R) := Pack {apply; _ : axiom apply}.
+Local Coercion apply : map >-> Funclass.
+
+Variables (phR : phant R) (f g : R -> R) (cF : map phR).
+Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
+Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
+  @Pack phR f fA.
+
+End ClassDef.
+
+Module Exports.
+Notation derivative f := (axiom f).
+Coercion apply : map >-> Funclass.
+Notation Derivative fA := (Pack (Phant _) fA).
+Notation "{ 'derivative' R }" := (map (Phant R))
+  (at level 0, format "{ 'derivative'  R }") : ring_scope.
+Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
+Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
+End Exports.
+
+End Derivative.
+Import Derivative.Exports.
+
+Lemma derM {R : ringType} (f : {derivative R}) a b : f (a * b) = f a * b + a * f b.
+Proof.
+  by case f.
+Qed.
+
+Canonical der_derivative (R : diffRingType) := Derivative (@der_prod R).
