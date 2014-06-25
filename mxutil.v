@@ -10,6 +10,8 @@ Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
 
+Local Notation I := (1%:M).
+
 Section Map2Matrix.
 
 Variables (aT bT rT : Type) (f : aT -> bT -> rT).
@@ -176,8 +178,6 @@ Variables m n r : nat.
 Implicit Types A : 'M[R]_(m,n).
 Implicit Types B : 'M[R]_(n,r).
 
-Local Notation I := (1%:M).
-
 Corollary vec_kron A B : vec (A *m B) = (I *o A) *m vec B.
 Proof.
   by rewrite -(mulmx1 (A *m B)) kronPc trmx1.
@@ -227,6 +227,15 @@ Qed.
 
 End TransPerm.
 
+Lemma mulmx1Br {E : ringType} m n (A : 'M[E]_(m,n)) B : A *m (I - B) = A - A *m B.
+Proof. by rewrite mulmxBr mulmx1. Qed.
+
+Lemma mul1Brmx {E : ringType} m n (A : 'M[E]_(m,n)) B : (I - B) *m A = A - B *m A.
+Proof. by rewrite mulmxBl mul1mx. Qed.
+
+Lemma map_mxE {aT rT} {f : aT -> rT} {m n} (A : 'M_(m,n)) i j : (map_mx f A) i j = f (A i j).
+Proof. by rewrite !mxE /=. Qed.
+
 Module Notations.
 
 Notation elemprod := (map2_mx *%R).
@@ -236,6 +245,8 @@ Notation vec A := (rvec A^T)^T.
 Notation lift := (map_mx (in_alg _)).
 Notation lift_to E := (map_mx (in_alg E)).
 Notation "A *o B" := (kron A B) (at level 40, left associativity) : ring_scope.
+Notation I := (1%:M).
+Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
+Notation invertible A := (A \is a GRing.unit).
 
 End Notations.
-

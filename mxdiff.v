@@ -125,6 +125,53 @@ Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
 
 End ConstScalar.
 
+Section DerKronProd.
+
+Variable E : comUnitDiffRingType.
+
+Section Theory.
+
+Variable m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[E]_(m1,n1).
+Implicit Types B : 'M[E]_(m2,n2).
+
+Lemma dm_delta m n i j : \\d (delta_mx i j) = 0 :> 'M[E]_(m,n).
+Proof.
+  apply/matrixP=> i' j'; rewrite !mxE /=.
+  case (_ && _).
+  - by rewrite der1.
+  - by rewrite raddf0.
+Qed.
+
+Lemma dm_kron A B : \\d (A *o B) = \\d A *o B + A *o \\d B.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /=.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  by rewrite !vec_mx_delta !mxvecE map_trmx -map_mxE !dmM dm_delta mulmx0 addr0 !mxE.
+Qed.
+
+End Theory.
+
+Section Corollaries.
+
+Variable m n r : nat.
+Implicit Types A : 'M[E]_(m,n).
+
+Lemma dm_kron1mx A : \\d (I *o A) = (I : 'M_(r,_)) *o \\d A.
+Proof.
+  by rewrite dm_kron dmI kron0mx add0r.
+Qed.
+
+Lemma dm_kronmx1 A : \\d (A *o I) = \\d A *o (I : 'M_(_,r)).
+Proof.
+  by rewrite dm_kron dmI kronmx0 addr0.
+Qed.
+
+End Corollaries.
+
+End DerKronProd.
+
 Module Notations.
 
 Notation "\\d" := (map_mx \d) : diff_scope.

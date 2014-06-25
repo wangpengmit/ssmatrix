@@ -26,9 +26,6 @@ Import Notations.
 Require Import mxdiff.
 Import Notations.
 
-Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
-Notation I := (1%:M).
-
 Section Sym.
 
 Variable R : ringType.
@@ -61,7 +58,7 @@ Canonical mupinv_unlockable := [unlockable fun mupinv].
 
 Definition pinv := mupinv 0.
 
-Notation "A ^- u" := (mupinv u A) : ring_scope.
+Local Notation "A ^- u" := (mupinv u A) : ring_scope.
 
 Lemma fold_mupinv u A : (A^T *m A + u *:: I)^^-1 *m A^T = A^-u.
 Proof. by rewrite unlock. Qed.
@@ -74,7 +71,7 @@ Qed.
 
 End MuPseudoinverse.
 
-Notation "A ^- u" := (mupinv u A) : ring_scope.
+Local Notation "A ^- u" := (mupinv u A) : ring_scope.
 
 Section Appendix.
 
@@ -91,8 +88,6 @@ Implicit Types B : 'M[E]_n.
 Variable A : 'M[E]_(m, n).
 Variable u : R.
 
-Notation invertible B := (B \is a GRing.unit).
-
 Hypothesis h_invertible : invertible (mupinv_core u A).
 
 Lemma AmupinvA_sym : (A *m A^-u)^T = A *m A^-u.
@@ -105,7 +100,7 @@ Proof.
   rewrite !to_inv !to_der (der_inv h_invertible) /mupinv_core -!to_inv -!to_der.
   rewrite raddfD /= dmcs dmI scaler0 addr0 dmM.
   rewrite -mulmxA fold_mupinv mulrDr mulmxDl -!mulmxE !mulNmx !mulmxA.
-  by rewrite fold_mupinv -addrA (addrC _ (_ *m _)) !addrA (addrC (-_)) -!mulmxA -mulmxBr -{1}(mulmx1 (\\d A^T)) -mulmxBr !mulmxA -map_trmx addrC -sub0r.
+  by rewrite fold_mupinv -addrA (addrC _ (_ *m _)) !addrA (addrC (-_)) -(mulmxA _ _ (A^-u)) -mulmx1Br -map_trmx addrC -sub0r.
 Qed.
 
 Lemma dm_AmupinvA : \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u).
@@ -116,7 +111,13 @@ Proof.
   rewrite fold_mupinvT.
   rewrite !mulmxDr mulmx1 mulmxN !mulmxA !addrA.
   rewrite -trmx_mul -(mulmxA _ A) -!mulmxA -AmupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
-  by rewrite -{1}(mul1mx (\\d A *m _)) -mulmxA -mulmxBl !mulmxA.
+  by rewrite -mulmxA -mul1Brmx !mulmxA.
 Qed.
 
 End Appendix.
+
+Module Notations.
+
+Notation "A ^- u" := (mupinv u A) : ring_scope.
+
+End Notations.
