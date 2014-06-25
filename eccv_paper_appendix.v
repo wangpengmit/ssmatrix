@@ -1,6 +1,29 @@
-(* Matrix Differentiation Deductions in ECCV 2014 submitted paper from Andrew Fitzgibbon 
-Written by: Peng Wang (wangp.thu@gmail.com)
-*)
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  Verification of formula deductions in the appendix of paper "Exact-Wiberg 
+  Algorithm for Matrix Factorization with Missing Data" (ECCV 2014 submission)
+
+  Main definitions:
+            sym A == A^T + A. A must be a square matrix.
+  mupinv_core u A == A^T *m A + u *:: I
+           A ^- u == (mupinv_core u A)^^-1 *m A^T
+                  == (A^T *m A + u *:: I)^^-1 *m A^T
+                     The mu-pseudoinverse.
+           pinv A == A ^- 0
+
+  Main results: 
+        dm_mupinv : 
+        \\d (A^-u) = 0 - A^-u *m \\d A *m A^-u + 
+                     (A^T *m A + u *:: I)^-1 *m (\\d A)^T *m (I - A *m A^-u)
+                     The first result in Appendix A.
+      dm_AmupinvA : 
+   \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u)
+                     The second result in Appendix A.
+
+  Both results are under the assumption: invertible (mupinv_core u A)).
+
+******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -30,11 +53,11 @@ Section Sym.
 
 Variable R : ringType.
 Variable n : nat.
-Implicit Types B : 'M[R]_n.
+Implicit Types A : 'M[R]_n.
 
-Definition sym B := B^T + B.
+Definition sym A := A^T + A.
 
-Lemma fold_sym B : B^T + B = sym B.
+Lemma fold_sym A : A^T + A = sym A.
 Proof. by []. Qed.
 
 End Sym.
