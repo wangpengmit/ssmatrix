@@ -22,6 +22,8 @@
                      The second result in Appendix A.
 
   All results are under the assumption: invertible (mupinv_core u A)).
+  Sometimes I write (0 - a *m b) instead of (- a *m b) because the unary minus 
+  sign binds tighter than *m, which I find counter-intuitive.
 
 ******************************************************************************)
 
