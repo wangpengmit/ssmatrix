@@ -8,8 +8,8 @@
         \d (a * b) = \d a * b + a * \d b.
 
   The algebraic structures defined in this file are: 
-    diffRingType, unitDiffRingType, comUnitDiffRingType, diffFieldType,
-    diffAlgType, unitDiffAlgType, unitDiffComAlgType.
+    diffRingType, unitDiffRingType, comUnitDiffRingType, 
+    diffFieldType, diffAlgType, unitDiffAlgType, unitDiffComAlgType.
 
   Main contents:
             \d a == derivation of a : R, where R : diffRingType
@@ -61,8 +61,8 @@ Record mixin_of (R : ringType) := Mixin {
   _ : forall a b, der (a * b) = der a * b + a * der b
 }.
 
-Definition EtaMixin {R : ringType} {f : {additive R -> R}} derM :=
-  @Mixin R _ (Additive.class f) derM.
+Definition EtaMixin {R : ringType} {f : {additive R -> R}} :=
+  @Mixin R _ (Additive.class f).
 
 Record class_of (T : Type) := Class {
   base : Ring.class_of T;
@@ -130,25 +130,20 @@ Variables (R : diffRingType).
 Implicit Types (a b : R).
 
 Definition der_prod a b : \d (a * b) = \d a * b + a * \d b.
-Proof. 
-  by case: R a b => ? [] ? [].
-Qed.
+Proof. by case: R a b => ? [] ? []. Qed.
 
 Lemma der1 : \d 1 = 0 :> R.
 Proof.
-  apply: (addIr (\d (1 * 1))).
-  rewrite add0r {1}mul1r.
-    by rewrite der_prod mulr1 mul1r.
+  by apply: (addIr (\d (1 * 1))); rewrite add0r {1}mul1r der_prod mulr1 mul1r.
 Qed.
 
 Lemma der_is_additive (a b : R) : \d (a - b) = \d a - \d b.
-Proof.
-    by case: R a b => ? [] ? [].
-Qed.
+Proof. by case: R a b => ? [] ? []. Qed.
 
 Canonical der_additive := Additive der_is_additive.
 
 End DiffRingTheory.
+
 
 (* Differiential Unit Ring *)
 Module UnitDiffRing.
@@ -713,3 +708,22 @@ Proof.
 Qed.
 
 Canonical der_derivative (R : diffRingType) := Derivative (@der_prod R).
+
+Export DiffRing.Exports.
+Export UnitDiffRing.Exports.
+Export ComUnitDiffRing.Exports.
+Export DiffField.Exports.
+Export DiffAlgebra.Exports.
+Export UnitDiffAlgebra.Exports.
+Export UnitDiffComAlgebra.Exports.
+Export Derivative.Exports.
+
+
+
+
+
+
+
+
+
+

@@ -32,7 +32,7 @@ product, Hadamard (element-wise) product, the permutation matrix for transposing
   Some notations:
            I == identity matrix, synonym of 1%:M
       A ^^-1 == the inverse of square matrix A, synonym of (invmx A)
-invertible A == square matrix A is invertible, synonym of (A \is a unit)
+invertible A == square matrix A is invertible, synonym of (A \in unitmx)
 
 ******************************************************************************)
 
@@ -73,7 +73,7 @@ End ColumnVectorToMatrix.
 
 Section KroneckerProduct.
 
-(* mulmx_linear requires comRing, don't know why *)
+(* mulmx_linear requires comRing *)
 Variable R : comRingType.
 Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
@@ -269,6 +269,6 @@ Notation vec A := (rvec A^T)^T.
 Notation "A *o B" := (kron A B) (at level 40, left associativity) : ring_scope.
 Notation I := (1%:M).
 Notation "A ^^-1" := (invmx A) (at level 8): ring_scope.
-Notation invertible A := (A \is a GRing.unit).
+Notation invertible A := (A \in unitmx).
 
 End Notations.

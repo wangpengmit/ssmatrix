@@ -57,10 +57,6 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 
 Require Import diffalg.
-Import DiffRing.Exports.
-Import UnitDiffRing.Exports.
-Import ComUnitDiffRing.Exports.
-Import UnitDiffComAlgebra.Exports.
 Open Local Scope diff_scope.
 
 Require Import mxutil.

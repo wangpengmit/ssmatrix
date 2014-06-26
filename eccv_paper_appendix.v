@@ -40,10 +40,6 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 
 Require Import diffalg.
-Import DiffRing.Exports.
-Import UnitDiffRing.Exports.
-Import ComUnitDiffRing.Exports.
-Import UnitDiffComAlgebra.Exports.
 Open Local Scope diff_scope.
 
 Require Import mxutil.
@@ -67,7 +63,7 @@ End Sym.
 Section MuPseudoinverse.
 
 Variable R : ringType.
-(* invmx requires comRing, don't know why *)
+(* invmx requires comRing *)
 Variable E : unitDiffComAlgType R.
 
 Implicit Types u : R.

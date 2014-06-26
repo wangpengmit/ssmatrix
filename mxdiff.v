@@ -47,10 +47,6 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 
 Require Import diffalg.
-Import DiffRing.Exports.
-Import UnitDiffRing.Exports.
-Import ComUnitDiffRing.Exports.
-Import DiffAlgebra.Exports.
 Open Local Scope diff_scope.
 
 Require Import mxutil.
@@ -75,7 +71,7 @@ Qed.
 
 End AnyMatrix.
 
-Lemma dmI {E : diffRingType} {n} : \\d I = 0 :> 'M[E]_n.
+Lemma dmI {E : diffRingType} n : \\d I = 0 :> 'M[E]_n.
 Proof.
   apply: (addIr (\\d (I *m I))).
   rewrite add0r {1}mul1mx.
@@ -90,7 +86,6 @@ Variable n' : nat.
 Local Notation n := n'.+1.
 
 (* Can only register for derivative here because derivative is only defined for rings, not graded rings *)
-Import Derivative.Exports.
 Canonical dm_derivative := Derivative (@dmM E n n n).
 
 Definition matrix_diffRingMixin := DiffRingMixin (@dmM E n n n).
