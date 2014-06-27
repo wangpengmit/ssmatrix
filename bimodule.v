@@ -17,6 +17,7 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 Import GRing.
 
+
 (* Bimodule *)
 Module Bimodule.
 
@@ -53,7 +54,7 @@ Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
 Definition zmodType := @Zmodule.Pack cT xclass xT.
 Definition lmodType := @Lmodule.Pack Rl phRl cT xclass xT.
-Definition rlmodType := @Lmodule.Pack Rr phRr cT (base2 xclass) xT.
+Definition rmodType := @Lmodule.Pack Rr phRr cT (base2 xclass) xT.
 
 End ClassDef.
 
@@ -77,10 +78,22 @@ Notation "[ 'bimodType' Rl Rr 'of' T 'for' cT ]" := (@clone _ _ (Phant Rl) (Phan
 Notation "[ 'bimodType' Rl Rr 'of' T ]" := (@clone _ _ (Phant Rl) (Phant Rr) T _ _ id)
   (at level 0, format "[ 'bimodType'  Rl Rr  'of'  T ]") : form_scope.
 
-Definition rscale (Rl Rr : ringType) (V : bimodType Rl Rr) (v : V) (b : Rr) := b *: (v : rlmodType V).
+Definition rmodule V : Type := V.
+Notation "V ^r" := (rmodule V) (at level 2, format "V ^r") : type_scope.
 
-Notation ":*%R" := (@rscale _ _ _).
-Notation "v :* b" := (rscale v b) : ring_scope.
+Section Canonicals.
+
+Variable Rl Rr : ringType.
+Variable V : bimodType Rl Rr.
+
+Canonical rmod_eqType := [eqType of V^r].
+Canonical rmod_choiceType := [choiceType of V^r].
+Canonical rmod_zmodType := [zmodType of V^r].
+Canonical rmod_lmodType := [lmodType Rr of (rmodType V)^r].
+
+End Canonicals.
+
+Notation "v :* b" := (scale b (v : _^r)) : ring_scope.
 
 End Exports.
 
@@ -96,9 +109,6 @@ Lemma scalerlA a b v : a *: (v :* b) = a *: v :* b.
 Proof. 
   by case: V v => ? [] ? [] ? ? ? ? ? ext ? ?; rewrite /= ext.
 Qed.
-
-Lemma scaler1 : @right_id V Rr 1 :*%R.
-Proof. by move => v; rewrite /rscale scale1r. Qed.
 
 End BimoduleTheory.
 
