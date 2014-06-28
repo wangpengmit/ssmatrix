@@ -1,5 +1,7 @@
 MODULES := \
 	bimodule \
+	derivation \
+	mxmodule \
 	diffalg \
 	mxutil \
 	mxdiff \

@@ -17,9 +17,7 @@ Import GRing.Theory.
 Open Local Scope ring_scope.
 Import GRing.
 
-
 Local Notation "R ^cc" := (converse_ringType R) (at level 2, format "R ^cc") : type_scope.
-
 
 (* Right module: a right R-module is just a left R^c-module *)
 Module Rmodule.
@@ -150,6 +148,23 @@ Notation "[ 'bimodType' R ',' S 'of' T 'for' cT ]" := (@clone _ _ (Phant R) (Pha
 Notation "[ 'bimodType' R ',' S 'of' T ]" := (@clone _ _ (Phant R) (Phant S) T _ _ id)
   (at level 0, format "[ 'bimodType'  R ',' S  'of'  T ]") : form_scope.
 
+End Exports.
+
+End Bimodule.
+Import Bimodule.Exports.
+
+Section BimoduleTheory.
+
+Variables (R S : ringType) (V : bimodType R S).
+Implicit Types (v : V).
+
+Lemma scalerlA (a : R) v b : a *: (v :* b) = a *: v :* b.
+Proof. 
+  by case: V v => sort [] base mixin ext T v; rewrite /rscale /scale ext.
+Qed.
+
+End BimoduleTheory.
+
 Section Repack.
 
   Variable R : ringType.
@@ -171,12 +186,12 @@ Variable R S : ringType.
 Section ClassDef.
 
 Variable T : Type.
-Variable c : class_of R S T.
+Variable c : Bimodule.class_of R S T.
 
-Let rmod_class := rmod_class c.
-Let lmod_class := repack (Lmodule.mixin (base c)).
+Let rmod_class := Bimodule.rmod_class c.
+Let lmod_class := repack (Lmodule.mixin c).
 
-Lemma cmod_axiom : axiom rmod_class lmod_class.
+Lemma cmod_axiom : Bimodule.axiom rmod_class lmod_class.
 Proof.
   subst rmod_class lmod_class.
   case: c => base mixin ext.
@@ -185,17 +200,17 @@ Proof.
   by rewrite !repack_scale.
 Qed.
 
-Definition cmod_class := Class cmod_axiom.
+Definition cmod_class := Bimodule.Class cmod_axiom.
 
 End ClassDef.
 
 Section TypeDef.
 
-Variable (phR : phant R) (phS : phant S) (cT : type phR phS).
+Variable (phR : phant R) (phS : phant S) (cT : Bimodule.type phR phS).
 
-Let xT := sort cT.
-Let xclass := class cT.
-Definition cmodType := @Pack S^cc R^cc (Phant _) (Phant _) cT (cmod_class xclass) xT.
+Let xT := Bimodule.sort cT.
+Let xclass := Bimodule.class cT.
+Definition cmodType := @Bimodule.Pack S^cc R^cc (Phant _) (Phant _) cT (cmod_class xclass) xT.
 
 End TypeDef.
 
@@ -218,22 +233,5 @@ Canonical cmod_bimodType := [bimodType S^cc,R^cc of (cmodType V)^r].
 
 End Canonicals.
 
-Local Notation rmodType R := (lmodType R^cc).
-Definition birscale {R S : ringType} {V : bimodType R S} v (b : S) : V := (b : S^c) *: (v : V^r).
-
-End Exports.
-
-End Bimodule.
-Import Bimodule.Exports.
-
-Section BimoduleTheory.
-
-Variables (R S : ringType) (V : bimodType R S).
-Implicit Types (v : V).
-
-Lemma scalerlA (a : R) v b : a *: (v :* b) = a *: v :* b.
-Proof. 
-  by case: V v => sort [] base mixin ext T v; rewrite /rscale /scale ext.
-Qed.
-
-End BimoduleTheory.
+Export Rmodule.Exports.
+Export Bimodule.Exports.

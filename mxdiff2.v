@@ -3,35 +3,6 @@
 (*****************************************************************************
   Matrix derivation (differentiation).
 
-       \\d A == element-wise derivation of matrix A : 'M[R]_(m,n), where R
-                must have a diffRingType structure. Equivalent to (map_mx \d A).
-      c :: A == Constant scale: lift c : R into E : lalgType R, then scale 
-                matrix A by it. Equivalent to (c *: 1 *: A). The significance 
-                of this operation is that matrix derivation is commutative with
-                it. 
-                (Matrix derivation is actually scalable (hence linear) for 
-                this constant-scale operation, but we didn't register a linear
-                canonical structure for it, because that requires a 
-                lmodType canonical structure on matrices for this constant-scale,
-                whereas SSReflect has already registered a matrix_lmodType for 
-                scalemx and Coq doesn't allow overwriting canonical structure 
-                registration.)
- lift_to E A == lift A : 'M[R]_(m,n) to 'M[E]_(m,n), where E : lalgType R.
-                Matrix derivation is commutative with multiplication by a 
-                (lifted) constant matrix.
-      lift A == lift_to _ A
-
-  The main results about matrix derivation are:
-      dmM :      \\d (A *m B) = \\d A *m B + A *m \\d B
-      dmI :             \\d I = 0
-      dmc :      \\d (lift C) = 0
-     dmcs :     \\d (c *:: A) = c *:: \\d A      
-     dmcl : \\d (lift C *m A) = lift C *m \\d A  (and the symmetric version dmcr)
-  dm_kron :      \\d (A *o B) = \\d A *o B + A *o \\d B
-
-  Non-empty square matrices inherit the diffRingType (or unitDiffRingType) 
-  structure of their elements.
-
 ******************************************************************************)
 
 Set Implicit Arguments.
@@ -41,42 +12,50 @@ Unset Printing Implicit Defensive.
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
 Require Import finfun bigop prime binomial.
 
-Require Import matrix.
 Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
 
-Require Import diffalg.
-Open Local Scope diff_scope.
+Require Import matrix.
 
 Require Import mxutil.
 Import Notations.
+Require Import bimodule.
+Require Import derivation.
+Require Import mxmodule.
+Import Notations.
 
-Local Notation "\\d" := (map_mx \d) : diff_scope.
-
-Section AnyMatrix.
+Section Ring.
 
 (* Element type *)
-Variable E : diffRingType.
+Variable E : ringType.
+Variable D : bimodType E E.
+Variable der : {derAdd D}.
+
+Notation "\d" := der.
+Notation "\\d" := (map_mx \d).
+
+Section AnyMatrix.
 
 Variable m n r : nat.
 Implicit Types A : 'M[E]_(m, n).
 Implicit Types B : 'M[E]_(n, r).
 
 (* Matrix derivation is derivative (has Lebniz product rule) for matrix multiplication *)
-Lemma dmM A B : \\d (A *m B) = \\d A *m B + A *m \\d B.
+Lemma dmM A B : \\d (A *m B) = \\d A *mr B + A *ml \\d B.
 Proof.
   by apply/matrixP => i k; rewrite !mxE !raddf_sum -big_split; apply eq_bigr => j; rewrite /= !mxE derM.
 Qed.
 
 End AnyMatrix.
 
-Lemma dmI {E : diffRingType} n : \\d I = 0 :> 'M[E]_n.
+Lemma dmI n : \\d I = 0 :> 'M_n.
 Proof.
   apply: (addIr (\\d (I *m I))).
-  rewrite add0r {1}mul1mx.
-    by rewrite dmM mulmx1 mul1mx.
+  by rewrite add0r {1}mul1mx dmM lmul1mx rmulmx1.
 Qed.
+
+(*here*)
 
 Section SquareMatrix.
 
