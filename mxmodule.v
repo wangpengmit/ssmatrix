@@ -103,6 +103,13 @@ End LmoduleElem.
 
 Local Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 
+Local Notation "A ^cm" := (A : 'M[_^c]_(_,_)) (at level 2).
+Lemma trmx_mul_c (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'M_(n,p)) : (A *m B)^T = B^cm^T *m A^cm^T.
+Proof.
+  apply/matrixP=> i l; rewrite !mxE.
+  by apply eq_bigr => j ?; rewrite !mxE.
+Qed.
+
 Require Import bimodule.
 
 Section RmoduleElem.
@@ -114,21 +121,17 @@ Definition rmulmx := gmulmx (@rscale _ V).
 
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 
-Lemma rmulmxA m n p q (A : 'M_(m, n)) (B : 'M_(n, p)) (C : 'M_(p, q)) : A *mr (B *m C) = A *mr B *mr C.
-Proof.
-apply/matrixP=> i l; rewrite !mxE.
-transitivity (\sum_j (\sum_k (A i j :* (B j k * C k l)))).
-  by apply: eq_bigr => j _; rewrite mxE /rscale scaler_suml.
-rewrite exchange_big; apply: eq_bigr => j _; rewrite mxE /rscale scaler_sumr /=.
-by apply: eq_bigr => k _; rewrite scalerA.
-Qed.
-
-Notation "A ^cm" := (A : 'M[_^c]_(_,_)) (at level 2).
-
 Lemma rmulmx_lmulmx m n p (A : 'M_(m,n)) (B : 'M_(n,p)) : A *mr B = (B^cm^T *ml A^T)^T.
 Proof.
 apply/matrixP=> i l; rewrite !mxE.
 by apply eq_bigr => j ?; rewrite !mxE.
+Qed.
+
+Lemma rmulmxA m n p q (A : 'M_(m, n)) (B : 'M_(n, p)) (C : 'M_(p, q)) : A *mr (B *m C) = A *mr B *mr C.
+Proof.
+  rewrite !rmulmx_lmulmx; f_equal.
+  rewrite trmxK lmulmxA; f_equal.
+  by rewrite (trmx_mul_c B C).
 Qed.
 
 Lemma rmulmx1 m n (A : 'M_(m, n)) : A *mr 1%:M = A.
