@@ -20,7 +20,74 @@ Import GRing.
 
 Local Notation "R ^cc" := (converse_ringType R) (at level 2, format "R ^cc") : type_scope.
 
-(* Bimodule *)
+
+(* Right module: a right R-module is just a left R^c-module *)
+Module Rmodule.
+
+Section ClassDef.
+
+Variable R : ringType.
+Notation class_of := (Lmodule.class_of R^cc).
+
+Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (phR : phant R) (T : Type) (cT : type phR).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Definition clone c of phant_id class c := @Pack phR T c T.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack b0 (m0 : Lmodule.mixin_of R^cc (@Zmodule.Pack T b0 T)) :=
+  fun bT b & phant_id (Zmodule.class bT) b =>
+  fun    m & phant_id m0 m => Pack phR (@Lmodule.Class R^cc T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition zmodType := @Zmodule.Pack cT xclass xT.
+Definition lmodType :=@Lmodule.Pack R^cc (Phant _) cT xclass xT.
+
+End ClassDef.
+
+Module Import Exports.
+Coercion sort : type >-> Sortclass.
+Bind Scope ring_scope with sort.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion zmodType : type >-> Zmodule.type.
+Canonical zmodType.
+Coercion lmodType : type >-> Lmodule.type.
+Canonical lmodType.
+Notation rmodType R := (type (Phant R)).
+Notation RmodType R T m := (@pack _ (Phant R) T _ m _ _ id _ id).
+Notation "[ 'rmodType' R 'of' T 'for' cT ]" := (@clone _ (Phant R) T cT _ idfun)
+  (at level 0, format "[ 'rmodType'  R  'of'  T  'for'  cT ]") : form_scope.
+Notation "[ 'rmodType' R 'of' T ]" := (@clone _ (Phant R) T _ _ id)
+  (at level 0, format "[ 'rmodType'  R  'of'  T ]") : form_scope.
+End Exports.
+
+End Rmodule.
+Import Rmodule.Exports.
+
+Definition rscale {R : ringType} {V : rmodType R} (v : V) (b : R) : V := (b : _^c) *: v.
+Notation ":*%R" := (@rscale _ _).
+Notation "v :* b" := (rscale v b) : ring_scope.
+
+Section RmoduleTheory.
+
+Variables (R : ringType) (V : rmodType R).
+Implicit Types (v : V).
+
+Lemma scaleAr v a b : v :* (a * b) = v :* a :* b.
+Proof.
+  by rewrite /rscale scalerA.
+Qed.
+
+End RmoduleTheory.
+
+
+(* Bimodule : a R-S-bimodule is both a left R-module and a right S-module *)
 Module Bimodule.
 
 Section ClassDef.
@@ -57,6 +124,7 @@ Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
 Definition to_zmodType := @Zmodule.Pack cT xclass xT.
 Definition to_lmodType := @Lmodule.Pack R phR cT xclass xT.
+Definition to_rmodType := @Rmodule.Pack S phS cT (rmod_class xclass) xT.
 
 End ClassDef.
 
@@ -72,6 +140,8 @@ Coercion to_zmodType : type >-> Zmodule.type.
 Canonical to_zmodType.
 Coercion to_lmodType : type >-> Lmodule.type.
 Canonical to_lmodType.
+Coercion to_rmodType : type >-> Rmodule.type.
+Canonical to_rmodType.
 Notation bimodType R S := (type (Phant R) (Phant S)).
 Notation BimodType R S T a := (@pack _ _ (Phant R) (Phant S) T _ _ a _ _ id _ _ id _ id).
 Notation "[ 'bimodType' R ',' S 'of' T 'for' cT ]" := (@clone _ _ (Phant R) (Phant S) T cT _ idfun)
@@ -143,15 +213,13 @@ Canonical cmod_eqType := [eqType of V^r].
 Canonical cmod_choiceType := [choiceType of V^r].
 Canonical cmod_zmodType := [zmodType of V^r].
 Canonical cmod_lmodType := [lmodType S^cc of (cmodType V)^r].
+Canonical cmod_rmodType := [rmodType R^cc of (cmodType V)^r].
 Canonical cmod_bimodType := [bimodType S^cc,R^cc of (cmodType V)^r].
 
 End Canonicals.
 
 Local Notation rmodType R := (lmodType R^cc).
-Definition rscale {R : ringType} {V : rmodType R} v b : V := b *: v.
 Definition birscale {R S : ringType} {V : bimodType R S} v (b : S) : V := (b : S^c) *: (v : V^r).
-Notation ":*%R" := (@birscale _ _ _).
-Notation "v :* b" := (birscale v b) : ring_scope.
 
 End Exports.
 
@@ -163,14 +231,9 @@ Section BimoduleTheory.
 Variables (R S : ringType) (V : bimodType R S).
 Implicit Types (v : V).
 
-Lemma scalerlA a b v : a *: (v :* b) = a *: v :* b.
+Lemma scalerlA (a : R) v b : a *: (v :* b) = a *: v :* b.
 Proof. 
-  by case: V v => sort [] base mixin ext T v; rewrite /birscale /scale ext.
-Qed.
-
-Lemma scaleAr v (a b : S) : v :* (a * b) = v :* a :* b.
-Proof.
-  by rewrite /birscale scalerA.
+  by case: V v => sort [] base mixin ext T v; rewrite /rscale /scale ext.
 Qed.
 
 End BimoduleTheory.
