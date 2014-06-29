@@ -12,7 +12,7 @@ Open Local Scope ring_scope.
 
 Require Import matrix.
 
-(* General matrix multiplication 'M[U]_(m,n) -> 'M[V]_(n,p) -> 'M[Z]_(m,p) *)
+(* Generalized matrix multiplication A * B = C, where A, B and C can have different element types, and C's elements only needs to be Zmodule *)
 Section GeneralMul.
 
 Variable U V : Type.
@@ -25,8 +25,10 @@ Definition gmulmx m n p (A : 'M[U]_(m, n)) (B : 'M[V]_(n, p)) : 'M[Z]_(m, p) :=
 
 End GeneralMul.
 
+(* Generalized diagonal matrix *)
 Section GeneralDiag.
 
+(* The elements need to be Zmodule because we need '0' *)
 Variable V : zmodType.
 Variable n : nat.
 
@@ -99,6 +101,38 @@ Qed.
 Lemma lmul1mx m n (A : 'M_(m, n)) : 1%:M *ml A = A.
 Proof. by rewrite scalar_gscalar lmul_scalar_mx lscale1mx. Qed.
 
+Lemma lmulmxDl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) :
+  (A1 + A2) *ml B = A1 *ml B + A2 *ml B.
+Proof.
+apply/matrixP=> i k; rewrite !mxE -big_split /=.
+by apply: eq_bigr => j _; rewrite !mxE -scalerDl.
+Qed.
+
+Lemma lmulmxDr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
+  A *ml (B1 + B2) = A *ml B1 + A *ml B2.
+Proof.
+apply/matrixP=> i k; rewrite !mxE -big_split /=.
+by apply: eq_bigr => j _; rewrite mxE scalerDr.
+Qed.
+
+(* The Lmodule structure for matrix whose scale is lmul *)
+Section LmoduleForLmul.
+
+Variable m' n : nat.
+Notation m := m'.+1.
+
+Definition lmul_lmodMixin := 
+  LmodMixin (@lmulmxA m _ _ n) (@lmul1mx _ _) (@lmulmxDr _ _ _) (fun v a b => lmulmxDl a b v).
+
+(* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register (lmul_tag, Lmodule.sort) *)
+Definition mtag M : Type := M.
+Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+
+Canonical lmul_lmodType :=
+  Eval hnf in LmodType 'M[R]_m 'M[V]_(m, n)^m lmul_lmodMixin.
+
+End LmoduleForLmul.
+
 End LmoduleElem.
 
 Local Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
@@ -110,7 +144,38 @@ Proof.
   by apply eq_bigr => j ?; rewrite !mxE.
 Qed.
 
+Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+
 Require Import bimodule.
+
+Section MakeRmodule.
+
+Variable R : ringType.
+Variable V : zmodType.
+Variable scale : V -> R -> V.
+Notation "v ::* a" := (scale v a) (at level 40).
+Hypothesis assoc : forall v a b, v ::* (a * b) = v ::* a ::* b.
+Hypothesis rightid : forall v, v ::* 1 = v.
+Hypothesis vdistr : forall v1 v2 a, (v1 + v2) ::* a = v1 ::* a + v2 ::* a.
+Hypothesis sdistr : forall v a b, v ::* (a + b) = v ::* a + v ::* b.
+Implicit Types a b : R^c.
+Let scale' := (fun (a : R^c) v => v ::* a).
+Notation "a *:: v" := (scale' a v) (at level 40).
+Lemma assoc' a b v : a *:: (b *:: v) = (a * b) *:: v.
+Proof. by subst scale'; simpl; rewrite assoc. Qed.
+
+Lemma leftid : left_id 1 scale'.
+Proof. by move => v; subst scale'; simpl; rewrite rightid. Qed.
+
+Lemma rdist : right_distributive scale' +%R.
+Proof. by move => a v1 v2; subst scale'; simpl; rewrite vdistr. Qed.
+
+Lemma ldist v a b : (a + b) *:: v = a *:: v + b *:: v.
+Proof. by subst scale'; simpl; rewrite sdistr. Qed.
+
+Definition mk_mixin := @LmodMixin _ (GRing.Zmodule.Pack _ V) _ assoc' leftid rdist ldist.
+
+End MakeRmodule.
 
 Section RmoduleElem.
 
@@ -134,10 +199,37 @@ Proof.
   by rewrite (trmx_mul_c B C).
 Qed.
 
+Lemma rmulmxAR m n p q (A : 'M_(m, n)) (B : 'M_(n, p)) (C : 'M_(p, q)) : A *mr B *mr C = A *mr (B *m C).
+Proof. by rewrite rmulmxA. Qed.
+
 Lemma rmulmx1 m n (A : 'M_(m, n)) : A *mr 1%:M = A.
 Proof. 
   by rewrite rmulmx_lmulmx trmx1 lmul1mx trmxK.
 Qed.
+
+Lemma rmulmxDl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) :
+  (A1 + A2) *mr B = A1 *mr B + A2 *mr B.
+Proof.
+  by rewrite !rmulmx_lmulmx raddfD /= lmulmxDr raddfD /=.
+Qed.
+
+Lemma rmulmxDr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
+  A *mr (B1 + B2) = A *mr B1 + A *mr B2.
+Proof.
+  by rewrite !rmulmx_lmulmx raddfD /= lmulmxDl raddfD /=.
+Qed.
+
+(* The Rmodule structure for matrix whose scale is rmul *)
+Section RmoduleForRmul.
+
+Variable m n' : nat.
+Notation n := n'.+1.
+
+Definition rmul_mixin :=  mk_mixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
+
+Canonical mk_rmodType := Eval hnf in RmodType _ 'M[V]_(m, n)^m rmul_mixin.
+
+End RmoduleForRmul.
 
 End RmoduleElem.
 
