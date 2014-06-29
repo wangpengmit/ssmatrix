@@ -227,9 +227,7 @@ Variable m' n' : nat.
 Notation m := m'.+1.
 Notation n := n'.+1.
 
-Definition axiom_helper (R S : ringType) (V : lmodType R)  (phV : phant V) := @Bimodule.axiom R S V.
-
-Canonical lrmul_bimodType := Eval hnf in BimodType 'M[R]_m 'M[R]_n 'M[V]_(m, n)^m (@lrmulmxA _ m n _ : axiom_helper (Phant 'M[V]_(m,n)^m) _).
+Canonical lrmul_bimodType := Eval hnf in BimodType 'M[R]_m 'M[R]_n 'M[V]_(m, n)^m (@lrmulmxA _ m n _ : Bimodule.axiom (_ : 'M[V]_(m,n)^m -> _ -> _)).
 
 End Bimodule.
 
