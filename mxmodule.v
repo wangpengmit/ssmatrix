@@ -227,7 +227,7 @@ Variable m' n' : nat.
 Notation m := m'.+1.
 Notation n := n'.+1.
 
-Canonical lrmul_bimodType := Eval hnf in BimodType 'M[R]_m 'M[R]_n 'M[V]_(m, n)^m (@lrmulmxA _ m n _ : Bimodule.axiom (_ : 'M[V]_(m,n)^m -> _ -> _)).
+Canonical lrmul_bimodType := Eval hnf in BimodType _ _ 'M[V]_(m, n)^m (@lrmulmxA _ m n _).
 
 End Bimodule.
 

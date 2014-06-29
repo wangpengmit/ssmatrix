@@ -125,12 +125,12 @@ Section ClassDef.
 
 Variable R S : ringType.
 
-Definition axiom (V : lmodType R) (rscale : V -> S -> V) := forall a v b, a *: (rscale v b) = rscale (a *: v) b.
+Definition axiom (V : Type) (lscale : R -> V -> V) (rscale : V -> S -> V) := forall a v b, lscale a (rscale v b) = rscale (lscale a v) b.
 
 Record class_of (T : Type) : Type := Class {
   base : Rmodule.class_of S T;
   mixin : Lmodule.mixin_of R (Zmodule.Pack base T);
-  ext : @axiom (Lmodule.Pack _ (Lmodule.Class mixin) T) (@rscale S (Rmodule.Pack _ base T))
+  ext : @axiom T (Lmodule.scale mixin) (@rscale S (Rmodule.Pack _ base T))
 }.
 
 Local Coercion base : class_of >-> Rmodule.class_of.
@@ -145,7 +145,7 @@ Definition clone c of phant_id class c := @Pack phR phS T c T.
 Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
-Definition pack T b0 mul0 (axT : @axiom (@Lmodule.Pack R _ T b0 T) mul0) :=
+Definition pack T lscale rscale (axT : @axiom T lscale rscale) :=
   fun bT b & phant_id (@Rmodule.class S phS bT) (b : Rmodule.class_of S T) =>
   fun mT m & phant_id (@Lmodule.class R phR mT) (@Lmodule.Class R T b m) =>
   fun ax & phant_id axT ax =>
@@ -193,7 +193,7 @@ Implicit Types (v : V).
 
 Lemma scalerlA (a : R) v b : a *: (v :* b) = a *: v :* b.
 Proof. 
-  by case: V v => sort [] base mixin ext T v; rewrite /rscale ext.
+  by case: V v => sort [] base mixin ext T v; rewrite /rscale /scale ext.
 Qed.
 
 End BimoduleTheory.
