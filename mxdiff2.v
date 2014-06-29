@@ -33,7 +33,7 @@ Variable D : bimodType E E.
 Variable der : {derAdd D}.
 
 Notation "\d" := der.
-Notation "\\d" := (map_mx \d).
+Notation "\\d" := (@map_mx _ _ \d _ _).
 
 Section AnyMatrix.
 
@@ -59,33 +59,13 @@ Qed.
 
 Section SquareMatrix.
 
-Variable E : diffRingType.
-
 Variable n' : nat.
 Local Notation n := n'.+1.
 
 (* Can only register for derivative here because derivative is only defined for rings, not graded rings *)
-Canonical dm_derivative := Derivative (@dmM E n n n).
-
-Definition matrix_diffRingMixin := DiffRingMixin (@dmM E n n n).
-Canonical matrix_diffRingType := Eval hnf in DiffRingType 'M[E]_n matrix_diffRingMixin.
-
-Lemma dm_der (A : 'M[E]_n) : \\d A = \d A.
-Proof. by []. Qed.
+Canonical dm_derivative := @Derivative.Pack _ _ (Phant 'M[D]_n^m) _ (@dmM n n n).
 
 End SquareMatrix.
-
-Section UnitSquareMatrix.
-
-(* invmx requires comRing, don't know why *)
-Variable E : comUnitDiffRingType.
-
-Variable n' : nat.
-Local Notation n := n'.+1.
-
-Canonical matrix_unitDiffRing := Eval hnf in [unitDiffRingType of 'M[E]_n].
-
-End UnitSquareMatrix.
 
 (* Scale by constant, which is commutative with matrix derivation *)
 Section ConstScale.

@@ -207,7 +207,7 @@ End RmoduleElem.
 
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 
-Module BimoduleElem.
+Section BimoduleElem.
 
 Variable R : ringType.
 Variable V : bimodType R R.
@@ -237,5 +237,6 @@ Module Notations.
 
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
+Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
 
 End Notations.
