@@ -63,10 +63,13 @@ Variable n' : nat.
 Local Notation n := n'.+1.
 
 (* Can only register for derivative here because derivative is only defined for rings, not graded rings *)
-Canonical dm_derivative := @Derivative.Pack _ _ (Phant 'M[D]_n^m) _ (@dmM n n n).
+Canonical dm_derivative := DerivativeFor 'M[D]_n^m (@dmM n n n).
 
 End SquareMatrix.
 
+End Ring.
+
+(*
 (* Scale by constant, which is commutative with matrix derivation *)
 Section ConstScale.
 
@@ -197,3 +200,4 @@ Notation lift_to E := (map_mx (in_alg E)).
 
 End Notations.
 
+*)

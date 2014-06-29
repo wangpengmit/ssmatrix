@@ -42,6 +42,7 @@ Module Exports.
 Notation derivative f := (axiom f).
 Coercion apply : map >-> Funclass.
 Notation Derivative fA := (Pack (Phant _) fA).
+Notation DerivativeFor V fA := (Pack (Phant V) fA).
 Notation "{ 'derivative' V }" := (map (Phant V))
   (at level 0, format "{ 'derivative'  V }") : ring_scope.
 Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
