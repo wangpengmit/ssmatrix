@@ -138,6 +138,7 @@ End LmoduleElem.
 Local Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 
 Local Notation "A ^cm" := (A : 'M[_^c]_(_,_)) (at level 2).
+
 Lemma trmx_mul_c (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'M_(n,p)) : (A *m B)^T = B^cm^T *m A^cm^T.
 Proof.
   apply/matrixP=> i l; rewrite !mxE.
@@ -147,35 +148,6 @@ Qed.
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
 
 Require Import bimodule.
-
-Section MakeRmodule.
-
-Variable R : ringType.
-Variable V : zmodType.
-Variable scale : V -> R -> V.
-Notation "v ::* a" := (scale v a) (at level 40).
-Hypothesis assoc : forall v a b, v ::* (a * b) = v ::* a ::* b.
-Hypothesis rightid : forall v, v ::* 1 = v.
-Hypothesis vdistr : forall v1 v2 a, (v1 + v2) ::* a = v1 ::* a + v2 ::* a.
-Hypothesis sdistr : forall v a b, v ::* (a + b) = v ::* a + v ::* b.
-Implicit Types a b : R^c.
-Let scale' := (fun (a : R^c) v => v ::* a).
-Notation "a *:: v" := (scale' a v) (at level 40).
-Lemma assoc' a b v : a *:: (b *:: v) = (a * b) *:: v.
-Proof. by subst scale'; simpl; rewrite assoc. Qed.
-
-Lemma leftid : left_id 1 scale'.
-Proof. by move => v; subst scale'; simpl; rewrite rightid. Qed.
-
-Lemma rdist : right_distributive scale' +%R.
-Proof. by move => a v1 v2; subst scale'; simpl; rewrite vdistr. Qed.
-
-Lemma ldist v a b : (a + b) *:: v = a *:: v + b *:: v.
-Proof. by subst scale'; simpl; rewrite sdistr. Qed.
-
-Definition mk_mixin := @LmodMixin _ (GRing.Zmodule.Pack _ V) _ assoc' leftid rdist ldist.
-
-End MakeRmodule.
 
 Section RmoduleElem.
 
@@ -225,13 +197,43 @@ Section RmoduleForRmul.
 Variable m n' : nat.
 Notation n := n'.+1.
 
-Definition rmul_mixin :=  mk_mixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
+Definition rmul_mixin :=  MakeRmodule.mk_mixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
 
-Canonical mk_rmodType := Eval hnf in RmodType _ 'M[V]_(m, n)^m rmul_mixin.
+Canonical rmul_rmodType := Eval hnf in RmodType _ 'M[V]_(m, n)^m rmul_mixin.
 
 End RmoduleForRmul.
 
 End RmoduleElem.
+
+Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
+
+Module BimoduleElem.
+
+Variable R : ringType.
+Variable V : bimodType R R.
+
+Lemma lrmulmxA m n p q (A : 'M[R]_(m, n)) (B : 'M[V]_(n, p)) (C : 'M_(p, q)) : A *ml (B *mr C) = A *ml B *mr C.
+Proof.
+apply/matrixP=> i l; rewrite !mxE.
+transitivity (\sum_j (\sum_k (A i j *: (B j k :* C k l)))).
+  by apply: eq_bigr => j _; rewrite mxE scaler_sumr.
+rewrite exchange_big; apply: eq_bigr => j _; rewrite mxE /rscale scaler_sumr /=.
+by apply: eq_bigr => k _; rewrite scalerlA.
+Qed.
+
+Section Bimodule.
+
+Variable m' n' : nat.
+Notation m := m'.+1.
+Notation n := n'.+1.
+
+Definition axiom_helper (R S : ringType) (V : lmodType R)  (phV : phant V) := @Bimodule.axiom R S V.
+
+Canonical lrmul_bimodType := Eval hnf in BimodType 'M[R]_m 'M[R]_n 'M[V]_(m, n)^m (@lrmulmxA _ m n _ : axiom_helper (Phant 'M[V]_(m,n)^m) _).
+
+End Bimodule.
+
+End BimoduleElem.
 
 Module Notations.
 

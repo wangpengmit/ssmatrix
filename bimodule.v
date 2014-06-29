@@ -25,7 +25,7 @@ Module Rmodule.
 Section ClassDef.
 
 Variable R : ringType.
-Notation class_of := (Lmodule.class_of R^cc).
+Definition class_of := (Lmodule.class_of R^cc).
 
 Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
@@ -84,6 +84,39 @@ Qed.
 
 End RmoduleTheory.
 
+(* Make a Rmodule from properties suitable for right-scale *)
+Module MakeRmodule. (* hide the local notations *)
+Section MakeRmodule.
+
+Variable R : ringType.
+Variable V : zmodType.
+Variable scale : V -> R -> V.
+Notation "v ::* a" := (scale v a) (at level 40).
+Hypothesis assoc : forall v a b, v ::* (a * b) = v ::* a ::* b.
+Hypothesis rightid : forall v, v ::* 1 = v.
+Hypothesis vdistr : forall v1 v2 a, (v1 + v2) ::* a = v1 ::* a + v2 ::* a.
+Hypothesis sdistr : forall v a b, v ::* (a + b) = v ::* a + v ::* b.
+Implicit Types a b : R^c.
+Let scale' := (fun (a : R^c) v => v ::* a).
+Notation "a *:: v" := (scale' a v) (at level 40).
+Lemma assoc' a b v : a *:: (b *:: v) = (a * b) *:: v.
+Proof. by subst scale'; simpl; rewrite assoc. Qed.
+
+Lemma leftid : left_id 1 scale'.
+Proof. by move => v; subst scale'; simpl; rewrite rightid. Qed.
+
+Lemma rdist : right_distributive scale' +%R.
+Proof. by move => a v1 v2; subst scale'; simpl; rewrite vdistr. Qed.
+
+Lemma ldist v a b : (a + b) *:: v = a *:: v + b *:: v.
+Proof. by subst scale'; simpl; rewrite sdistr. Qed.
+
+Definition mk_mixin := @LmodMixin _ (Zmodule.Pack _ V) _ assoc' leftid rdist ldist.
+Definition mk_rmodType := Eval hnf in RmodType _ _ mk_mixin.
+Definition mk_c_lmodType := Eval hnf in LmodType _ _ mk_mixin.
+
+End MakeRmodule.
+End MakeRmodule.
 
 (* Bimodule : a R-S-bimodule is both a left R-module and a right S-module *)
 Module Bimodule.
@@ -91,18 +124,18 @@ Module Bimodule.
 Section ClassDef.
 
 Variable R S : ringType.
-Notation Sc := S^cc.
 
-Definition axiom V (ml : Lmodule.mixin_of R V) (mr : Lmodule.mixin_of Sc V) := forall a v b, Lmodule.scale ml a (Lmodule.scale mr b v) = Lmodule.scale mr b (Lmodule.scale ml a v).
+Definition axiom (V : lmodType R) (rscale : V -> S -> V) := forall a v b, a *: (rscale v b) = rscale (a *: v) b.
 
 Record class_of (T : Type) : Type := Class {
-  base : Lmodule.class_of R T;
-  mixin : Lmodule.mixin_of Sc (Zmodule.Pack base T);
-  ext : axiom base mixin
+  base : Rmodule.class_of S T;
+  mixin : Lmodule.mixin_of R (Zmodule.Pack base T);
+  ext : @axiom (Lmodule.Pack _ (Lmodule.Class mixin) T) (@rscale S (Rmodule.Pack _ base T))
 }.
 
-Local Coercion base : class_of >-> Lmodule.class_of.
-Definition rmod_class T c := Lmodule.Class (@mixin T c).
+Local Coercion base : class_of >-> Rmodule.class_of.
+Definition base2 R m := Lmodule.Class (@mixin R m).
+Local Coercion base2 : class_of >-> Lmodule.class_of.
 
 Structure type (phR : phant R) (phS : phant S) := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
@@ -112,9 +145,9 @@ Definition clone c of phant_id class c := @Pack phR phS T c T.
 Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
-Definition pack T (b0 : Lmodule.class_of _ T) m0 (axT : axiom b0 m0) :=
-  fun bT b & phant_id (@Lmodule.class R phR bT) (b : @Lmodule.class_of R T) =>
-  fun mT m & phant_id (@Lmodule.class Sc (Phant _) mT) (@Lmodule.Class Sc T b m) =>
+Definition pack T b0 mul0 (axT : @axiom (@Lmodule.Pack R _ T b0 T) mul0) :=
+  fun bT b & phant_id (@Rmodule.class S phS bT) (b : Rmodule.class_of S T) =>
+  fun mT m & phant_id (@Lmodule.class R phR mT) (@Lmodule.Class R T b m) =>
   fun ax & phant_id axT ax =>
   Pack (Phant R) (Phant S) (@Class T b m ax) T.
 
@@ -122,14 +155,14 @@ Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
 Definition to_zmodType := @Zmodule.Pack cT xclass xT.
 Definition to_lmodType := @Lmodule.Pack R phR cT xclass xT.
-Definition to_rmodType := @Rmodule.Pack S phS cT (rmod_class xclass) xT.
+Definition to_rmodType := @Rmodule.Pack S phS cT xclass xT.
 
 End ClassDef.
 
 Module Exports.
-Coercion base : class_of >-> Lmodule.class_of.
+Coercion base : class_of >-> Rmodule.class_of.
+Coercion base2 : class_of >-> Lmodule.class_of.
 Coercion sort : type >-> Sortclass.
-Bind Scope ring_scope with sort.
 Coercion eqType : type >-> Equality.type.
 Canonical eqType.
 Coercion choiceType : type >-> Choice.type.
@@ -160,78 +193,10 @@ Implicit Types (v : V).
 
 Lemma scalerlA (a : R) v b : a *: (v :* b) = a *: v :* b.
 Proof. 
-  by case: V v => sort [] base mixin ext T v; rewrite /rscale /scale ext.
+  by case: V v => sort [] base mixin ext T v; rewrite /rscale ext.
 Qed.
 
 End BimoduleTheory.
-
-Section Repack.
-
-  Variable R : ringType.
-  Variable V : zmodType.
-  Implicit Types m : Lmodule.mixin_of R V.
-
-  Definition repack m := let: Lmodule.Mixin s sA idl rd a := m in @Lmodule.Mixin R^cc^cc _ s sA idl rd a.
-
-  Lemma repack_scale m : forall a v, Lmodule.scale (repack m) a v = Lmodule.scale m a v.
-  Proof. case m; intros; by rewrite /repack /=. Qed.
-
-End Repack.
-
-(* Converse bimodule: an R-S-bimodule is also an S^c-R^c-bimodule *)
-Section Converse.
-
-Variable R S : ringType.
-
-Section ClassDef.
-
-Variable T : Type.
-Variable c : Bimodule.class_of R S T.
-
-Let rmod_class := Bimodule.rmod_class c.
-Let lmod_class := repack (Lmodule.mixin c).
-
-Lemma cmod_axiom : Bimodule.axiom rmod_class lmod_class.
-Proof.
-  subst rmod_class lmod_class.
-  case: c => base mixin ext.
-  rewrite /=.
-  move => a v b.
-  by rewrite !repack_scale.
-Qed.
-
-Definition cmod_class := Bimodule.Class cmod_axiom.
-
-End ClassDef.
-
-Section TypeDef.
-
-Variable (phR : phant R) (phS : phant S) (cT : Bimodule.type phR phS).
-
-Let xT := Bimodule.sort cT.
-Let xclass := Bimodule.class cT.
-Definition cmodType := @Bimodule.Pack S^cc R^cc (Phant _) (Phant _) cT (cmod_class xclass) xT.
-
-End TypeDef.
-
-End Converse.
-
-Definition cmod V : Type := V.
-Notation "V ^r" := (cmod V) (at level 2, format "V ^r") : type_scope.
-
-Section Canonicals.
-
-Variable R S : ringType.
-Variable V : bimodType R S.
-
-Canonical cmod_eqType := [eqType of V^r].
-Canonical cmod_choiceType := [choiceType of V^r].
-Canonical cmod_zmodType := [zmodType of V^r].
-Canonical cmod_lmodType := [lmodType S^cc of (cmodType V)^r].
-Canonical cmod_rmodType := [rmodType R^cc of (cmodType V)^r].
-Canonical cmod_bimodType := [bimodType S^cc,R^cc of (cmodType V)^r].
-
-End Canonicals.
 
 Export Rmodule.Exports.
 Export Bimodule.Exports.
