@@ -151,40 +151,14 @@ End Exports.
 End DerAdd.
 Import DerAdd.Exports.
 
-(* Derivative and linear morphism *)
-Module LinearDer.
-
-Section ClassDef.
+Module ConstScale.
+Module Exports.
+Section Def.
 
 Variable R : ringType.
 Variable A : lalgType R.
-Variable V : bimodType A A.
+Variable V : lmodType A.
 Definition cscale (r : R) (v : V) : V := r%:A *: v.
-Implicit Types f : A -> V.
-
-Record class_of f : Prop := Class {base : derAdd f; mixin : Linear.mixin_of cscale f}.
-
-Local Coercion base : class_of >-> derAdd.
-Local Coercion mixin : class_of >-> Linear.mixin_of.
-Definition base2 f (c : class_of f) := Linear.Class c c.
-Local Coercion base2 : class_of >-> Linear.class_of.
-
-Structure map (phV : phant V) := Pack {apply; _ : class_of apply}.
-Local Coercion apply : map >-> Funclass.
-
-Variables (phV : phant V) (f g : A -> V) (cF : map phV).
-Definition class := let: Pack _ c as cF' := cF return class_of cF' in c.
-Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
-  @Pack phV f fA.
-
-Definition pack (fZ : Linear.mixin_of cscale f) :=
-   fun (bF : DerAdd.map phV) fA & phant_id (DerAdd.class bF) fA =>
-   Pack phV (Class fA fZ).
-
-Definition to_der := DerMorph class.
-Definition to_add := Additive class.
-Definition to_linear := Linear class.
-Definition to_derAdd := DerAdd class.
 
 Lemma cscaleN1r : cscale (-1) =1 -%R.
 Proof. by move => v; rewrite /cscale !scaleN1r. Qed.
@@ -193,12 +167,50 @@ Lemma cscalerBr a : additive (cscale a).
 Proof. by move => v1 v2; rewrite /cscale !scalerBr. Qed.
 
 (* Register that cscale has proper scale laws, required by linear_for *)
-Definition cscale_law := Scale.Law (erefl cscale) cscaleN1r cscalerBr.
+Canonical cscale_law := Scale.Law (erefl cscale) cscaleN1r cscalerBr.
+
+End Def.
+End Exports.
+End ConstScale.
+Import ConstScale.Exports.
+
+(* Derivative and linear morphism *)
+Module LinearDer.
+
+Section ClassDef.
+
+Variable R : ringType.
+Variable A : lalgType R.
+Variable V : bimodType A A.
+Implicit Types f : A -> V.
+
+Record class_of f : Prop := Class {base : derAdd f; mixin : Linear.mixin_of (@cscale _ _ _) f}.
+
+Local Coercion base : class_of >-> derAdd.
+Local Coercion mixin : class_of >-> Linear.mixin_of.
+Definition base2 f (c : class_of f) := Linear.Class c c.
+Local Coercion base2 : class_of >-> Linear.class_of.
+
+Structure map (phAV : phant (A -> V)) := Pack {apply; _ : class_of apply}.
+Local Coercion apply : map >-> Funclass.
+
+Variables (phAV : phant (A -> V)) (f g : A -> V) (cF : map phAV).
+Definition class := let: Pack _ c as cF' := cF return class_of cF' in c.
+Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
+  @Pack phAV f fA.
+
+Definition pack (fZ : forall (c : R) (v : A), f (c *: v) = c%:A *: f v) :=
+   fun (bF : DerAdd.map (Phant V)) fA & phant_id (DerAdd.class bF) fA =>
+   Pack phAV (Class fA fZ).
+
+Definition to_der := DerMorph class.
+Definition to_add := Additive class.
+Definition to_linear := Linear class.
+Definition to_derAdd := DerAdd class.
 
 End ClassDef.
 
 Module Exports.
-Canonical cscale_law.
 Notation linearDer f := (class_of f).
 Coercion apply : map >-> Funclass.
 Coercion class : map >-> class_of.
@@ -213,9 +225,9 @@ Canonical to_linear.
 Coercion to_derAdd : map >-> DerAdd.map.
 Canonical to_derAdd.
 Notation LinearDer fA := (Pack (Phant _) fA).
-Notation AddScale fZ := (pack fZ id).
-Notation "{ 'linearDer' V }" := (map (Phant V))
-  (at level 0, format "{ 'linearDer'  V }") : ring_scope.
+Notation AddScale fAV fZ := (@pack _ _ _ (Phant fAV) _ fZ _ _ id).
+Notation "{ 'linearDer' fAV }" := (map (Phant fAV))
+  (at level 0, format "{ 'linearDer'  fAV }") : ring_scope.
 Notation "[ 'linearDer' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
   (at level 0, format "[ 'linearDer'  'of'  f  'as'  g ]") : form_scope.
 Notation "[ 'linearDer' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
@@ -228,3 +240,4 @@ Import LinearDer.Exports.
 Export DerMorph.Exports.
 Export DerAdd.Exports.
 Export LinearDer.Exports.
+Export ConstScale.Exports.

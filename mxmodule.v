@@ -89,10 +89,6 @@ Canonical lscale_lmodType :=
 
 End LmoduleForLscale.
 
-Section LinearMap.
-
-End LinearMap.
-
 Definition lmulmx := gmulmx (@GRing.scale _ V).
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 
@@ -149,6 +145,8 @@ Qed.
 Definition mtag M : Type := M.
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
 
+Canonical mtag_zmodType m n := [zmodType of 'M[V]_(m,n)^m].
+
 (* The Lmodule structure for matrix whose scale is lmul *)
 Section LmoduleForLmul.
 
@@ -182,6 +180,9 @@ Proof.
 apply/matrixP=> i k; rewrite !mxE scaler_sumr /=.
 by apply: eq_bigr => j _; rewrite scalerAl mxE.
 Qed.
+
+Lemma scale_gscale m n (a : R) (A : 'M[V]_(m,n)) : a%:A *: A = a *ml: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE -scalerAl mul1r. Qed.
 
 Variable m' : nat.
 Notation m := m'.+1.

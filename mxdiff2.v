@@ -76,152 +76,25 @@ Section Lalgebra.
 Variable R : ringType.
 Variable E : lalgType R.
 Variable D : bimodType E E.
-Variable der : {linearDer D}.
+Variable der : {linearDer E -> D}.
 
 Notation "\d" := der.
 Notation "\\d" := (@map_mx _ _ \d _ _).
 
-Variable m : nat.
-Implicit Types A : 'M[E]_m.
-
-Lemma dmcs c A : \\d (c *ml: A) = c%:A *ml: \\d A .
+Lemma dmcs m c (A : 'M[E]_m) : \\d (c *ml: A) = c%:A *ml: \\d A .
 Proof. by apply/matrixP => i j; rewrite !mxE linearZ /=. Qed.
 
-Canonical dm_scale := @LinearDer.pack fZ _ _ _ (Phant 'M) id
-
-AddScale dmcs.
-
-
-
-(*
-(* Scale by constant, which is commutative with matrix derivation *)
-Section ConstScale.
-
-Variable R : ringType.
-Variable E : diffAlgType R.
-Variable m n r : nat.
-Implicit Types A : 'M[E]_(m,n).
-
-Local Notation "c *:: A" := (GRing.in_alg _ c *: A) (at level 40, left associativity) : ring_scope.
-
-Lemma dmcs c A : \\d (c *:: A) = c *:: \\d A.
-Proof.
-  by apply/matrixP => i j; rewrite !mxE derM /= linearZ /= der1 scaler0 mul0r add0r.
+Lemma dmscale m c (A : 'M[E]_m) : \\d (c *ml: A) = (c *ml: I) *ml \\d A .
+Proof. 
+  by rewrite dmcs -lmul_scalar_mx -scalar_gscalar -scalemx1 scale_gscale.
 Qed.
 
-Lemma trmx_cs c A : (c *:: A)^T = c *:: A^T.
-Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
+Variable n' : nat.
+Local Notation n := n'.+1.
 
-End ConstScale.
+Lemma dmscale' c (A : 'M[E]_n^s) : \\d (c *: A) = c *: (1 : 'M[E]_n^s) *: (\\d A : 'M[D]_n^m).
+Proof. by rewrite dmscale. Qed.
 
-(* Lift a matrix of 'M[R]_(m,n) into 'M[E]_(m,n), where E : lalgTyp R *)
-Section Lift.
+Canonical dm_scale := AddScale ('M[E]_n^s -> 'M[D]_n^m) dmscale'.
 
-Variable R : ringType.
-Variable E : lalgType R.
-Variable m n r : nat.
-Implicit Types C : 'M[R]_(m,n).
-Implicit Types D : 'M[R]_(n,r).
-
-Notation lift := (map_mx (in_alg E)).
-
-Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
-Proof.
-  apply/matrixP=> i j; rewrite !mxE raddf_sum.
-  apply eq_bigr => k.
-  by rewrite !mxE -scalerAl mul1r scalerA.
-Qed.
-
-Lemma lift_vec C : lift (vec C) = vec (lift C).
-  by rewrite map_vec.
-Qed.
-
-End Lift.
-
-Local Notation lift := (map_mx (in_alg _)).
-Local Notation lift_to E := (map_mx (in_alg E)).
-
-(* Matrix derivation is commutative with multiplication by a (lifted) constant matrix *)
-Section DmLift.
-
-Variable R : ringType.
-Variable E : diffAlgType R.
-Variable m n r : nat.
-Implicit Types C : 'M[R]_(m,n).
-Implicit Types D : 'M[R]_(n,r).
-
-Lemma dmc C : \\d (lift_to E C) = 0.
-Proof.
-  by apply/matrixP=> i j; rewrite !mxE linearZ /= der1 scaler0.
-Qed.
-
-Lemma dmcl C (A : 'M[E]_(_, r)) : \\d (lift C *m A) = lift C *m \\d A.
-Proof.
-  by rewrite dmM dmc mul0mx add0r.
-Qed.
-
-Lemma dmcr (A : 'M[E]_(r, _)) C : \\d (A *m lift C) = \\d A *m lift C.
-Proof.
-  by rewrite dmM dmc mulmx0 addr0.
-Qed.
-
-End DmLift.
-
-Section DerKronProd.
-
-Variable E : comUnitDiffRingType.
-
-Section Main.
-
-Variable m1 n1 m2 n2 : nat.
-Implicit Types A : 'M[E]_(m1,n1).
-Implicit Types B : 'M[E]_(m2,n2).
-
-Lemma dm_delta m n i j : \\d (delta_mx i j) = 0 :> 'M[E]_(m,n).
-Proof.
-  apply/matrixP=> i' j'; rewrite !mxE /=.
-  case (_ && _).
-  - by rewrite der1.
-  - by rewrite raddf0.
-Qed.
-
-(* Matrix derivation is also derivative (has Lebniz product rule) for Kronecker product, like it is for matrix multiplication *)
-Lemma dm_kron A B : \\d (A *o B) = \\d A *o B + A *o \\d B.
-Proof.
-  apply/matrixP=> i j; rewrite !mxE /=.
-  case/mxvec_indexP: i => n1i n2i.
-  case/mxvec_indexP: j => m1i m2i.
-  by rewrite !vec_mx_delta !mxvecE map_trmx -map_mxE !dmM dm_delta mulmx0 addr0 !mxE.
-Qed.
-
-End Main.
-
-Section Corollaries.
-
-Variable m n r : nat.
-Implicit Types A : 'M[E]_(m,n).
-
-Lemma dm_kron1mx A : \\d (I *o A) = (I : 'M_(r,_)) *o \\d A.
-Proof.
-  by rewrite dm_kron dmI kron0mx add0r.
-Qed.
-
-Lemma dm_kronmx1 A : \\d (A *o I) = \\d A *o (I : 'M_(_,r)).
-Proof.
-  by rewrite dm_kron dmI kronmx0 addr0.
-Qed.
-
-End Corollaries.
-
-End DerKronProd.
-
-Module Notations.
-
-Notation "\\d" := (map_mx \d) : diff_scope.
-Notation "c *:: A" := (GRing.in_alg _ c *: A) (at level 40, left associativity) : ring_scope.
-Notation lift := (map_mx (in_alg _)).
-Notation lift_to E := (map_mx (in_alg E)).
-
-End Notations.
-
-*)
+End Lalgebra.
