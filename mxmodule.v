@@ -89,6 +89,10 @@ Canonical lscale_lmodType :=
 
 End LmoduleForLscale.
 
+Section LinearMap.
+
+End LinearMap.
+
 Definition lmulmx := gmulmx (@GRing.scale _ V).
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 
@@ -172,6 +176,17 @@ Section LalgebraElem.
 Variable R : ringType.
 Variable V : lalgType R.
 
+Lemma lscalemxAl m n p a (A : 'M[V]_(m, n)) (B : 'M_(n, p)) :
+  a *ml: (A *m B) = (a *ml: A) *m B.
+Proof.
+apply/matrixP=> i k; rewrite !mxE scaler_sumr /=.
+by apply: eq_bigr => j _; rewrite scalerAl mxE.
+Qed.
+
+Variable m' : nat.
+Notation m := m'.+1.
+
+Canonical lscale_lalgType := Eval hnf in LalgType R 'M[V]_m^s (@lscalemxAl m m m : GRing.Lalgebra.axiom (_ : 'M[V]_m^s -> _ -> _)).
 
 End LalgebraElem.
 

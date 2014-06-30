@@ -71,7 +71,7 @@ End SquareMatrix.
 
 End Ring.
 
-Section LAlgebra.
+Section Lalgebra.
 
 Variable R : ringType.
 Variable E : lalgType R.
@@ -81,7 +81,15 @@ Variable der : {linearDer D}.
 Notation "\d" := der.
 Notation "\\d" := (@map_mx _ _ \d _ _).
 
-Canonical dm_ := AddScale (@dmM n n n).
+Variable m : nat.
+Implicit Types A : 'M[E]_m.
+
+Lemma dmcs c A : \\d (c *ml: A) = c%:A *ml: \\d A .
+Proof. by apply/matrixP => i j; rewrite !mxE linearZ /=. Qed.
+
+Canonical dm_scale := @LinearDer.pack fZ _ _ _ (Phant 'M) id
+
+AddScale dmcs.
 
 
 
