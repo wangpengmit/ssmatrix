@@ -62,12 +62,28 @@ Section SquareMatrix.
 Variable n' : nat.
 Local Notation n := n'.+1.
 
-(* Can only register for derivative here because derivative is only defined for rings, not graded rings *)
-Canonical dm_derivative := DerivativeFor 'M[D]_n^m (@dmM n n n).
+(* Can only register for DerMorph here because DerMorph is only defined for rings, not graded rings *)
+Canonical dm_der := DerMorphFor 'M[D]_n^m (@dmM n n n).
+(* Now that \\d has a canonical DerMorph structure, and since it already has a canonical Additive structure thanks to map_mx_additive, packDerAdd will automatically generate a DerAdd structure *)
+Canonical dm_derAdd := packDerAdd 'M[D]_n^m \\d.
 
 End SquareMatrix.
 
 End Ring.
+
+Section LAlgebra.
+
+Variable R : ringType.
+Variable E : lalgType R.
+Variable D : bimodType E E.
+Variable der : {linearDer D}.
+
+Notation "\d" := der.
+Notation "\\d" := (@map_mx _ _ \d _ _).
+
+Canonical dm_ := AddScale (@dmM n n n).
+
+
 
 (*
 (* Scale by constant, which is commutative with matrix derivation *)

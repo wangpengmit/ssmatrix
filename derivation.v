@@ -18,8 +18,8 @@ Open Local Scope ring_scope.
 
 Require Import bimodule.
 
-(* Derivative *)
-Module Derivative.
+(* Derivative morphism, a morphism that enjoys the Lebniz product rule: f (a * b) = f a * b + a * f b, where f : (R : ringType) -> (V : bimodType R R) *)
+Module DerMorph.
 
 Section ClassDef.
 
@@ -39,26 +39,26 @@ Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
 End ClassDef.
 
 Module Exports.
-Notation derivative f := (axiom f).
+Notation derMorph f := (axiom f).
 Coercion apply : map >-> Funclass.
-Notation Derivative fA := (Pack (Phant _) fA).
-Notation DerivativeFor V fA := (Pack (Phant V) fA).
-Notation "{ 'derivative' V }" := (map (Phant V))
-  (at level 0, format "{ 'derivative'  V }") : ring_scope.
-Notation "[ 'derivative' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
-  (at level 0, format "[ 'derivative'  'of'  f  'as'  g ]") : form_scope.
-Notation "[ 'derivative' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
-  (at level 0, format "[ 'derivative'  'of'  f ]") : form_scope.
+Notation DerMorph fA := (Pack (Phant _) fA).
+Notation DerMorphFor V fA := (Pack (Phant V) fA).
+Notation "{ 'derMorph' V }" := (map (Phant V))
+  (at level 0, format "{ 'derMorph'  V }") : ring_scope.
+Notation "[ 'derMorph' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'derMorph'  'of'  f  'as'  g ]") : form_scope.
+Notation "[ 'derMorph' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'derMorph'  'of'  f ]") : form_scope.
 End Exports.
 
-End Derivative.
-Import Derivative.Exports.
+End DerMorph.
+Import DerMorph.Exports.
 
-Section DerivativeTheory.
+Section DerMorphTheory.
 
 Variable R : ringType.
 Variable V : bimodType R R.
-Variable f : {derivative V}.
+Variable f : {derMorph V}.
 
 Lemma derM a b : f (a * b) = f a :* b + a *: f b.
 Proof. by case f. Qed.
@@ -68,7 +68,7 @@ Proof.
   by apply: (addIr (f (1 * 1))); rewrite add0r {1}mul1r derM scale1r /rscale scale1r.
 Qed.
 
-End DerivativeTheory.
+End DerMorphTheory.
 
 Lemma addNRL {Z : zmodType} (x y : Z) : x + y = 0 -> x = -y.
   move => H.
@@ -82,7 +82,7 @@ Section Inverse.
 
 Variable R : unitRingType.
 Variable V : bimodType R R.
-Variable f : {derivative V}.
+Variable f : {derMorph V}.
 
 Lemma derV x : x \is a GRing.unit -> f (x^-1) = - (x^-1 *: f x :* x^-1).
 Proof.
@@ -96,7 +96,7 @@ End Inverse.
 
 Import GRing.
 
-(* Derivative and Additive *)
+(* Derivative and additive morphism *)
 Module DerAdd.
 
 Section ClassDef.
@@ -105,9 +105,9 @@ Variable R : ringType.
 Variable V : bimodType R R.
 Implicit Types f : R -> V.
 
-Record class_of f : Prop := Class {base : derivative f; mixin : additive f}.
+Record class_of f : Prop := Class {base : derMorph f; mixin : additive f}.
 
-Local Coercion base : class_of >-> derivative.
+Local Coercion base : class_of >-> derMorph.
 Local Coercion mixin : class_of >-> additive.
 
 Structure map (phV : phant V) := Pack {apply; _ : class_of apply}.
@@ -118,21 +118,28 @@ Definition class := let: Pack _ c as cF' := cF return class_of cF' in c.
 Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
   @Pack phV f fA.
 
-Definition to_der := Derivative class.
+Definition pack f :=
+   fun bT b & phant_id (@DerMorph.class R V phV bT) (b : derMorph f) =>
+   fun mT m & phant_id (@Additive.class R V (Phant _) mT) m =>
+   Pack phV (@Class f b m).
+
+Definition to_der := DerMorph class.
 Definition to_add := Additive class.
 
 End ClassDef.
 
 Module Exports.
+Notation derAdd f := (class_of f).
 Coercion apply : map >-> Funclass.
 Coercion class : map >-> class_of.
-Coercion base : class_of >-> derivative.
+Coercion base : class_of >-> derMorph.
 Coercion mixin : class_of >-> additive.
-Coercion to_der : map >-> Derivative.map.
+Coercion to_der : map >-> DerMorph.map.
 Canonical to_der.
 Coercion to_add : map >-> Additive.map.
 Canonical to_add.
 Notation DerAdd fA := (Pack (Phant _) fA).
+Notation packDerAdd V f := (@pack _ _ (Phant V) f _ _ id _ _ id).
 Notation "{ 'derAdd' V }" := (map (Phant V))
   (at level 0, format "{ 'derAdd'  V }") : ring_scope.
 Notation "[ 'derAdd' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
@@ -144,5 +151,80 @@ End Exports.
 End DerAdd.
 Import DerAdd.Exports.
 
-Export Derivative.Exports.
+(* Derivative and linear morphism *)
+Module LinearDer.
+
+Section ClassDef.
+
+Variable R : ringType.
+Variable A : lalgType R.
+Variable V : bimodType A A.
+Definition cscale (r : R) (v : V) : V := r%:A *: v.
+Implicit Types f : A -> V.
+
+Record class_of f : Prop := Class {base : derAdd f; mixin : Linear.mixin_of cscale f}.
+
+Local Coercion base : class_of >-> derAdd.
+Local Coercion mixin : class_of >-> Linear.mixin_of.
+Definition base2 f (c : class_of f) := Linear.Class c c.
+Local Coercion base2 : class_of >-> Linear.class_of.
+
+Structure map (phV : phant V) := Pack {apply; _ : class_of apply}.
+Local Coercion apply : map >-> Funclass.
+
+Variables (phV : phant V) (f g : A -> V) (cF : map phV).
+Definition class := let: Pack _ c as cF' := cF return class_of cF' in c.
+Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
+  @Pack phV f fA.
+
+Definition pack (fZ : Linear.mixin_of cscale f) :=
+   fun (bF : DerAdd.map phV) fA & phant_id (DerAdd.class bF) fA =>
+   Pack phV (Class fA fZ).
+
+Definition to_der := DerMorph class.
+Definition to_add := Additive class.
+Definition to_linear := Linear class.
+Definition to_derAdd := DerAdd class.
+
+Lemma cscaleN1r : cscale (-1) =1 -%R.
+Proof. by move => v; rewrite /cscale !scaleN1r. Qed.
+
+Lemma cscalerBr a : additive (cscale a).
+Proof. by move => v1 v2; rewrite /cscale !scalerBr. Qed.
+
+(* Register that cscale has proper scale laws, required by linear_for *)
+Definition cscale_law := Scale.Law (erefl cscale) cscaleN1r cscalerBr.
+
+End ClassDef.
+
+Module Exports.
+Canonical cscale_law.
+Notation linearDer f := (class_of f).
+Coercion apply : map >-> Funclass.
+Coercion class : map >-> class_of.
+Coercion base : class_of >-> derAdd.
+Coercion mixin : class_of >-> Linear.mixin_of.
+Coercion to_der : map >-> DerMorph.map.
+Canonical to_der.
+Coercion to_add : map >-> Additive.map.
+Canonical to_add.
+Coercion to_linear : map >-> Linear.map.
+Canonical to_linear.
+Coercion to_derAdd : map >-> DerAdd.map.
+Canonical to_derAdd.
+Notation LinearDer fA := (Pack (Phant _) fA).
+Notation AddScale fZ := (pack fZ id).
+Notation "{ 'linearDer' V }" := (map (Phant V))
+  (at level 0, format "{ 'linearDer'  V }") : ring_scope.
+Notation "[ 'linearDer' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'linearDer'  'of'  f  'as'  g ]") : form_scope.
+Notation "[ 'linearDer' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'linearDer'  'of'  f ]") : form_scope.
+End Exports.
+
+End LinearDer.
+Import LinearDer.Exports.
+
+Export DerMorph.Exports.
 Export DerAdd.Exports.
+Export LinearDer.Exports.

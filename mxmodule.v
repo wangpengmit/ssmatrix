@@ -60,8 +60,34 @@ Fact lscalemx_key : unit. Proof. by []. Qed.
 Definition lscalemx m n x (A : 'M[V]_(m,n)) := \matrix[lscalemx_key]_(i, j) (x *: A i j).
 Local Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 
-Lemma lscale1mx m n (A : 'M[V]_(m,n)) : 1 *ml: A = A.
+(* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register lscale_lmodType for (stag, Lmodule.sort) *)
+Definition stag M : Type := M.
+Local Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
+
+(* The Lmodule structure for matrix whose scale is lscale *)
+Section LmoduleForLscale.
+
+Variable m n : nat.
+
+Lemma lscale1mx (A : 'M[V]_(m,n)) : 1 *ml: A = A.
 Proof. by apply/matrixP=> i j; rewrite !mxE scale1r. Qed.
+
+Lemma lscalemxA x y (A : 'M[V]_(m,n)) : x *ml: (y *ml: A) = (x * y) *ml: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerA. Qed.
+
+Lemma lscalemxDl x y (A : 'M[V]_(m,n)) : (x + y) *ml: A = x *ml: A + y *ml: A.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerDl. Qed.
+
+Lemma lscalemxDr x (A B : 'M[V]_(m,n)) : x *ml: (A + B) = x *ml: A + x *ml: B.
+Proof. by apply/matrixP=> i j; rewrite !mxE scalerDr. Qed.
+
+Definition lscale_lmodMixin := 
+  LmodMixin lscalemxA lscale1mx lscalemxDr (fun v a b => lscalemxDl a b v).
+
+Canonical lscale_lmodType :=
+  Eval hnf in LmodType R 'M[V]_(m, n)^s lscale_lmodMixin.
+
+End LmoduleForLscale.
 
 Definition lmulmx := gmulmx (@GRing.scale _ V).
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
@@ -115,6 +141,10 @@ apply/matrixP=> i k; rewrite !mxE -big_split /=.
 by apply: eq_bigr => j _; rewrite mxE scalerDr.
 Qed.
 
+(* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register lmul_lmodType for (mtag, Lmodule.sort) *)
+Definition mtag M : Type := M.
+Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+
 (* The Lmodule structure for matrix whose scale is lmul *)
 Section LmoduleForLmul.
 
@@ -124,10 +154,6 @@ Notation m := m'.+1.
 Definition lmul_lmodMixin := 
   LmodMixin (@lmulmxA m _ _ n) (@lmul1mx _ _) (@lmulmxDr _ _ _) (fun v a b => lmulmxDl a b v).
 
-(* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register (lmul_tag, Lmodule.sort) *)
-Definition mtag M : Type := M.
-Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
-
 Canonical lmul_lmodType :=
   Eval hnf in LmodType 'M[R]_m 'M[V]_(m, n)^m lmul_lmodMixin.
 
@@ -135,9 +161,19 @@ End LmoduleForLmul.
 
 End LmoduleElem.
 
+Local Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
+Local Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
 Local Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
-
 Local Notation "A ^cm" := (A : 'M[_^c]_(_,_)) (at level 2).
+Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+
+Section LalgebraElem.
+
+Variable R : ringType.
+Variable V : lalgType R.
+
+
+End LalgebraElem.
 
 Lemma trmx_mul_c (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'M_(n,p)) : (A *m B)^T = B^cm^T *m A^cm^T.
 Proof.
@@ -235,6 +271,8 @@ End BimoduleElem.
 
 Module Notations.
 
+Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
+Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
