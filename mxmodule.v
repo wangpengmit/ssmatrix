@@ -181,7 +181,7 @@ apply/matrixP=> i k; rewrite !mxE scaler_sumr /=.
 by apply: eq_bigr => j _; rewrite scalerAl mxE.
 Qed.
 
-Lemma scale_gscale m n (a : R) (A : 'M[V]_(m,n)) : a%:A *: A = a *ml: A.
+Lemma scale_lscale m n (a : R) (A : 'M[V]_(m,n)) : a%:A *: A = a *ml: A.
 Proof. by apply/matrixP=> i j; rewrite !mxE -scalerAl mul1r. Qed.
 
 Variable m' : nat.

@@ -86,7 +86,7 @@ Proof. by apply/matrixP => i j; rewrite !mxE linearZ /=. Qed.
 
 Lemma dmscale m c (A : 'M[E]_m) : \\d (c *ml: A) = (c *ml: I) *ml \\d A .
 Proof. 
-  by rewrite dmcs -lmul_scalar_mx -scalar_gscalar -scalemx1 scale_gscale.
+  by rewrite dmcs -lmul_scalar_mx -scalar_gscalar -scalemx1 scale_lscale.
 Qed.
 
 Variable n' : nat.
