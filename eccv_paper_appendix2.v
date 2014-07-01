@@ -118,24 +118,42 @@ Hypothesis h_invertible : invertible (mupinv_core u A).
 Lemma AmupinvA_sym : (A *m A^-u)^T = A *m A^-u.
 Proof. by rewrite trmx_mul -fold_mupinvT -fold_mupinv mulmxA. Qed.
 
+(* The 'suff' tactic is for explicitly expressing the desired immediate results of each step. If the immediate results are not interesting, the 'suff' tactic can be removed and only rewrites are needed *)
 Lemma dm_mupinv : \\d (A^-u) = 0 - A^-u *ml \\d A *mr A^-u + (A^T *m A + u *ml: I)^-1 *ml (\\d A)^T *mr (I - A *m A^-u).
 Proof.
   set goal := RHS.
-  rewrite unlock dmM /mupinv_core /=.
-  rewrite !invmx_inv (derV _ h_invertible) /mupinv_core -!invmx_inv /= rmulNmx -sub0r.
-  rewrite raddfD /= dmcs dmI lscalemx0 addr0 dmM /=.
-  rewrite -rmulmxA fold_mupinv scale_lmul lmulmxDr rmulmxDl lrmulmxA lmulmxA opprD addrA.
-  by rewrite fold_mupinv sub0r (addrC (-_) (-_)) -addrA [in - _ + (_ *ml \\d _)](addrC) -rmulmxA -rmulmx1Br -map_trmx -sub0r.
+
+  suff ?: \\d (A^T *m A + u *ml: I) ^^-1 *mr A^T + (A^T *m A + u *ml: I) ^^-1 *ml \\d A^T = goal 
+  by rewrite unlock dmM /mupinv_core /=.
+
+  suff ?: 0 - ((A^T *m A + u *ml: I) ^^-1 *ml \\d (A^T *m A + u *ml: I)) *mr (A^T *m A + u *ml: I) ^^-1 *mr A^T + (A^T *m A + u *ml: I) ^^-1 *ml \\d A^T = goal
+  by rewrite !invmx_inv (derV _ h_invertible) /mupinv_core -!invmx_inv /= rmulNmx -sub0r.
+
+  suff ?: 0 - (A^T *m A + u *ml: I) ^^-1 *ml (\\d A^T *mr A + A^T *ml \\d A) *mr (A^T *m A + u *ml: I) ^^-1 *mr A^T + (A^T *m A + u *ml: I) ^^-1 *ml \\d A^T = goal
+  by rewrite raddfD /= dmcs dmI lscalemx0 addr0 dmM /=.
+
+  suff ?: 0 - (A^T *m A + u *ml: I) ^^-1 *ml \\d A^T *mr A *mr A ^- u - ((A^T *m A + u *ml: I) ^^-1 *m A^T) *ml \\d A *mr A ^- u + (A^T *m A + u *ml: I) ^^-1 *ml \\d A^T = goal             
+  by rewrite -rmulmxA fold_mupinv lmulmxDr rmulmxDl lrmulmxA lmulmxA opprD addrA.
+
+  by rewrite fold_mupinv sub0r [in - _ - _]addrC -addrA [in - _ + (_ *ml \\d _)](addrC) -rmulmxA -rmulmx1Br -map_trmx -sub0r.
 Qed.
 
-Lemma dm_AmupinvA : \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u).
+Lemma dm_AmupinvA : \\d (A *m A^-u) = sym ((I - A *m A^-u) *ml \\d A *mr A^-u).
 Proof.
   set goal := RHS.
-  rewrite dmM.
-  rewrite dm_mupinv sub0r !(mulmxDr A) !mulmxA !addrA mulmxN.
+
+  suff ?: \\d A *mr A ^- u + A *ml \\d (A ^- u) = goal
+  by rewrite dmM /=.
+
+  rewrite dm_mupinv sub0r !(lmulmxDr A) lmulmxN !addrA !lrmulmxA !lmulmxA.
+
   rewrite fold_mupinvT.
-  rewrite !mulmxDr mulmx1 mulmxN !mulmxA !addrA.
-  rewrite -trmx_mul -(mulmxA _ A) -!mulmxA -AmupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
+
+  rewrite !rmulmxDr rmulmx1 rmulmxN !rmulmxA !addrA.
+
+  rewrite -trmx_mul.
+
+ -(mulmxA _ A) -!mulmxA -AmupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
   by rewrite -mulmxA -mul1Brmx !mulmxA.
 Qed.
 

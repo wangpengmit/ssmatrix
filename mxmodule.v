@@ -147,6 +147,18 @@ apply/matrixP=> i k; rewrite !mxE -big_split /=.
 by apply: eq_bigr => j _; rewrite mxE scalerDr.
 Qed.
 
+Lemma lmulNmx m n p (A : 'M_(m, n)) (B : 'M_(n, p)) : - A *ml B = - (A *ml B).
+Proof.
+apply/matrixP=> i k; rewrite !mxE -sumrN.
+by apply: eq_bigr => j _; rewrite mxE scaleNr.
+Qed.
+
+Lemma lmulmxN m n p (A : 'M_(m, n)) (B : 'M_(n, p)) : A *ml (- B) = - (A *ml B).
+Proof.
+apply/matrixP=> i k; rewrite !mxE -sumrN.
+by apply: eq_bigr => j _; rewrite mxE scalerN.
+Qed.
+
 (* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register lmul_lmodType for (mtag, Lmodule.sort) *)
 Definition mtag M : Type := M.
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
@@ -304,6 +316,17 @@ transitivity (\sum_j (\sum_k (A i j *: (B j k :* C k l)))).
   by apply: eq_bigr => j _; rewrite mxE scaler_sumr.
 rewrite exchange_big; apply: eq_bigr => j _; rewrite mxE /rscale scaler_sumr /=.
 by apply: eq_bigr => k _; rewrite scalerlA.
+Qed.
+
+Lemma trmx_lmulmx m n p (A : 'M_(m,n)) (B : 'M[V]_(n,p)) : (A *ml B)^T = B^T *mr A^T.
+Proof.
+apply/matrixP=> i l; rewrite !mxE.
+apply eq_bigr => j ?; rewrite !mxE /rscale /=.
+Unset Printing Notations.
+Set Printing Coercions.
+Set Printing All.
+reflexivity.
+by [].
 Qed.
 
 Section Bimodule.
