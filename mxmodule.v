@@ -81,6 +81,12 @@ Proof. by apply/matrixP=> i j; rewrite !mxE scalerDl. Qed.
 Lemma lscalemxDr x (A B : 'M[V]_(m,n)) : x *ml: (A + B) = x *ml: A + x *ml: B.
 Proof. by apply/matrixP=> i j; rewrite !mxE scalerDr. Qed.
 
+Lemma trmx_lscalemx c (A : 'M[V]_(m,n)) : (c *ml: A)^T = c *ml: A^T.
+Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
+
+Lemma lscalemx0 c : c *ml: 0 = 0 :> 'M[V]_(m,n).
+Proof. by apply/matrixP=> i j; rewrite !mxE scaler0. Qed.
+
 Definition lscale_lmodMixin := 
   LmodMixin lscalemxA lscale1mx lscalemxDr (fun v a b => lscalemxDl a b v).
 
@@ -158,6 +164,9 @@ Definition lmul_lmodMixin :=
 
 Canonical lmul_lmodType :=
   Eval hnf in LmodType 'M[R]_m 'M[V]_(m, n)^m lmul_lmodMixin.
+
+Lemma scale_lmul (A : 'M_m) (B : 'M_(m,n)^m) : A *: B = A *ml B.
+Proof. by []. Qed.
 
 End LmoduleForLmul.
 
@@ -243,6 +252,27 @@ Proof.
   by rewrite !rmulmx_lmulmx raddfD /= lmulmxDl raddfD /=.
 Qed.
 
+Lemma rmulNmx m n p (A : 'M_(m, n)) (B : 'M_(n, p)) : - A *mr B = - (A *mr B).
+Proof.
+apply/matrixP=> i k; rewrite !mxE -sumrN.
+by apply: eq_bigr => j _; rewrite mxE /rscale scalerN.
+Qed.
+
+Lemma rmulmxN m n p (A : 'M_(m, n)) (B : 'M_(n, p)) : A *mr (- B) = - (A *mr B).
+Proof.
+apply/matrixP=> i k; rewrite !mxE -sumrN.
+by apply: eq_bigr => j _; rewrite mxE /rscale scaleNr.
+Qed.
+
+Notation I := (1%:M).
+
+Lemma rmulmxBr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
+  A *mr (B1 - B2) = A *mr B1 - A *mr B2.
+Proof. by rewrite rmulmxDr rmulmxN. Qed.
+
+Lemma rmulmx1Br m n (A : 'M_(m,n)) B : A *mr (I - B) = A - A *mr B.
+Proof. by rewrite rmulmxBr rmulmx1. Qed.
+
 (* The Rmodule structure for matrix whose scale is rmul *)
 Section RmoduleForRmul.
 
@@ -252,6 +282,9 @@ Notation n := n'.+1.
 Definition rmul_mixin :=  MakeRmodule.mk_mixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
 
 Canonical rmul_rmodType := Eval hnf in RmodType _ 'M[V]_(m, n)^m rmul_mixin.
+
+Lemma rscale_rmul (A : 'M_(m,n)^m) (B : 'M_n) : A :* B = A *mr B.
+Proof. by []. Qed.
 
 End RmoduleForRmul.
 

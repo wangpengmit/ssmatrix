@@ -84,7 +84,7 @@ Notation "\\d" := (@map_mx _ _ \d _ _).
 Lemma dmcs m c (A : 'M[E]_m) : \\d (c *ml: A) = c%:A *ml: \\d A .
 Proof. by apply/matrixP => i j; rewrite !mxE linearZ /=. Qed.
 
-Lemma dmscale m c (A : 'M[E]_m) : \\d (c *ml: A) = (c *ml: I) *ml \\d A .
+Lemma dmscale m c (A : 'M[E]_m) : \\d (c *ml: A) = (c *ml: I) *ml \\d A.
 Proof. 
   by rewrite dmcs -lmul_scalar_mx -scalar_gscalar -scalemx1 scale_lscale.
 Qed.
