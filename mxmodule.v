@@ -12,6 +12,8 @@ Open Local Scope ring_scope.
 
 Require Import matrix.
 
+Local Notation I := (1%:M).
+
 (* Generalized matrix multiplication A * B = C, where A, B and C can have different element types, and C's elements only needs to be Zmodule *)
 Section GeneralMul.
 
@@ -159,6 +161,12 @@ apply/matrixP=> i k; rewrite !mxE -sumrN.
 by apply: eq_bigr => j _; rewrite mxE scalerN.
 Qed.
 
+Lemma lmulmxBl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) : (A1 - A2) *ml B = A1 *ml B - A2 *ml B.
+Proof. by rewrite lmulmxDl lmulNmx. Qed.
+
+Lemma lmulmx1Br m n (A : 'M_m) (B : 'M[V]_(m,n)) : (I - A) *ml B = B - A *ml B.
+Proof. by rewrite lmulmxBl lmul1mx. Qed.
+
 (* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register lmul_lmodType for (mtag, Lmodule.sort) *)
 Definition mtag M : Type := M.
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
@@ -276,8 +284,6 @@ apply/matrixP=> i k; rewrite !mxE -sumrN.
 by apply: eq_bigr => j _; rewrite mxE /rscale scaleNr.
 Qed.
 
-Notation I := (1%:M).
-
 Lemma rmulmxBr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
   A *mr (B1 - B2) = A *mr B1 - A *mr B2.
 Proof. by rewrite rmulmxDr rmulmxN. Qed.
@@ -318,17 +324,6 @@ rewrite exchange_big; apply: eq_bigr => j _; rewrite mxE /rscale scaler_sumr /=.
 by apply: eq_bigr => k _; rewrite scalerlA.
 Qed.
 
-Lemma trmx_lmulmx m n p (A : 'M_(m,n)) (B : 'M[V]_(n,p)) : (A *ml B)^T = B^T *mr A^T.
-Proof.
-apply/matrixP=> i l; rewrite !mxE.
-apply eq_bigr => j ?; rewrite !mxE /rscale /=.
-Unset Printing Notations.
-Set Printing Coercions.
-Set Printing All.
-reflexivity.
-by [].
-Qed.
-
 Section Bimodule.
 
 Variable m' n' : nat.
@@ -341,6 +336,25 @@ End Bimodule.
 
 End BimoduleElem.
 
+Section ComBimoduleElem.
+
+Variable R : ringType.
+Variable V : comBimodType R.
+
+Lemma trmx_lmulmx m n p (A : 'M_(m,n)) (B : 'M[V]_(n,p)) : (A *ml B)^T = B^T *mr A^T.
+Proof.
+apply/matrixP=> i l; rewrite !mxE.
+by apply eq_bigr => j ?; rewrite !mxE lrscaleC.
+Qed.
+
+Lemma trmx_rmulmx m n p (A : 'M[V]_(m,n)) (B : 'M_(n,p)) : (A *mr B)^T = B^T *ml A^T.
+Proof.
+apply/matrixP=> i l; rewrite !mxE.
+by apply eq_bigr => j ?; rewrite !mxE lrscaleC.
+Qed.
+
+End ComBimoduleElem.
+
 Module Notations.
 
 Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
@@ -348,5 +362,6 @@ Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+Notation I := (1%:M).
 
 End Notations.

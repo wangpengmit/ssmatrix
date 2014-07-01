@@ -100,7 +100,7 @@ Section Appendix.
 Variable R : ringType.
 (* Element type *)
 Variable E : unitComAlgType R.
-Variable D : bimodType E E.
+Variable D : comBimodType E.
 Variable der : {linearDer E -> D}.
 Notation "\d" := (LinearDer.apply der).
 Notation "\\d" := (map_mx \d).
@@ -145,16 +145,19 @@ Proof.
   suff ?: \\d A *mr A ^- u + A *ml \\d (A ^- u) = goal
   by rewrite dmM /=.
 
-  rewrite dm_mupinv sub0r !(lmulmxDr A) lmulmxN !addrA !lrmulmxA !lmulmxA.
+  suff ?: \\d A *mr A ^- u - (A *m A ^- u) *ml \\d A *mr A ^- u + (A *m (A^T *m A + u *ml: I)^-1) *ml (\\d A)^T *mr (I - A *m A ^- u) = goal             
+  by rewrite dm_mupinv sub0r !(lmulmxDr A) lmulmxN !addrA !lrmulmxA !lmulmxA.
 
-  rewrite fold_mupinvT.
+  suff ?: \\d A *mr A ^- u - (A *m A ^- u) *ml \\d A *mr A ^- u + (A ^- u)^T *ml (\\d A)^T *mr (I - A *m A ^- u) = goal
+  by rewrite fold_mupinvT.
 
-  rewrite !rmulmxDr rmulmx1 rmulmxN !rmulmxA !addrA.
+  suff ?: \\d A *mr A ^- u - (A *m A ^- u) *ml \\d A *mr A ^- u + (A ^- u)^T *ml (\\d A)^T - (A ^- u)^T *ml (\\d A)^T *mr A *mr A ^- u = goal
+  by rewrite !rmulmxDr rmulmx1 rmulmxN !rmulmxA !addrA.
 
-  rewrite -trmx_mul.
+  suff ?: sym (\\d A *mr A ^- u - (A *m A ^- u) *ml \\d A *mr A ^- u) = goal
+  by rewrite -trmx_rmulmx -rmulmxA -[in _ *mr (A *m _) ]AmupinvA_sym -trmx_lmulmx -addrA -raddfB /= lrmulmxA addrC fold_sym.
 
- -(mulmxA _ A) -!mulmxA -AmupinvA_sym !mulmxA -trmx_mul -addrA -linearB /= addrC !mulmxA fold_sym.
-  by rewrite -mulmxA -mul1Brmx !mulmxA.
+  by rewrite -lrmulmxA /= -(lmulmx1Br (A *m _)) lrmulmxA.
 Qed.
 
 End Appendix.

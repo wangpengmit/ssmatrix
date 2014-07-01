@@ -203,6 +203,7 @@ Definition mk_c_lmodType := Eval hnf in LmodType _ _ mk_mixin.
 End MakeRmodule.
 End MakeRmodule.
 
+
 (* Bimodule : a R-S-bimodule is both a left R-module and a right S-module *)
 Module Bimodule.
 
@@ -283,6 +284,86 @@ Qed.
 
 End BimoduleTheory.
 
+
+(* Commutative Bimodule : a bimodule whose left and right scale have the same effect *)
+Module ComBimodule.
+
+Section ClassDef.
+
+Variable R : ringType.
+
+Record mixin_of (V : bimodType R R) := Mixin {
+  _ : forall (a : R) (v : V), v :* a = a *: v
+}.
+
+Record class_of (T : Type) : Type := Class {
+  base : Bimodule.class_of R R T;
+  mixin : mixin_of (Bimodule.Pack _ _ base T)
+}.
+
+Local Coercion base : class_of >-> Bimodule.class_of.
+
+Structure type (phR : phant R) := Pack {sort; _ : class_of sort; _ : Type}.
+Local Coercion sort : type >-> Sortclass.
+Variable (phR : phant R) (T : Type) (cT : type phR).
+Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
+Definition clone c of phant_id class c := @Pack phR T c T.
+Let xT := let: Pack T _ _ := cT in T.
+Notation xclass := (class : class_of xT).
+
+Definition pack b0 (m0 : mixin_of (@Bimodule.Pack _ _ (Phant R) (Phant R) T b0 T)) :=
+  fun bT b & phant_id (@Bimodule.class _ _ phR phR bT) b =>
+  fun m & phant_id m0 m => Pack phR (@Class T b m) T.
+
+Definition eqType := @Equality.Pack cT xclass xT.
+Definition choiceType := @Choice.Pack cT xclass xT.
+Definition to_zmodType := @Zmodule.Pack cT xclass xT.
+Definition to_lmodType := @Lmodule.Pack R phR cT xclass xT.
+Definition to_rmodType := @Rmodule.Pack R phR cT xclass xT.
+Definition to_bimodType := @Bimodule.Pack R R phR phR cT xclass xT.
+
+End ClassDef.
+
+Module Exports.
+Coercion base : class_of >-> Bimodule.class_of.
+Coercion sort : type >-> Sortclass.
+Coercion eqType : type >-> Equality.type.
+Canonical eqType.
+Coercion choiceType : type >-> Choice.type.
+Canonical choiceType.
+Coercion to_zmodType : type >-> Zmodule.type.
+Canonical to_zmodType.
+Coercion to_lmodType : type >-> Lmodule.type.
+Canonical to_lmodType.
+Coercion to_rmodType : type >-> Rmodule.type.
+Canonical to_rmodType.
+Coercion to_bimodType : type >-> Bimodule.type.
+Canonical to_bimodType.
+Notation comBimodType R := (type (Phant R)).
+Notation ComBimodType R T a := (@pack _ (Phant R) T _ a _ _ id _ id _ id).
+Notation "[ 'comBimodType' R 'of' T 'for' cT ]" := (@clone _ (Phant R) T cT _ idfun)
+  (at level 0, format "[ 'comBimodType'  R 'of'  T  'for'  cT ]")
+  : form_scope.
+Notation "[ 'comBimodType' R 'of' T ]" := (@clone _ (Phant R) T _ _ id)
+  (at level 0, format "[ 'comBimodType'  R  'of'  T ]") : form_scope.
+
+End Exports.
+
+End ComBimodule.
+Import ComBimodule.Exports.
+
+Section ComBimoduleTheory.
+
+Variables (R : ringType) (V : comBimodType R).
+Implicit Types (v : V).
+
+Lemma lrscaleC (a : R) v : v :* a  = a *: v.
+Proof. by case: V v => sort [] base []. Qed.
+
+End ComBimoduleTheory.
+
+
 Export UnitComAlgebra.Exports.
 Export Rmodule.Exports.
 Export Bimodule.Exports.
+Export ComBimodule.Exports.

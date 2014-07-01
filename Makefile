@@ -3,6 +3,7 @@ MODULES := \
 	derivation \
 	mxmodule \
 	mxdiff2 \
+	eccv_paper_appendix2 \
 	diffalg \
 	mxutil \
 	mxdiff \
