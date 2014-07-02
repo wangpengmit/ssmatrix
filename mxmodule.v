@@ -97,6 +97,55 @@ Canonical lscale_lmodType :=
 
 End LmoduleForLscale.
 
+Section StructuralLinear.
+
+Definition lswizzle_mx := swizzle_mx.
+Lemma lswizzle_mx_is_scalable m n p q f g k :
+  scalable (@lswizzle_mx V m n p q f g k : 'M_(m,n)^s -> 'M_(p,q)^s).
+Proof. by move=> a A; apply/matrixP=> i j; rewrite !mxE. Qed.
+Canonical lswizzle_mx_scalable m n p q f g k :=
+  AddLinear (@lswizzle_mx_is_scalable m n p q f g k).
+
+Notation "[ 'linear' fUV 'of' f 'as' g ]" := (@GRing.Linear.clone _ _ _ _ (Phant fUV) f g _ _ idfun id)
+   (at level 0, format "[ 'linear' fUV 'of' f 'as' g ]") : form_scope.
+
+Local Notation SwizzleLin op := [linear 'M_(_,_)^s -> 'M_(_,_)^s of op as lswizzle_mx _ _ _].
+
+Definition ltrmx := @trmx.
+Canonical ltrmx_linear m n := SwizzleLin (@ltrmx _ m n).
+Definition lrow := @row.
+Canonical lrow_linear m n i := SwizzleLin (@lrow _ m n i).
+Definition lcol := @col.
+Canonical lcol_linear m n j := SwizzleLin (@lcol _ m n j).
+Definition lrow' := @row'.
+Canonical lrow'_linear m n i := SwizzleLin (@lrow' _ m n i).
+Definition lcol' := @col'.
+Canonical lcol'_linear m n j := SwizzleLin (@lcol' _ m n j).
+Definition lrow_perm := @row_perm.
+Canonical lrow_perm_linear m n s := SwizzleLin (@lrow_perm _ m n s).
+Definition lcol_perm := @col_perm.
+Canonical lcol_perm_linear m n s := SwizzleLin (@lcol_perm _ m n s).
+Definition lxrow := @xrow.
+Canonical lxrow_linear m n i1 i2 := SwizzleLin (@lxrow _ m n i1 i2).
+Definition lxcol := @xcol.
+Canonical lxcol_linear m n j1 j2 := SwizzleLin (@lxcol _ m n j1 j2).
+Definition llsubmx := @lsubmx.
+Canonical llsubmx_linear m n1 n2 := SwizzleLin (@llsubmx _ m n1 n2).
+Definition lrsubmx := @rsubmx.
+Canonical lrsubmx_linear m n1 n2 := SwizzleLin (@lrsubmx _ m n1 n2).
+Definition lusubmx := @usubmx.
+Canonical lusubmx_linear m1 m2 n := SwizzleLin (@lusubmx _ m1 m2 n).
+Definition ldsubmx := @dsubmx.
+Canonical ldsubmx_linear m1 m2 n := SwizzleLin (@ldsubmx _ m1 m2 n).
+Definition lvec_mx := @vec_mx.
+Canonical lvec_mx_linear m n := SwizzleLin (@lvec_mx _ m n).
+Definition lmxvec {R m n} := @mxvec R m n : 'M_(_,_)^s -> 'M_(_,_)^s.
+Definition lmxvec_is_linear m n := @can2_linear _ (lscale_lmodType _ _) (lscale_lmodType _ _) (@lvec_mx_linear _ _) (@lmxvec _ _ _ : 'M_(_,_)^s -> 'M_(_,_)^s) (@vec_mxK V m n) mxvecK.
+Canonical lmxvec_linear m n := AddLinear (@lmxvec_is_linear m n).
+
+End StructuralLinear.
+
+(* lmulx *)
 Definition lmulmx := gmulmx (@GRing.scale _ V).
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 
@@ -189,6 +238,72 @@ Lemma scale_lmul (A : 'M_m) (B : 'M_(m,n)^m) : A *: B = A *ml B.
 Proof. by []. Qed.
 
 End LmoduleForLmul.
+
+(* Correspondance between matrices and linear function on row vectors, in terms of lmulmx. *) 
+Section LLinRowVector.
+
+Variables m n : nat.
+
+Fact llin1_mx_key : unit. Proof. by []. Qed.
+Definition llin1_mx (f : 'rV[R]_m -> 'rV[V]_n) :=
+  \matrix[llin1_mx_key]_(i, j) f (delta_mx 0 i) 0 j.
+
+Variable f : {linear 'rV[R]_m -> 'rV[V]_n^s}.
+
+Lemma lmul_rV_llin1 u : u *ml llin1_mx f = f u.
+Proof.
+rewrite {2}[u]matrix_sum_delta big_ord1 linear_sum; apply/rowP=> i.
+by rewrite mxE summxE; apply: eq_bigr => j _; rewrite linearZ !mxE.
+Qed.
+
+End LLinRowVector.
+
+(* Correspondance between matrices and linear function on matrices. *) 
+Section LLinMatrix.
+
+Variables m1 n1 m2 n2 : nat.
+
+Definition llin_mx (f : 'M[R]_(m1, n1) -> 'M[V]_(m2, n2)) :=
+  llin1_mx (lmxvec \o f \o vec_mx).
+
+Variable f : {linear 'M[R]_(m1, n1) -> 'M[V]_(m2, n2)^s}.
+
+Lemma lmul_rV_llin u : u *ml llin_mx f = mxvec (f (vec_mx u)).
+Proof. by rewrite lmul_rV_llin1. Qed.
+
+Lemma lmul_vec_llin A : mxvec A *ml llin_mx f = mxvec (f A).
+Proof. by rewrite lmul_rV_llin mxvecK. Qed.
+
+Lemma mx_rV_llin u : vec_mx (u *ml llin_mx f) = f (vec_mx u).
+Proof. by rewrite lmul_rV_llin mxvecK. Qed.
+
+Lemma mx_vec_llin A : vec_mx (mxvec A *ml llin_mx f) = f A.
+Proof. by rewrite lmul_rV_llin !mxvecK. Qed.
+
+End LLinMatrix.
+
+Lemma lscalelmulAl m n p a (A : 'M_(m, n)) (B : 'M_(n, p)) :
+  a *ml: (A *ml B) = (a *: A) *ml B.
+Proof.
+apply/matrixP=> i k; rewrite !mxE scaler_sumr /=.
+by apply: eq_bigr => j _; rewrite mxE scalerA.
+Qed.
+
+Section Lmulmxr.
+
+Variables m n p : nat.
+Implicit Type A : 'M[R]_(m, n).
+Implicit Type B : 'M[V]_(n, p).
+
+Definition lmulmxr_head t B A := let: tt := t in A *ml B.
+Local Notation lmulmxr := (lmulmxr_head tt).
+
+Lemma lmulmxr_is_linear B : @GRing.Linear.axiom _ _ _ *:%R (lmulmxr B : 'M_(_,_) -> 'M_(_,_)^s) _ (erefl *:%R).
+Proof. by move=> a A1 A2; rewrite /= lmulmxDl -lscalelmulAl. Qed.
+Canonical lmulmxr_additive B := Additive (lmulmxr_is_linear B).
+Canonical lmulmxr_linear B := Linear (lmulmxr_is_linear B).
+
+End Lmulmxr.
 
 End LmoduleElem.
 
@@ -354,6 +469,134 @@ by apply eq_bigr => j ?; rewrite !mxE lrscaleC.
 Qed.
 
 End ComBimoduleElem.
+
+Require Import mxutil.
+Import Notations.
+
+Section KroneckerProduct.
+
+Variable R : comRingType.
+Variable V : lmodType R.
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[V]_(m2,n2).
+
+Notation lmulmxr := (lmulmxr_head tt).
+
+(* Left Kronecker product *)
+Definition lkron A B := llin_mx ((lmulmxr B) \o (mulmx A^T)).
+Local Notation "A *ol B" := (lkron A B) (at level 40).
+
+(* The characteristic property of Kronecker product, in terms of rvec *)
+Lemma lkronP A B C : rvec C *ml (A *ol B) = rvec (A^T *m C *ml B).
+  by rewrite lmul_vec_llin.
+Qed.
+
+End KroneckerProduct.
+
+Local Notation "A *ol B" := (lkron A B) (at level 40).
+
+Section DeltaMxTheory.
+
+Variable R : comRingType.
+Variable V : lmodType R.
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[V]_(m2,n2).
+
+Lemma rowcolEl i j A B : A *m delta_mx i j *ml B = col i A *ml row j B.
+Proof.
+  rewrite rowE. colE !mulmxA -(mulmxA _ (delta_mx i 0)). mul_delta_mx.
+Qed.
+
+Lemma cVMrV m n (c : 'cV[R]_m) (r : 'rV_n) i j : (c *m r) i j = c i 0 * r 0 j.
+Proof.
+  by rewrite !mxE big_ord1.
+Qed.
+
+Lemma colMrowP i j A B ii jj : (col j A *m row i B) ii jj = A ii j * B i jj.
+Proof.
+  by rewrite cVMrV !mxE.
+Qed.
+
+End DeltaMxTheory.
+
+Section KroneckerProductTheory.
+
+Variable R : comRingType.
+Variable V : lmodType R.
+
+Section Basics.
+
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[V]_(m2,n2).
+
+Lemma trmx_lkron A B : (A *ol B)^T = (A^T *ol B^T).
+Proof.
+  apply/matrixP=> i j; rewrite !mxE trmxK /=.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  rewrite !vec_mx_delta !mxvecE.
+  rewrite !rowcolE.
+ !colMrowP !mxE.
+Qed.
+
+Lemma kron0mx A : (0 : 'M_(m2,n2)) *o A = 0.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /= trmx0 !mul0mx /=.
+  case/mxvec_indexP: j => x y.
+  by rewrite mxvecE !mxE.
+Qed.
+
+Lemma kronmx0 A : A *o (0 : 'M_(m2,n2)) = 0.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /= !mulmx0 /=.
+  case/mxvec_indexP: j => x y.
+  by rewrite mxvecE !mxE.
+Qed.
+
+End Basics.
+
+Section KronPColumn.
+
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types C : 'M[R]_(m2,n2).
+
+(* The characteristic property of Kronecker product, in terms of vec *)
+Lemma kronPc A B C : vec (A *m B *m C) = (C^T *o A) *m vec B.
+Proof.
+  by rewrite !trmx_mul !mulmxA -kronP !trmx_mul trmx_kron trmxK.
+Qed.
+
+End KronPColumn.
+
+(* Corollaries from the characteristic properties *)
+Section Corollaries.
+
+Variables m n r : nat.
+Implicit Types A : 'M[R]_(m,n).
+Implicit Types B : 'M[R]_(n,r).
+
+Corollary vec_kron A B : vec (A *m B) = (I *o A) *m vec B.
+Proof.
+  by rewrite -(mulmx1 (A *m B)) kronPc trmx1.
+Qed.
+
+Corollary vec_kron2 A B : vec (A *m B) = (B^T *o I) *m vec A.
+Proof.
+  by rewrite -(mul1mx (A *m B)) !mulmxA kronPc.
+Qed.
+
+Corollary kron_shift A B : (I *o A) *m vec B = (B^T *o I) *m vec A.
+Proof.
+  by rewrite -vec_kron vec_kron2.
+Qed.
+
+End Corollaries.
+
+End KroneckerProductTheory.
 
 Module Notations.
 
