@@ -68,6 +68,11 @@ Proof.
   by apply: (addIr (f (1 * 1))); rewrite add0r {1}mul1r derM scale1r /rscale scale1r.
 Qed.
 
+Lemma der0 : f 0 = 0.
+Proof.
+  by rewrite -(mul0r 0) derM /rscale !scale0r addr0.
+Qed.
+
 End DerMorphTheory.
 
 Lemma addNRL {Z : zmodType} (x y : Z) : x + y = 0 -> x = -y.

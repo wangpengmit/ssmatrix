@@ -98,3 +98,61 @@ Proof. by rewrite dmscale. Qed.
 Canonical dm_scale := AddScale ('M[E]_n^s -> 'M[D]_n^m) dmscale'.
 
 End Lalgebra.
+
+Section DerKronProd.
+
+Variable E : comRingType.
+Variable D : comBimodType E.
+Variable der : {derMorph D}.
+Notation "\d" := (DerMorph.apply der).
+Notation "\\d" := (map_mx \d).
+
+(*
+Section Main.
+
+Lemma dm_delta m n i j : \\d (delta_mx i j) = 0 :> 'M[V]_(m,n).
+Proof.
+  apply/matrixP=> i' j'; rewrite !mxE /=.
+  case (_ && _).
+  - by rewrite der1.
+  - by rewrite raddf0.
+Qed.
+
+Variable m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[E]_(m1,n1).
+Implicit Types B : 'M[E]_(m2,n2).
+
+(* Matrix derivation is also derivative (has Lebniz product rule) for Kronecker product, like it is for matrix multiplication *)
+Lemma dm_kron A B : \\d (A *o B) = \\d A *o B + A *o \\d B.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE /=.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  by rewrite !vec_mx_delta !mxvecE map_trmx -map_mxE !dmM dm_delta mulmx0 addr0 !mxE.
+Qed.
+
+End Main.
+*)
+Section Corollaries.
+
+Variable m n r : nat.
+Implicit Types A : 'M[E]_(m,n).
+
+Lemma dm_lkron1mx A : \\d (I *o A) = (I : 'M_(r,_)) *ol \\d A.
+Proof.
+  apply/matrixP => i j.
+  rewrite mxE.
+  case/mxvec_indexP: i => n1i n2i.
+  case/mxvec_indexP: j => m1i m2i.
+  rewrite kronE.
+  rewrite lkronE.
+  rewrite derM.
+  rewrite !mxE.
+  case (_ == _).
+  - by rewrite der1 /rscale scaler0 add0r.
+  - by rewrite der0 /rscale scaler0 add0r.
+Qed.
+
+End Corollaries.
+
+End DerKronProd.
