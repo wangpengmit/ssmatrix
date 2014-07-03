@@ -537,8 +537,6 @@ Qed.
 
 End DeltaMxTheory.
 
-Section KroneckerProductTheory.
-
 Section LkronE.
 
 Variable R : comRingType.
@@ -646,9 +644,54 @@ Proof.
 Qed.
 
 End Corollaries.
+(*
+Definition to_pair m n (k : 'I_(m * n)) : 'I_m * 'I_n :=
+  match mxvec_indexP k with
+    | IsMxvecIndex i j => (i, j)
+  end.
+(*
+Lemma bij_prod_eq (a1T a2T rT : eqType) (f : a1T -> a2T -> rT) : bijective (prod_curry f) -> forall x1 x2 y1 y2, (f x1 x2 == f y1 y2) = ((x1 == y1) && (x2 == y2)).
+Proof.
+  move => bij x1 x2 y1 y2.
+  case/eqP: (x1 == y1).
+  case: (x2 == y2).
+Qed.
+*)
 
-End KroneckerProductTheory.
+Section RightKroneckerProduct.
 
+Variable R : comRingType.
+Variable V : rmodType R.
+Variable m1 n1 m2 n2 : nat.
+Implicit Types (A : 'M[V]_(m1,n1)) (B : 'M[R]_(m2,n2)).
+
+(* Left Kronecker product *)
+Definition rkron A B := 
+  \matrix_(i < m1 * m2, j < n1 * n2) 
+   let ii := to_pair i in
+   let jj := to_pair j in
+   A ii.1 jj.1 :* B ii.2 jj.2.
+
+Local Notation "A *or B" := (rkron A B) (at level 40).
+
+Lemma rkronE A B i1 i2 j1 j2 : (A *or B) (mxvec_index i1 i2) (mxvec_index j1 j2) = A i1 j1 :* B i2 j2.
+Proof.
+  rewrite !mxE /to_pair /=.
+  move hi: (mxvec_index i1 i2) => i.
+  move: hi.
+  case/mxvec_indexP: i.
+  move => ii1 ii2 hi; simpl.
+  move hj: (mxvec_index j1 j2) => j.
+  move: hj.
+  case/mxvec_indexP: j.
+  move => jj1 jj2 hj; simpl.
+Qed.
+
+Lemma rkronPc A B C : (A *or B) *mr vec C = vec (A *mr C^T *mr B^T)^T.
+Qed.
+
+End RightKroneckerProduct.
+*)
 Module Notations.
 
 Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
@@ -657,6 +700,5 @@ Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 Notation "A *ol B" := (lkron A B) (at level 40) : ring_scope.
-Notation I := (1%:M).
 
 End Notations.
