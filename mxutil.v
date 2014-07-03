@@ -128,7 +128,20 @@ Section KroneckerProductTheory.
 
 Variable R : comRingType.
 
-Section Basics.
+Section KronE.
+
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[R]_(m2,n2).
+
+Lemma kronE A B i1 i2 j1 j2 : (A *o B) (mxvec_index i1 i2) (mxvec_index j1 j2) = A i1 j1 * B i2 j2.
+Proof.
+  by rewrite !mxE /= mxvecE vec_mx_delta rowcolE colMrowP !mxE.
+Qed.
+
+End KronE.
+
+Section TrmxKron.
 
 Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
@@ -136,10 +149,10 @@ Implicit Types B : 'M[R]_(m2,n2).
 
 Lemma trmx_kron A B : (A *o B)^T = (A^T *o B^T).
 Proof.
-  apply/matrixP=> i j; rewrite !mxE trmxK /=.
+  apply/matrixP=> i j.
   case/mxvec_indexP: i => n1i n2i.
   case/mxvec_indexP: j => m1i m2i.
-  by rewrite !vec_mx_delta !mxvecE !rowcolE !colMrowP !mxE.
+  by rewrite mxE !kronE !mxE.
 Qed.
 
 Lemma kron0mx A : (0 : 'M_(m2,n2)) *o A = 0.
@@ -156,7 +169,7 @@ Proof.
   by rewrite mxvecE !mxE.
 Qed.
 
-End Basics.
+End TrmxKron.
 
 Section KronPColumn.
 

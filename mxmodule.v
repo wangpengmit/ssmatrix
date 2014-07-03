@@ -210,6 +210,16 @@ apply/matrixP=> i k; rewrite !mxE -sumrN.
 by apply: eq_bigr => j _; rewrite mxE scalerN.
 Qed.
 
+Lemma lmul0mx m n p (A : 'M_(n, p)) : 0 *ml A = 0 :> 'M_(m, p).
+Proof.
+by apply/matrixP=> i k; rewrite !mxE big1 //= => j _; rewrite mxE scale0r.
+Qed.
+
+Lemma lmulmx0 m n p (A : 'M_(m, n)) : A *ml 0 = 0 :> 'M_(m, p).
+Proof.
+by apply/matrixP=> i k; rewrite !mxE big1 // => j _; rewrite mxE scaler0.
+Qed.
+
 Lemma lmulmxBl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) : (A1 - A2) *ml B = A1 *ml B - A2 *ml B.
 Proof. by rewrite lmulmxDl lmulNmx. Qed.
 
@@ -504,54 +514,72 @@ Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
 Implicit Types B : 'M[V]_(m2,n2).
 
-Lemma rowcolEl i j A B : A *m delta_mx i j *ml B = col i A *ml row j B.
+Lemma rowElmul m n i (A : 'M[V]_(m, n)) : row i A = delta_mx 0 i *ml A.
 Proof.
-  rewrite rowE. colE !mulmxA -(mulmxA _ (delta_mx i 0)). mul_delta_mx.
+apply/rowP=> j; rewrite !mxE (bigD1 i) //= mxE !eqxx scale1r.
+by rewrite big1 ?addr0 // => i' ne_i'i; rewrite mxE /= (negbTE ne_i'i) scale0r.
 Qed.
 
-Lemma cVMrV m n (c : 'cV[R]_m) (r : 'rV_n) i j : (c *m r) i j = c i 0 * r 0 j.
+Lemma rowcolElmul i j A B : A *m delta_mx i j *ml B = col i A *ml row j B.
+Proof.
+  by rewrite rowElmul colE !lmulmxA -(mulmxA _ (delta_mx i 0)) mul_delta_mx.
+Qed.
+
+Lemma cVlmulrV m n (c : 'cV_m) (r : 'rV[V]_n) i j : (c *ml r) i j = c i 0 *: r 0 j.
 Proof.
   by rewrite !mxE big_ord1.
 Qed.
 
-Lemma colMrowP i j A B ii jj : (col j A *m row i B) ii jj = A ii j * B i jj.
+Lemma collmulrowP i j A B ii jj : (col j A *ml row i B) ii jj = A ii j *: B i jj.
 Proof.
-  by rewrite cVMrV !mxE.
+  by rewrite cVlmulrV !mxE.
 Qed.
 
 End DeltaMxTheory.
 
 Section KroneckerProductTheory.
 
+Section LkronE.
+
 Variable R : comRingType.
 Variable V : lmodType R.
+Variables m1 n1 m2 n2 : nat.
+Implicit Types A : 'M[R]_(m1,n1).
+Implicit Types B : 'M[V]_(m2,n2).
+
+Lemma lkronE A B i1 i2 j1 j2 : (A *ol B) (mxvec_index i1 i2) (mxvec_index j1 j2) = A i1 j1 *: B i2 j2.
+Proof.
+  by rewrite !mxE /= mxvecE vec_mx_delta rowcolElmul collmulrowP !mxE.
+Qed.
+
+End LkronE.
 
 Section Basics.
 
+Variable R : comRingType.
+Variable V : lmodType R.
 Variables m1 n1 m2 n2 : nat.
 Implicit Types A : 'M[R]_(m1,n1).
 Implicit Types B : 'M[V]_(m2,n2).
 
 Lemma trmx_lkron A B : (A *ol B)^T = (A^T *ol B^T).
 Proof.
-  apply/matrixP=> i j; rewrite !mxE trmxK /=.
+  apply/matrixP=> i j.
   case/mxvec_indexP: i => n1i n2i.
   case/mxvec_indexP: j => m1i m2i.
-  rewrite !vec_mx_delta !mxvecE.
-  rewrite !rowcolE.
- !colMrowP !mxE.
+  by rewrite mxE !lkronE !mxE.
 Qed.
 
-Lemma kron0mx A : (0 : 'M_(m2,n2)) *o A = 0.
+Lemma lkron0mx B : (0 : 'M_(m1,n1)) *ol B = 0.
 Proof.
-  apply/matrixP=> i j; rewrite !mxE /= trmx0 !mul0mx /=.
+  apply/matrixP=> i j; rewrite !mxE /= trmx0 !mul0mx lmul0mx /=.
   case/mxvec_indexP: j => x y.
   by rewrite mxvecE !mxE.
 Qed.
 
-Lemma kronmx0 A : A *o (0 : 'M_(m2,n2)) = 0.
+Lemma kronmx0 A : A *ol (0 : 'M[V]_(m2,n2)) = 0.
 Proof.
-  apply/matrixP=> i j; rewrite !mxE /= !mulmx0 /=.
+  apply/matrixP=> i j; rewrite !mxE /= lmulmx0 /=.
   case/mxvec_indexP: j => x y.
   by rewrite mxvecE !mxE.
 Qed.
@@ -560,14 +588,35 @@ End Basics.
 
 Section KronPColumn.
 
+Variable R : comRingType.
+Variable V : comBimodType R.
+
+Lemma kronPrmul m1 n1 m2 n2 (A : 'M_(m1,n1)) (B : 'M_(m2,n2)) (C : 'M[V]_(_,_)) : rvec C *mr (A *o B) = rvec (A^T *ml C *mr B).
+Proof.
+  apply/rowP => k.
+  case/mxvec_indexP: k => x y.
+  rewrite mxvecE mxE (reindex _ (curry_mxvec_bij _ _)) /=.
+  transitivity (\sum_k \sum_j A^T x k *: C k j :* B j y).
+  rewrite pair_bigA /=.  
+  apply: eq_bigr => [[i j]] /= _.
+  by rewrite kronE mxvecE scaleAr [in C i j :* _]lrscaleC mxE.
+  rewrite exchange_big /= !mxE.
+  apply: eq_bigr => j _.
+  rewrite !mxE /rscale scaler_sumr.
+  by apply: eq_bigr => i _.
+Qed.
+
 Variables m1 n1 m2 n2 : nat.
-Implicit Types A : 'M[R]_(m1,n1).
-Implicit Types C : 'M[R]_(m2,n2).
 
 (* The characteristic property of Kronecker product, in terms of vec *)
-Lemma kronPc A B C : vec (A *m B *m C) = (C^T *o A) *m vec B.
+Lemma lkronPc (A : 'M[V]_(m1,n1)) B (C : 'M_(m2,n2)) : vec (A *mr B *mr C) = (C^T *ol A) *mr vec B.
 Proof.
-  by rewrite !trmx_mul !mulmxA -kronP !trmx_mul trmx_kron trmxK.
+  by rewrite !trmx_rmulmx !lmulmxA -lkronP !trmx_lmulmx trmx_lkron trmxK.
+Qed.
+
+Lemma kronPclmul (A : 'M_(m1,n1)) (B : 'M[V]_(_,_)) (C : 'M_(m2,n2)) : vec (A *ml B *mr C) = (C^T *o A) *ml vec B.
+Proof.
+  by rewrite !trmx_rmulmx !trmx_lmulmx !lrmulmxA -kronPrmul !trmx_rmulmx trmx_kron trmxK.
 Qed.
 
 End KronPColumn.
@@ -575,23 +624,25 @@ End KronPColumn.
 (* Corollaries from the characteristic properties *)
 Section Corollaries.
 
+Variable R : comRingType.
+Variable V : comBimodType R.
 Variables m n r : nat.
-Implicit Types A : 'M[R]_(m,n).
+Implicit Types A : 'M[V]_(m,n).
 Implicit Types B : 'M[R]_(n,r).
 
-Corollary vec_kron A B : vec (A *m B) = (I *o A) *m vec B.
+Corollary vec_lkron A B : vec (A *mr B) = (I *ol A) *mr vec B.
 Proof.
-  by rewrite -(mulmx1 (A *m B)) kronPc trmx1.
+  by rewrite -(rmulmx1 (A *mr B)) lkronPc trmx1.
 Qed.
 
-Corollary vec_kron2 A B : vec (A *m B) = (B^T *o I) *m vec A.
+Corollary vec_kron_lmul A B : vec (A *mr B) = (B^T *o I) *ml vec A.
 Proof.
-  by rewrite -(mul1mx (A *m B)) !mulmxA kronPc.
+  by rewrite -(@lmul1mx R _ _ _ (A *mr B)) lrmulmxA kronPclmul.
 Qed.
 
-Corollary kron_shift A B : (I *o A) *m vec B = (B^T *o I) *m vec A.
+Corollary lkron_shift A B : (I *ol A) *mr vec B = (B^T *o I) *ml vec A.
 Proof.
-  by rewrite -vec_kron vec_kron2.
+  by rewrite -vec_lkron vec_kron_lmul.
 Qed.
 
 End Corollaries.
@@ -600,11 +651,12 @@ End KroneckerProductTheory.
 
 Module Notations.
 
-Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
+Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
-Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+Notation "A *ol B" := (lkron A B) (at level 40) : ring_scope.
 Notation I := (1%:M).
 
 End Notations.
