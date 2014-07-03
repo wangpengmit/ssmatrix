@@ -4,6 +4,7 @@ MODULES := \
 	mxmodule \
 	mxdiff2 \
 	eccv_paper_appendix2 \
+	eccv_paper2 \
 	diffalg \
 	mxutil \
 	mxdiff \

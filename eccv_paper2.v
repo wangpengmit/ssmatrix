@@ -1,0 +1,174 @@
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  Verification of formula deductions in paper "Exact-Wiberg Algorithm for 
+  Matrix Factorization with Missing Data" (ECCV 2014 submission)
+
+  Main definitions:
+                C : ringType. Type of constants.
+                E : unitDiffComAlgType C. Type of variables and matrix elements.
+            m n r : non-zero natural numbers
+              W M : 'M[E]_(m,n), lifted from 'M[C]_(m,n), so they are constant.
+                U : 'M[E]_(m,r)
+                v : C
+               ~W == diag_mx (vec W)^T
+               \m == vec M
+               ~U == I *o U
+             eps1 == ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m
+                H == I - ~W *m ~U *m (~W *m ~U)^-v
+               V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
+                R == W .* (M - U *m V*^T)
+              ~V* == V* *o I
+                T == (trT _ _ _). The permutation matrix for transposing.
+
+  Main results: 
+    eq_10_13 : forall V,
+      vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T
+
+    eq_20_26 : 
+      \\d eps1 = 0 - H *m ~W *m (I *o \\d U) *m ((~W *m ~U)^-v *m ~W *m \m) - 
+                 ((~W *m ~U)^-v)^T *m (I *o (\\d U)^T) *m (~W^T *m H *m ~W *m \m)
+
+    eq_28_31 : 
+      ~W^T *m H *m ~W *m \m = vec (W .* R)
+
+    eq_32_35 : 
+      \\d eps1 = - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) 
+                 *m \\d (vec U)
+
+  All results are under the assumption: invertible (mupinv_core v (~W *m ~U)).
+  The results are named using the responding start and end equation number in the
+  paper.
+  Sometimes I write (0 - a *m b) instead of (- a *m b) because the unary minus 
+  sign binds tighter than *m, which I find counter-intuitive.
+
+******************************************************************************)
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive. 
+
+Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
+Require Import finfun bigop prime binomial.
+
+Require Import matrix.
+Require Import ssralg.
+Import GRing.Theory.
+Open Local Scope ring_scope.
+
+Require Import diffalg.
+Open Local Scope diff_scope.
+
+Require Import bimodule.
+Require Import derivation.
+Require Import mxutil.
+Import Notations.
+Require Import mxmodule.
+Import Notations.
+Require Import mxdiff2.
+Import Notations.
+Require Import eccv_paper_appendix2.
+Import Notations.
+
+Section Section3.
+
+(* Constants *)
+Variable C : ringType.
+(* Variables and matrix elements *)
+Variable E : unitComAlgType C.
+(* Co-domain of differentiation operator *)
+Variable D : comBimodType E.
+Variable der : {linearDer E -> D}.
+Notation "\d" := (LinearDer.apply der).
+Notation "\\d" := (map_mx \d).
+
+(* All dimensions are non-zero. All matrices are non-empty. *)
+Variable m' n' r' : nat.
+Local Notation m := m'.+1.
+Local Notation n := n'.+1.
+Local Notation r := r'.+1.
+
+(* W : weight matrix 
+   M : target matrix 
+   They are constant matrices, and are lifted to participate in matrix operations.
+*)
+Variable cW cM : 'M[C]_(m, n).
+Notation W := (lift cW).
+Notation M := (lift cM).
+Variable U : 'M[E]_(m, r).
+Notation "~W" := (diag_mx (vec W)^T).
+Notation "\m" := (vec M).
+Notation "~U" := (I *o U).
+
+Lemma eq_10_13 V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
+Proof.
+  set goal := RHS.
+  rewrite vec_elemprod.
+  rewrite !raddfB /=.
+  by rewrite vec_kron !mulmxA.
+Qed.
+
+(* Regularization rate *)
+Variable v : C.
+
+Definition eps1 := ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m.
+Notation H := (I - ~W *m ~U *m (~W *m ~U)^-v).
+Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
+
+Lemma dmmr {p} (A : 'M[E]_(p, _)) : \\d (A *m \m) = \\d A *mr \m.
+Proof.
+  by rewrite -!lift_vec !dmcr.
+Qed.
+
+Lemma dmWr {p} (A : 'M[E]_(p, _)) : \\d (A *m ~W) = \\d A *mr ~W.
+Proof.
+  by rewrite -!lift_vec map_trmx -map_diag_mx !dmcr.
+Qed.
+
+Lemma dmWl {p} (A : 'M[E]_(_, p)) : \\d (~W *m A) = ~W *ml \\d A.
+Proof.
+  by rewrite -!lift_vec map_trmx -map_diag_mx !dmcl.
+Qed.
+
+Lemma eq_20_26 : \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m).
+Proof.
+  set goal := RHS.
+  rewrite /eps1.
+  rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
+  rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
+  rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA. (* (25) *)
+  by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
+Qed.
+
+Notation "V*" := ((cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T).
+
+Lemma to_Vstar : (~W *m ~U)^-v *m ~W *m \m = vec V*^T.
+Proof.
+  by rewrite (trmxK V*) cvec_mxK.
+Qed.
+
+Notation R := (W .* (M - U *m V*^T)).
+
+Lemma eq_28_31 : ~W^T *m H *m ~W *m \m = vec (W .* R).
+Proof.
+  set goal := RHS.
+  rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
+  rewrite -(mulmxA _ _ ~W) -(mulmxA _ (_ *m _) \m) to_Vstar.
+  rewrite -!mulmxA -mulmxBr !mulmxA -eq_10_13.
+  by rewrite tr_diag_mx -vec_elemprod.
+Qed.
+
+Notation "~V*" := (V* *o I).
+
+(* The permutation matrix for transposing *)
+Notation T := (trT _ _ _).
+
+Lemma eq_32_35 : \\d eps1 = 0 - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) *ml \\d (vec U).
+Proof.
+  set goal := RHS.
+  rewrite eq_20_26 eq_28_31 {1}to_Vstar.
+  by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -sub0r.
+Qed.
+
+End Section3.
+

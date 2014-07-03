@@ -156,3 +156,67 @@ Qed.
 End Corollaries.
 
 End DerKronProd.
+
+(* Lift a matrix of 'M[R]_(m,n) into 'M[E]_(m,n), where E : lalgTyp R *)
+Section Lift.
+
+Variable R : ringType.
+Variable E : lalgType R.
+Variable m n r : nat.
+Implicit Types C : 'M[R]_(m,n).
+Implicit Types D : 'M[R]_(n,r).
+
+Notation lift := (map_mx (in_alg E)).
+
+Lemma lift_mul C D : lift (C *m D) = lift C *m lift D.
+Proof.
+  apply/matrixP=> i j; rewrite !mxE raddf_sum.
+  apply eq_bigr => k.
+  by rewrite !mxE -scalerAl mul1r scalerA.
+Qed.
+
+Lemma lift_vec C : lift (vec C) = vec (lift C).
+  by rewrite map_vec.
+Qed.
+
+End Lift.
+
+Local Notation lift := (map_mx (in_alg _)).
+Local Notation lift_to E := (map_mx (in_alg E)).
+
+(* Matrix derivation is commutative with multiplication by a (lifted) constant matrix *)
+Section DmLift.
+
+Variable R : ringType.
+Variable E : algType R.
+Variable V : bimodType E E.
+Variable der : {linearDer E -> V}.
+Notation "\d" := (LinearDer.apply der).
+Notation "\\d" := (map_mx \d).
+Variable m n r : nat.
+Implicit Types C : 'M[R]_(m,n).
+Implicit Types D : 'M[R]_(n,r).
+
+Lemma dmc C : \\d (lift_to E C) = 0.
+Proof.
+  by apply/matrixP=> i j; rewrite !mxE linearZ /= /cscale der1 scaler0.
+Qed.
+
+Lemma dmcl C (A : 'M[E]_(_, r)) : \\d (lift C *m A) = lift C *ml \\d A.
+Proof.
+  by rewrite dmM dmc rmul0mx add0r.
+Qed.
+
+Lemma dmcr (A : 'M[E]_(r, _)) C : \\d (A *m lift C) = \\d A *mr lift C.
+Proof.
+  by rewrite dmM dmc lmulmx0 addr0.
+Qed.
+
+End DmLift.
+
+Module Notations.
+
+Notation lift_to E := (map_mx (in_alg E)).
+Notation lift := (map_mx (in_alg _)).
+
+End Notations.

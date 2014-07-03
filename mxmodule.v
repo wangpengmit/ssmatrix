@@ -46,12 +46,36 @@ Notation "x %:gM" := (gscalar_mx x) (at level 8): ring_scope.
 Lemma gdiag_const_mx a : gdiag_mx (const_mx a) = a%:gM :> 'M_n.
 Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
 
+Variable m : nat.
+
+Fact gdelta_mx_key : unit. Proof. by []. Qed.
+Definition gdelta_mx x i0 j0 : 'M[V]_(m, n) :=
+  \matrix[gdelta_mx_key]_(i, j) (if (i == i0) && (j == j0) then x else 0).
+
+Lemma matrix_sum_gdelta (A : 'M_(_,_)) :
+  A = \sum_(i < m) \sum_(j < n) gdelta_mx (A i j) i j.
+Proof.
+apply/matrixP => i j.
+rewrite summxE (bigD1 i) // summxE (bigD1 j) //= !mxE !eqxx. 
+rewrite !big1 ?addr0 //= => [i' | j']; rewrite eq_sym => /negbTE diff.
+by rewrite summxE big1 // => j' _; rewrite !mxE diff.  
+by rewrite !mxE eqxx diff.
+Qed.
+
 End GeneralDiag.
 
 Local Notation "x %:gM" := (gscalar_mx _ x) (at level 8): ring_scope.
 
 Lemma scalar_gscalar (R : ringType) n (x : R) : x%:M = x%:gM :> 'M_n.
 Proof. by apply/matrixP=> i j; rewrite !mxE; case: (i == j). Qed.
+
+Lemma delta_gdelta (R : ringType) m n (x : R) i j : x *: delta_mx i j = gdelta_mx x i j :> 'M_(m, n).
+Proof. 
+  apply/matrixP=> ii jj; rewrite !mxE.
+  case (_ && _). 
+  by rewrite mulr1.
+  by rewrite mulr0.
+Qed.
 
 Section LmoduleElem.
 
@@ -409,6 +433,16 @@ apply/matrixP=> i k; rewrite !mxE -sumrN.
 by apply: eq_bigr => j _; rewrite mxE /rscale scaleNr.
 Qed.
 
+Lemma rmul0mx m n p (A : 'M_(n, p)) : 0 *mr A = 0 :> 'M_(m, p).
+Proof.
+by apply/matrixP=> i k; rewrite !mxE big1 //= => j _; rewrite mxE /rscale scaler0.
+Qed.
+
+Lemma rmulmx0 m n p (A : 'M_(m, n)) : A *mr 0 = 0 :> 'M_(m, p).
+Proof.
+by apply/matrixP=> i k; rewrite !mxE big1 // => j _; rewrite mxE /rscale scale0r.
+Qed.
+
 Lemma rmulmxBr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
   A *mr (B1 - B2) = A *mr B1 - A *mr B2.
 Proof. by rewrite rmulmxDr rmulmxN. Qed.
@@ -692,6 +726,116 @@ Qed.
 
 End RightKroneckerProduct.
 *)
+
+Section Gdelta.
+
+Variable V : zmodType.
+
+Lemma vec_mx_gdelta x m n i j :
+  vec_mx (gdelta_mx x 0 (mxvec_index i j)) = gdelta_mx x i j :> 'M[V]_(m, n).
+Proof.
+by apply/matrixP=> i' j'; rewrite !mxE /= [_ == _](inj_eq enum_rank_inj).
+Qed.
+
+End Gdelta.
+
+Section LinRightAction.
+
+Variable R : ringType.
+Variable E : rmodType R.
+
+Section Simulate.
+
+Variable m1 n1 m2 n2: nat.
+Variable f : 'M[R]_(m1,n1) -> 'M[R]_(m2,n2).
+Variable g : 'M[E]_(m1,n1) -> 'M[E]_(m2,n2).
+Definition simulate := forall x i j ii jj, g (gdelta_mx x i j) ii jj = x :* f (delta_mx i j) ii jj.
+
+End Simulate. 
+
+Section LinRowAction.
+
+Variable m n : nat.
+
+Variable f : {linear 'rV[R]_m -> 'rV[R]_n}.
+Variable g : {additive 'rV[E]_m -> 'rV[E]_n}.
+Hypothesis sim : simulate f g.
+
+Lemma rmul_rV_lin1 u : u *mr lin1_mx f = g u.
+Proof.
+rewrite {2}[u]matrix_sum_gdelta big_ord1 raddf_sum; apply/rowP=> i.
+by rewrite mxE summxE; apply: eq_bigr => j _; rewrite !mxE sim.
+Qed.
+
+End LinRowAction.
+
+Section LinMatrixAction.
+
+Variables m1 n1 m2 n2 : nat.
+
+Variable f : {linear 'M[R]_(m1, n1) -> 'M[R]_(m2, n2)}.
+Variable g : {additive 'M[E]_(m1,n1) -> 'M[E]_(m2,n2)}.
+Hypothesis sim : simulate f g.
+
+Lemma sim' : simulate (mxvec \o f \o vec_mx) (mxvec \o g \o vec_mx).
+Proof.
+  move => x i j ii jj. 
+  rewrite /= !ord1.
+  case/mxvec_indexP: j => j1 j2.
+  case/mxvec_indexP: jj => jj1 jj2.
+  by rewrite !mxvecE vec_mx_gdelta vec_mx_delta sim.
+Qed.
+
+Lemma rmul_rV_lin u : u *mr lin_mx f = mxvec (g (vec_mx u)).
+Proof. 
+  by rewrite (rmul_rV_lin1 sim') /=.
+Qed.
+
+Lemma rmul_vec_lin A : mxvec A *mr lin_mx f = mxvec (g A).
+Proof. by rewrite rmul_rV_lin mxvecK. Qed.
+
+Lemma mx_rV_lin_r u : vec_mx (u *mr lin_mx f) = g (vec_mx u).
+Proof. by rewrite rmul_rV_lin mxvecK. Qed.
+
+Lemma mx_vec_lin_r A : vec_mx (mxvec A *mr lin_mx f) = g A.
+Proof. by rewrite rmul_rV_lin !mxvecK. Qed.
+
+End LinMatrixAction.
+
+End LinRightAction.
+
+Section TransPerm.
+
+Variable R : comRingType.
+Variable E : comBimodType R.
+
+Section Row.
+
+Variable m n : nat.
+
+Lemma sim : simulate (@trmx R m n) (@trmx E m n).
+Proof.
+  move => x i j ii jj. 
+  rewrite !mxE.
+  case (_ && _).
+  by rewrite /rscale scale1r.
+  by rewrite /rscale scale0r.
+Qed.
+
+(* Characteristic properties *)
+Lemma trTPrmul (A : 'M[E]_(m,n)) : rvec A *mr (trT _ _ _)^T = rvec A^T.
+  by rewrite trmxK (rmul_vec_lin sim) /=.
+Qed.
+
+End Row.
+
+Lemma trTPcrmul m n (A : 'M[E]_(m,n)) : (trT _ _ _) *ml vec A = vec A^T.
+Proof.
+  by apply trmx_inj; rewrite !trmx_lmulmx (trmxK (rvec A^T)) trTPrmul !trmxK.
+Qed.
+
+End TransPerm.
+
 Module Notations.
 
 Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
