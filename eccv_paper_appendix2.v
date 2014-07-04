@@ -6,19 +6,19 @@
 
   Main definitions:
             sym A == A^T + A. A must be a square matrix.
-  mupinv_core u A == A^T *m A + u *:: I
+  mupinv_core u A == A^T *m A + u *ml: I
            A ^- u == (mupinv_core u A)^^-1 *m A^T
-                  == (A^T *m A + u *:: I)^^-1 *m A^T
+                  == (A^T *m A + u *ml: I)^^-1 *m A^T
                      The mu-pseudoinverse.
            pinv A == A ^- 0
 
   Main results: 
         dm_mupinv : 
-        \\d (A^-u) = 0 - A^-u *m \\d A *m A^-u + 
-                     (A^T *m A + u *:: I)^-1 *m (\\d A)^T *m (I - A *m A^-u)
+        \\d (A^-u) = 0 - A^-u *ml \\d A *mr A^-u + (A^T *m A + u *ml: I)^-1 
+                     *ml (\\d A)^T *mr (I - A *m A^-u)
                      The first result in Appendix A.
       dm_AmupinvA : 
-   \\d (A *m A^-u) = sym ((I - A *m A^-u) *m \\d A *m A^-u)
+   \\d (A *m A^-u) = sym ((I - A *m A^-u) *ml \\d A *mr A^-u)
                      The second result in Appendix A.
 
   All results are under the assumption: invertible (mupinv_core u A)).

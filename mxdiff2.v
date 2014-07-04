@@ -3,6 +3,30 @@
 (*****************************************************************************
   Matrix derivation (differentiation).
 
+ lift_to E A == lift A : 'M[R]_(m,n) to 'M[E]_(m,n), where E : lalgType R.
+                Matrix derivation is commutative with multiplication by a 
+                (lifted) constant matrix.
+      lift A == lift_to _ A
+
+  All the following results are parametrized on f : {derMorph R -> V}, which is
+  a derivation on the elements. Derivation on matrices are simply defined as
+  (map_mx f). V : bimodType R R. The following notations are used:
+          \d == f
+         \\d == map_mx f
+
+  The main results about matrix derivation are:
+        dmM :      \\d (A *m B) = \\d A *m B + A *m \\d B
+        dmI :             \\d I = 0
+       dmcs :     \\d (c *ml: A) = c *: 1 *ml: \\d A      
+    dmscale : \\d (c *ml: A) = (c *ml: I) *ml \\d A
+        dmc :      \\d (lift C) = 0
+       dmcl : \\d (lift C *m A) = lift C *ml \\d A 
+              (and the symmetric version dmcr)
+dm_lkron1mx : \\d (I *o A) = I *ol \\d A
+
+  \\d on non-empty square matrices inherit the derMorh, derAdd and linearDer 
+  structure from \d.
+
 ******************************************************************************)
 
 Set Implicit Arguments.
@@ -95,7 +119,7 @@ Local Notation n := n'.+1.
 Lemma dmscale' c (A : 'M[E]_n^s) : \\d (c *: A) = c *: (1 : 'M[E]_n^s) *: (\\d A : 'M[D]_n^m).
 Proof. by rewrite dmscale. Qed.
 
-Canonical dm_scale := AddScale ('M[E]_n^s -> 'M[D]_n^m) dmscale'.
+Canonical dm_linear := AddScale ('M[E]_n^s -> 'M[D]_n^m) dmscale'.
 
 End Lalgebra.
 

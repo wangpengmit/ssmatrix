@@ -6,14 +6,21 @@
 
   Main definitions:
                 C : ringType. Type of constants.
-                E : unitDiffComAlgType C. Type of variables and matrix elements.
+                E : unitComAlgType C. Type of variables and matrix elements.
+                D : comBimodType E. The co-domain of differentiation operator.
+               \d : {linearDer E -> D}. The differentiation operator (derivation)
+                    on elements.
+              \\d : Matrix differentiation, which is just element-wise 
+                    differentiation.
             m n r : non-zero natural numbers
-              W M : 'M[E]_(m,n), lifted from 'M[C]_(m,n), so they are constant.
+              W M : 'M[E]_(m,n). The weight and target matrix in the matrix 
+                    decomposition problem. They are lifted from 'M[C]_(m,n), 
+                    so they are constant.
                 U : 'M[E]_(m,r)
                 v : C
                ~W == diag_mx (vec W)^T
                \m == vec M
-               ~U == I *o U
+               ~U == I *ol U
              eps1 == ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m
                 H == I - ~W *m ~U *m (~W *m ~U)^-v
                V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
@@ -26,15 +33,15 @@
       vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T
 
     eq_20_26 : 
-      \\d eps1 = 0 - H *m ~W *m (I *o \\d U) *m ((~W *m ~U)^-v *m ~W *m \m) - 
-                 ((~W *m ~U)^-v)^T *m (I *o (\\d U)^T) *m (~W^T *m H *m ~W *m \m)
+      \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - 
+                ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m)
 
     eq_28_31 : 
       ~W^T *m H *m ~W *m \m = vec (W .* R)
 
     eq_32_35 : 
-      \\d eps1 = - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) 
-                 *m \\d (vec U)
+      \\d eps1 = 0 - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)
+                 *ml \\d (vec U)
 
   All results are under the assumption: invertible (mupinv_core v (~W *m ~U)).
   The results are named using the responding start and end equation number in the
