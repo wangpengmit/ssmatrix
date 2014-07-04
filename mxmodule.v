@@ -1,3 +1,50 @@
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  This file generalizes some of the matrix operations in matrix.v and mxutil.v. 
+  These operations were previously only defined on ring-element matrices and 
+  are now generalized to module-element matrices ('generalize' in the sense that
+  a ring is also an Lmodule on itself). 
+
+  These operations are defined on zmodType:
+          gdiag_mx d == the diagonal matrix whose main diagonal is d : 'rV_n.
+               a%:gM == the scalar matrix with a's on the main diagonal.
+      delta_mx a i j == the matrix with a 1 in row i, column j and 0 elsewhere.  
+
+  These operations are defined on (left/right/bi) modules:
+            a *ml: A == equivalent to (map_mx *:%R). a : R and A : 'M[V]_(m,n),
+                        where V : lmodType R, R : ringType.
+             A *ml B == the matrix product of A and B, where A : 'M[R]_(m,n)
+                        and B : 'M[V]_(n,p). V : lmodType R.              
+             A *mr B == the matrix product of A and B, where A : 'M[V]_(m,n)
+                        and B : 'M[R]_(n,p). V : rmodType R.     
+          llin1_mx f == the m x n matrix that emulates via *ml
+                        a (linear) function f : 'rV[R]_m -> 'rV[V]_n on ROW VECTORS
+           llin_mx f == the (m1 * n1) x (m2 * n2) matrix that emulates, via the   
+                        *ml on the mxvec encodings, a linear     
+                        function f : 'M[R]_(m1, n1) -> 'M[V]_(m2, n2)      
+             A *ol B == Left Kronecker product of A and B. Its type is 
+                        'M[R]_(m1,n1) -> 'M[V]_(m2,n2) -> 'M[V]_(m1*m2,n1*n2). 
+                        Its characteristic properties are:
+                        (1) in terms of rvec:
+                          lkronP : rvec C *ml (A *ol B) = rvec (A^T *m C *ml B)
+                        (2) in terms of vec:
+                          lkronPc : vec (A *mr B *mr C) = (C^T *ol A) *mr vec B
+                        Another viewpoint of left Kronecker product is:
+                          | a11 a12 |        | a11*ml:B  a12*ml:B |
+                          |         | *o B = |                    |
+                          | a21 a22 |        | a21*ml:B  a22*ml:B |
+
+  Module-element matrices form Lmodule structures with both *ml: and *ml as the
+  scale function. To register those canonical structures, the former canonical
+  structure will be infered if the matrix type if tagged with ^s (e.g. 
+  'M[V]_(m,n)^s) and the latter canonical structure will be infered with tag ^m
+  (e.g. 'M[V]_(m,n)^m). If no tag is present, the canonical structure registered
+  by matrix.v, with scalemx as the scale function, will be infered.
+  Rmodule and Bimodule canonical structures are also registered for tag ^m.
+                        
+******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -840,6 +887,7 @@ Module Notations.
 
 Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.
 Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
+Notation "x %:gM" := (gscalar_mx x) (at level 8): ring_scope.
 Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
