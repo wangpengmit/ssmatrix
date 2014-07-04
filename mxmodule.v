@@ -725,7 +725,7 @@ Proof.
 Qed.
 
 End Corollaries.
-(*
+
 Definition to_pair m n (k : 'I_(m * n)) : 'I_m * 'I_n :=
   match mxvec_indexP k with
     | IsMxvecIndex i j => (i, j)
@@ -758,21 +758,18 @@ Local Notation "A *or B" := (rkron A B) (at level 40).
 Lemma rkronE A B i1 i2 j1 j2 : (A *or B) (mxvec_index i1 i2) (mxvec_index j1 j2) = A i1 j1 :* B i2 j2.
 Proof.
   rewrite !mxE /to_pair /=.
-  move hi: (mxvec_index i1 i2) => i.
-  move: hi.
-  case/mxvec_indexP: i.
-  move => ii1 ii2 hi; simpl.
-  move hj: (mxvec_index j1 j2) => j.
-  move: hj.
-  case/mxvec_indexP: j.
-  move => jj1 jj2 hj; simpl.
+  case hi: _ / mxvec_indexP => [ii1 ii2].
+  case hj: _ / mxvec_indexP => [jj1 jj2].
+  Search _ "{ on _ , bijective _ }".
+  have /= VV := (bij_inj (onT_bij (curry_mxvec_bij _ _))) (_, _) (_, _).
+  case/VV: hi => -> ->; case/VV: hj => -> ->.
+  by [].
 Qed.
-
+(*
 Lemma rkronPc A B C : (A *or B) *mr vec C = vec (A *mr C^T *mr B^T)^T.
 Qed.
-
-End RightKroneckerProduct.
 *)
+End RightKroneckerProduct.
 
 Section Gdelta.
 
