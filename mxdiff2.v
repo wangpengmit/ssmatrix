@@ -22,7 +22,9 @@
         dmc :      \\d (lift C) = 0
        dmcl : \\d (lift C *m A) = lift C *ml \\d A 
               (and the symmetric version dmcr)
+  dm_lrkron : \\d (A *o B) = \\d A *or B + A *ol \\d B
 dm_lkron1mx : \\d (I *o A) = I *ol \\d A
+dm_rkronmx1 : \\d (A *o I) = \\d A *or I
 
   \\d on non-empty square matrices inherit the derMorh, derAdd and linearDer 
   structure from \d.
@@ -127,19 +129,19 @@ Section DerKronProd.
 
 Variable E : comRingType.
 Variable D : comBimodType E.
-Variable der : {derMorph D}.
-Notation "\d" := (DerMorph.apply der).
+Variable der : {derAdd D}.
+Notation "\d" := (DerAdd.apply der).
 Notation "\\d" := (map_mx \d).
 
-(*
+
 Section Main.
 
-Lemma dm_delta m n i j : \\d (delta_mx i j) = 0 :> 'M[V]_(m,n).
+Lemma dmdelta m n i j : \\d (delta_mx i j) = 0 :> 'M[D]_(m,n).
 Proof.
   apply/matrixP=> i' j'; rewrite !mxE /=.
   case (_ && _).
   - by rewrite der1.
-  - by rewrite raddf0.
+  - by rewrite der0.
 Qed.
 
 Variable m1 n1 m2 n2 : nat.
@@ -147,16 +149,16 @@ Implicit Types A : 'M[E]_(m1,n1).
 Implicit Types B : 'M[E]_(m2,n2).
 
 (* Matrix derivation is also derivative (has Lebniz product rule) for Kronecker product, like it is for matrix multiplication *)
-Lemma dm_kron A B : \\d (A *o B) = \\d A *o B + A *o \\d B.
+Lemma dm_lrkron A B : \\d (A *o B) = \\d A *or B + A *ol \\d B.
 Proof.
-  apply/matrixP=> i j; rewrite !mxE /=.
+  apply/matrixP => i j.
   case/mxvec_indexP: i => n1i n2i.
   case/mxvec_indexP: j => m1i m2i.
-  by rewrite !vec_mx_delta !mxvecE map_trmx -map_mxE !dmM dm_delta mulmx0 addr0 !mxE.
+  by rewrite mxE kronE mxE lkronE rkronE derM !mxE.
 Qed.
 
 End Main.
-*)
+
 Section Corollaries.
 
 Variable m n r : nat.
@@ -164,17 +166,12 @@ Implicit Types A : 'M[E]_(m,n).
 
 Lemma dm_lkron1mx A : \\d (I *o A) = (I : 'M_(r,_)) *ol \\d A.
 Proof.
-  apply/matrixP => i j.
-  rewrite mxE.
-  case/mxvec_indexP: i => n1i n2i.
-  case/mxvec_indexP: j => m1i m2i.
-  rewrite kronE.
-  rewrite lkronE.
-  rewrite derM.
-  rewrite !mxE.
-  case (_ == _).
-  - by rewrite der1 /rscale scaler0 add0r.
-  - by rewrite der0 /rscale scaler0 add0r.
+  by rewrite dm_lrkron dmI rkron0mx add0r.
+Qed.
+
+Lemma dm_rkronmx1 A : \\d (A *o I) = \\d A *or (I : 'M_(_,r)).
+Proof.
+  by rewrite dm_lrkron dmI lkronmx0 addr0.
 Qed.
 
 End Corollaries.

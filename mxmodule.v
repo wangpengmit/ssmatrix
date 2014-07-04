@@ -656,7 +656,7 @@ Proof.
   by rewrite mxvecE !mxE.
 Qed.
 
-Lemma kronmx0 A : A *ol (0 : 'M[V]_(m2,n2)) = 0.
+Lemma lkronmx0 A : A *ol (0 : 'M[V]_(m2,n2)) = 0.
 Proof.
   apply/matrixP=> i j; rewrite !mxE /= lmulmx0 /=.
   case/mxvec_indexP: j => x y.
@@ -746,7 +746,7 @@ Variable V : rmodType R.
 Variable m1 n1 m2 n2 : nat.
 Implicit Types (A : 'M[V]_(m1,n1)) (B : 'M[R]_(m2,n2)).
 
-(* Left Kronecker product *)
+(* Right Kronecker product *)
 Definition rkron A B := 
   \matrix_(i < m1 * m2, j < n1 * n2) 
    let ii := to_pair i in
@@ -760,15 +760,33 @@ Proof.
   rewrite !mxE /to_pair /=.
   case hi: _ / mxvec_indexP => [ii1 ii2].
   case hj: _ / mxvec_indexP => [jj1 jj2].
-  Search _ "{ on _ , bijective _ }".
+  (* Search _ "{ on _ , bijective _ }". *)
   have /= VV := (bij_inj (onT_bij (curry_mxvec_bij _ _))) (_, _) (_, _).
   case/VV: hi => -> ->; case/VV: hj => -> ->.
   by [].
 Qed.
+
 (*
 Lemma rkronPc A B C : (A *or B) *mr vec C = vec (A *mr C^T *mr B^T)^T.
 Qed.
 *)
+
+Lemma rkron0mx B : (0 : 'M_(m1,n1)) *or B = 0.
+Proof.
+  apply/matrixP=> i j.
+  case/mxvec_indexP: i => i1 i2.
+  case/mxvec_indexP: j => j1 j2.
+  by rewrite rkronE !mxE /rscale scaler0.
+Qed.
+
+Lemma rkronmx0 A : A *or (0 : 'M_(m2,n2)) = 0.
+Proof.
+  apply/matrixP=> i j.
+  case/mxvec_indexP: i => i1 i2.
+  case/mxvec_indexP: j => j1 j2.
+  by rewrite rkronE !mxE /rscale scale0r.
+Qed.
+
 End RightKroneckerProduct.
 
 Section Gdelta.
@@ -889,5 +907,6 @@ Notation "x *ml: A" := (lscalemx x A) (at level 40) : ring_scope.
 Notation "A *ml B" := (lmulmx A B) (at level 40, format "A  *ml  B") : ring_scope.
 Notation "A *mr B" := (rmulmx A B) (at level 40, left associativity, format "A  *mr  B") : ring_scope.
 Notation "A *ol B" := (lkron A B) (at level 40) : ring_scope.
+Notation "A *or B" := (rkron A B) (at level 40).
 
 End Notations.
