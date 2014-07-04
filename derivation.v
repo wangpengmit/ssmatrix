@@ -3,10 +3,10 @@
 (*****************************************************************************
   Derivation. This file defines the hierarchy of derivation morphisms. 
 
-  * derMorph (derivative morphism):  
-          derMorph f : f of type R -> V is derivative, i.e., enjoys the Lebniz 
-                       product rule:
-                         f (a * b) = f a *: b + a :* f b
+  * DerMorph (derivative morphism):  
+         derMorph f == forall a b, f (a * b) = f a *: b + a :* f b.
+                       It says f of type R -> V is derivative, i.e., enjoys 
+                       the Lebniz product rule.
                        R must have a ringType canonical structure.
                        V must have a (bimodType R R) canonical structure.
   {derMorph R -> V} == the interface type for a Structure (keyed on     
@@ -24,17 +24,15 @@ DerMorphFor V der_f == packs der_f : derMorph f into an derMorph
                        where a : R and R : unitRingType
 
 
-  * derAdd (derivative and additive):  
+  * DerAdd (derivative and additive):  
     {derAdd R -> V} == the interface type for a Structure (keyed on     
                        a function f : R -> V) that encapsulates the     
                        derivative and additive property.
-     packDerAdd V f == packs the derMorph and additive canonical structures on
-                       f into a derAdd structure
+     packDerAdd V f == packs the DerMorph and Additive canonical structures on
+                       f into a DerAdd structure
 
 
-  * linearDer (derivative and linear):  
-         cscale r v == r *: 1 *: v. 
-                       r : R, v : V, V : lmodType A, A : lalgType R.
+  * LinearDer (derivative and linear):  
  {linearDer A -> V} == the interface type for a Structure (keyed on     
                        a function f : A -> V) that encapsulates the     
                        derivative and linear property. 
@@ -42,8 +40,12 @@ DerMorphFor V der_f == packs der_f : derMorph f into an derMorph
                        A must have a (lalgType R) canonical structure, where 
                        R : ringType.
                        V must have a (bimodType A A) canonical structure.
-AddScale (A -> V) scale_f == packs (scale_f : scalable_for cscale f) into an 
-                       linearDer function structure of type {linearDer A -> V}.    
+         cscale r v == r *: 1 *: v. 
+                       r : R, v : V, V : lmodType A, A : lalgType R.
+ AddScale (A -> V) scale_f == packs the scalability property scale_f of f into an 
+                       linearDer function structure of type {linearDer A -> V}.
+                       scale_f should have type: 
+                         forall (c : R) (v : A), f (c *: v) = c *: 1 *: f v.
                        f must already have a {derAdd A -> V} canonical structure.
 
 ******************************************************************************)

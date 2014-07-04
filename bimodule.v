@@ -1,7 +1,63 @@
 (* (c) Copyright ? *)
 
 (*****************************************************************************
+  Bimodule.
 
+  * Rmodule (right module):  
+          rmodType R == interface type for an Rmodule structure with     
+                        scalars of type R; R must have a ringType        
+                        structure.                                       
+ RmodMixin scalA scalv1 scalDl scalDr == builds an Rmodule mixin from the   
+                        algebraic properties of the scaling operation;   
+                        the module carrier type must have a zmodType     
+                        structure, and the scalar carrier must have a    
+                        ringType structure.         
+                        The essential difference between Rmodule and Lmodule
+                        is the associativity rule: 
+                          v :* (a * b) = v :* a :* b.
+                        That means in a Rmodule it is the left operant of *
+                        that acts on v first, while in a Lmodule it is the right
+                        operant that acts first. Hence, a R-Rmodule is equivalent
+                        (and coercible) to R^c-Lmodule, where R^c is the converse
+                        ring of R, swapping left and right operant of *.
+      RmodType R V m == packs the mixin v to build an Rmodule of type    
+                        rmodType R. The carrier type V must have a       
+                        zmodType structure.                              
+              v :* a == v right-scaled by a, when v is in an Rmodule V and a   
+                        is in the scalar Ring of V.                      
+
+
+  * Bimodule (bimodule, both left module and right module, with a compatibility 
+              property):  
+       bimodType R S == interface type for a bimodule structure with     
+                        left scalars of type R and right scalars of type S. 
+                        Both R and S must have a ringType structure. 
+ BimodType R S V scalA == packs scalA : forall a v b, a *: (v :* b) = a *: v :* b 
+                        into a Bimodule of type bimodType R S. The carrier 
+                        type V must have both lmodType R and rmodType S canonical 
+                        structures.                                      
+
+
+  * ComBimodule (commutative bimodule, bimodule whose left and right scale are
+                 interchangeable):  
+      comBimodType R == interface type for a ComBimodule structure with     
+                        both left and right scalars of type R.
+                        R must have a ringType structure. 
+                        It coerces to bimodType R R.
+ ComBimodType R V comm == packs comm : forall a v, v :* a = a *: v
+                        into a ComBimodule of type comBimodType R. The carrier 
+                        type V must have a bimodType R R canonical structure.
+
+
+  * UnitComAlgebra (unit and commutative algebra):  
+      unitComAlgType R == interface type for a UnitComAlgebra structure with     
+                        scalars of type R.
+                        R must have a ringType structure. 
+ UnitComAlgType R A comm == packs comm : commutative *%R
+                        into a UnitComAlgebra of type unitComAlgType R. The 
+                        carrier type A must have a unitAlgType R canonical 
+                        structure.
+                        
 ******************************************************************************)
 
 Set Implicit Arguments.
@@ -92,8 +148,7 @@ Coercion comUnitRingType : type >-> ComUnitRing.type.
 Canonical comUnitRingType.
 
 Notation unitComAlgType R := (type (Phant R)).
-Notation "[ 'unitComAlgType' R 'of' T ]" := (@pack _ (Phant R) T _ _ id _ _ id)
-  (at level 0, format "[ 'unitComAlgType'  R  'of'  T ]") : form_scope.
+Notation UnitComAlgType R T a := (@pack _ (Phant R) T _ a _ _ id _ id).
 
 End Exports.
 
@@ -104,7 +159,7 @@ Import UnitComAlgebra.Exports.
 
 Local Notation "R ^cc" := (converse_ringType R) (at level 2, format "R ^cc") : type_scope.
 
-(* Right module: a right R-module is just a left R^c-module *)
+(* Right module: a R Rmodule is just a R^c Lmodule *)
 Module Rmodule.
 
 Section ClassDef.
@@ -170,41 +225,37 @@ Qed.
 End RmoduleTheory.
 
 (* Make a Rmodule from properties suitable for right-scale *)
-Module MakeRmodule. (* hide the local notations *)
 Section MakeRmodule.
 
 Variable R : ringType.
 Variable V : zmodType.
-Variable scale : V -> R -> V.
-Notation "v ::* a" := (scale v a) (at level 40).
-Hypothesis assoc : forall v a b, v ::* (a * b) = v ::* a ::* b.
-Hypothesis rightid : forall v, v ::* 1 = v.
-Hypothesis vdistr : forall v1 v2 a, (v1 + v2) ::* a = v1 ::* a + v2 ::* a.
-Hypothesis sdistr : forall v a b, v ::* (a + b) = v ::* a + v ::* b.
+Variable rscale : V -> R -> V.
+Hypothesis rassoc : forall v a b, rscale v (a * b) = rscale (rscale v a) b.
+Hypothesis rightid : forall v, rscale v 1 = v.
+Hypothesis left_distr : forall v1 v2 a, rscale (v1 + v2) a = rscale v1 a + rscale v2 a.
+Hypothesis right_distr : forall v a b, rscale v (a + b) = rscale v a + rscale v b.
 Implicit Types a b : R^c.
-Let scale' := (fun (a : R^c) v => v ::* a).
-Notation "a *:: v" := (scale' a v) (at level 40).
-Lemma assoc' a b v : a *:: (b *:: v) = (a * b) *:: v.
-Proof. by subst scale'; simpl; rewrite assoc. Qed.
+Let lscale := (fun (a : R^c) v => rscale v a).
+Lemma lassoc a b v : lscale a (lscale b v) = lscale (a * b) v.
+Proof. by subst lscale; simpl; rewrite rassoc. Qed.
 
-Lemma leftid : left_id 1 scale'.
-Proof. by move => v; subst scale'; simpl; rewrite rightid. Qed.
+Lemma leftid : left_id 1 lscale.
+Proof. by move => v; subst lscale; simpl; rewrite rightid. Qed.
 
-Lemma rdist : right_distributive scale' +%R.
-Proof. by move => a v1 v2; subst scale'; simpl; rewrite vdistr. Qed.
+Lemma rdist : right_distributive lscale +%R.
+Proof. by move => a v1 v2; subst lscale; simpl; rewrite left_distr. Qed.
 
-Lemma ldist v a b : (a + b) *:: v = a *:: v + b *:: v.
-Proof. by subst scale'; simpl; rewrite sdistr. Qed.
+Lemma ldist v a b : lscale (a + b) v = lscale a v + lscale b v.
+Proof. by subst lscale; simpl; rewrite right_distr. Qed.
 
-Definition mk_mixin := @LmodMixin _ (Zmodule.Pack _ V) _ assoc' leftid rdist ldist.
-Definition mk_rmodType := Eval hnf in RmodType _ _ mk_mixin.
-Definition mk_c_lmodType := Eval hnf in LmodType _ _ mk_mixin.
+Definition RmodMixin := @LmodMixin _ (Zmodule.Pack _ V) _ lassoc leftid rdist ldist.
+Definition mk_rmodType := Eval hnf in RmodType _ _ RmodMixin.
+Definition mk_c_lmodType := Eval hnf in LmodType _ _ RmodMixin.
 
-End MakeRmodule.
 End MakeRmodule.
 
 
-(* Bimodule : a R-S-bimodule is both a left R-module and a right S-module *)
+(* Bimodule : a R-S-bimodule is both a R-Lmodule and a S-Rmodule, with a compatibility property *)
 Module Bimodule.
 
 Section ClassDef.
@@ -285,7 +336,7 @@ Qed.
 End BimoduleTheory.
 
 
-(* Commutative Bimodule : a bimodule whose left and right scale have the same effect *)
+(* Commutative Bimodule : a bimodule whose left and right scale are interchangeable *)
 Module ComBimodule.
 
 Section ClassDef.
@@ -340,7 +391,7 @@ Canonical to_rmodType.
 Coercion to_bimodType : type >-> Bimodule.type.
 Canonical to_bimodType.
 Notation comBimodType R := (type (Phant R)).
-Notation ComBimodType R T a := (@pack _ (Phant R) T _ a _ _ id _ id _ id).
+Notation ComBimodType R T a := (@pack _ (Phant R) T _ a _ _ id _ id).
 Notation "[ 'comBimodType' R 'of' T 'for' cT ]" := (@clone _ (Phant R) T cT _ idfun)
   (at level 0, format "[ 'comBimodType'  R 'of'  T  'for'  cT ]")
   : form_scope.

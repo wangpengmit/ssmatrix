@@ -456,7 +456,7 @@ Section RmoduleForRmul.
 Variable m n' : nat.
 Notation n := n'.+1.
 
-Definition rmul_mixin :=  MakeRmodule.mk_mixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
+Definition rmul_mixin :=  RmodMixin (@rmulmxA m _ _ n) (@rmulmx1 _ _) (@rmulmxDl _ _ _) (@rmulmxDr _ _ _).
 
 Canonical rmul_rmodType := Eval hnf in RmodType _ 'M[V]_(m, n)^m rmul_mixin.
 
