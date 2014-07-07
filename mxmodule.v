@@ -730,14 +730,13 @@ Definition to_pair m n (k : 'I_(m * n)) : 'I_m * 'I_n :=
   match mxvec_indexP k with
     | IsMxvecIndex i j => (i, j)
   end.
-(*
-Lemma bij_prod_eq (a1T a2T rT : eqType) (f : a1T -> a2T -> rT) : bijective (prod_curry f) -> forall x1 x2 y1 y2, (f x1 x2 == f y1 y2) = ((x1 == y1) && (x2 == y2)).
+
+Lemma inj_prod_eq (a1T a2T rT : eqType) (f : a1T -> a2T -> rT) : injective (prod_curry f) -> forall x1 x2 y1 y2, (f x1 x2 = f y1 y2) -> ((x1 = y1) /\ (x2 = y2)).
 Proof.
-  move => bij x1 x2 y1 y2.
-  case/eqP: (x1 == y1).
-  case: (x2 == y2).
+  move => inj x1 x2 y1 y2 fe.
+  have /= inj2 := inj (_, _) (_, _).
+  by case/inj2: fe => -> ->.
 Qed.
-*)
 
 Section RightKroneckerProduct.
 
@@ -761,15 +760,24 @@ Proof.
   case hi: _ / mxvec_indexP => [ii1 ii2].
   case hj: _ / mxvec_indexP => [jj1 jj2].
   (* Search _ "{ on _ , bijective _ }". *)
-  have /= VV := (bij_inj (onT_bij (curry_mxvec_bij _ _))) (_, _) (_, _).
-  case/VV: hi => -> ->; case/VV: hj => -> ->.
-  by [].
+  have /= VV := inj_prod_eq (bij_inj (onT_bij (curry_mxvec_bij _ _))).
+  by case/VV: hi => -> ->; case/VV: hj => -> ->.
 Qed.
 
-(*
 Lemma rkronPc A B C : (A *or B) *mr vec C = vec (A *mr C^T *mr B^T)^T.
+Proof.
+  apply/matrixP => i j.
+  case/mxvec_indexP: i => i1 i2.
+  rewrite mxE ord1 trmxK mxE mxvecE (reindex _ (curry_mxvec_bij _ _)) /=.
+  transitivity (\sum_k \sum_j A i1 k :* C^T k j :* B^T j i2).
+  rewrite pair_bigA /=.  
+  apply: eq_bigr => [[ii jj]] /= _.
+  by rewrite rkronE mxE mxvecE !mxE -!scaleAr mulrC.
+  rewrite exchange_big /= !mxE.
+  apply: eq_bigr => jj _.
+  rewrite !mxE /rscale scaler_sumr.
+  by apply: eq_bigr => ii _.
 Qed.
-*)
 
 Lemma rkron0mx B : (0 : 'M_(m1,n1)) *or B = 0.
 Proof.
