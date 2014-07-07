@@ -294,6 +294,10 @@ Qed.
 Lemma lmulmxBl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) : (A1 - A2) *ml B = A1 *ml B - A2 *ml B.
 Proof. by rewrite lmulmxDl lmulNmx. Qed.
 
+Lemma lmulmxBr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
+  A *ml (B1 - B2) = A *ml B1 - A *ml B2.
+Proof. by rewrite lmulmxDr lmulmxN. Qed.
+
 Lemma lmulmx1Br m n (A : 'M_m) (B : 'M[V]_(m,n)) : (I - A) *ml B = B - A *ml B.
 Proof. by rewrite lmulmxBl lmul1mx. Qed.
 
@@ -493,6 +497,9 @@ Qed.
 Lemma rmulmxBr m n p (A : 'M_(m, n)) (B1 B2 : 'M_(n, p)) :
   A *mr (B1 - B2) = A *mr B1 - A *mr B2.
 Proof. by rewrite rmulmxDr rmulmxN. Qed.
+
+Lemma rmulmxBl m n p (A1 A2 : 'M_(m, n)) (B : 'M_(n, p)) : (A1 - A2) *mr B = A1 *mr B - A2 *mr B.
+Proof. by rewrite rmulmxDl rmulNmx. Qed.
 
 Lemma rmulmx1Br m n (A : 'M_(m,n)) B : A *mr (I - B) = A - A *mr B.
 Proof. by rewrite rmulmxBr rmulmx1. Qed.

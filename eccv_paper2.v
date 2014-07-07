@@ -208,5 +208,26 @@ Proof.
   by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -sub0r.
 Qed.
 
+Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
+
+Lemma dmWTr {p} (A : 'M[E]_(p, _)) : \\d (A *m ~W^T) = \\d A *mr ~W^T.
+Proof.
+  by rewrite -!lift_vec map_trmx -map_diag_mx  map_trmx !dmcr.
+Qed.
+
+(* Corresponds to Equation (36)~(40) *)
+Lemma d_vstar_part1 : \\d v* = 0 - (~W *m ~U)^-v *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *ml (I *ol \\d U)^T *mr (~W^T *m (I - (~W *m ~U) *m (~W *m ~U)^-v) *m ~W *m \m).
+Proof.
+  set goal := RHS.
+
+  suff ?: \\d ((~W *m ~U) ^- v) *mr ~W *mr \m = goal
+  by rewrite dmmr dmWr.
+
+  suff ?: 0 - (~W *m ~U) ^- v *ml \\d (~W *m ~U) *mr (~W *m ~U) ^- v *mr ~W *mr \m + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^-1 *ml (\\d (~W *m ~U))^T *mr H *mr ~W *mr \m = goal
+  by rewrite (dm_mupinv _ h_invertible) 2!rmulmxDl 2!rmulmxBl !rmul0mx.
+
+  by rewrite (map_trmx \d) trmx_mul dmWl dmWTr -(map_trmx \d) !(dm_lkron1mx _ _ U) /= !lrmulmxA !lmulmxA -!rmulmxA !mulmxA -trmx_mul -[in _^T *m _ *m _]mulmxA.
+Qed.
+
 End Section3.
 
