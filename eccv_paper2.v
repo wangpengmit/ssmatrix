@@ -246,5 +246,21 @@ Proof.
   by rewrite -trTPcrmul !lmulmxA sub0r addrC -!(lmulmxBl _ _ (vec (\\d U))) addrC -sub0r.
 Qed.
 
+Notation J := (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T).
+
+(* Corresponds to Equation (49)~(52) *)
+Lemma J_simpl : J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
+Proof.
+  set goal := RHS.
+
+  rewrite -{1}fold_mupinv.
+  rewrite sub0r.
+  rewrite addrC.
+  rewrite -!mulmxA.
+  rewrite -mulmxBr.
+  rewrite !mulmxA.
+
+Qed.
+
 End Section3.
 
