@@ -229,5 +229,22 @@ Proof.
   by rewrite (map_trmx \d) trmx_mul dmWl dmWTr -(map_trmx \d) !(dm_lkron1mx _ _ U) /= !lrmulmxA !lmulmxA -!rmulmxA !mulmxA -trmx_mul -[in _^T *m _ *m _]mulmxA.
 Qed.
 
+(* Corresponds to Equation (40')~(48) *)
+Lemma d_vstar : \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U).
+Proof.
+  set goal := RHS.
+
+  suff ?: 0 - ((~W *m ~U) ^- v *m ~W) *ml (I *ol \\d U) *mr v* + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m) = goal
+  by rewrite d_vstar_part1 trmx_lkron trmx1.
+
+  suff ?: 0 - ((~W *m ~U) ^- v *m ~W) *ml (I *ol \\d U) *mr vec V*^T + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *ml (I *ol (\\d U)^T) *mr vec (W .* R) = goal
+  by rewrite to_Vstar to_vec_dot.
+
+  suff ?: 0 - ((~W *m ~U) ^- v *m ~W *m ~V*) *ml vec (\\d U) + (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *m ((W .* R)^T *o I)) *ml vec (\\d U)^T = goal
+  by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA.
+
+  by rewrite -trTPcrmul !lmulmxA sub0r addrC -!(lmulmxBl _ _ (vec (\\d U))) addrC -sub0r.
+Qed.
+
 End Section3.
 
