@@ -253,13 +253,10 @@ Lemma J_simpl : J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^
 Proof.
   set goal := RHS.
 
-  rewrite -{1}fold_mupinv.
-  rewrite sub0r.
-  rewrite addrC.
-  rewrite -!mulmxA.
-  rewrite -mulmxBr.
-  rewrite !mulmxA.
+  suff ?: -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *m ((~W *m ~U)^T *m ~W *m ~V* - (W .* R)^T *o I *m T)) = goal
+  by rewrite -{1}fold_mupinv sub0r addrC -opprB -!(mulmxA _^^-1) -mulmxBr.
 
+  by rewrite [in _ - _]trmx_mul [in ~U^T]trmx_kron trmx1 -sub0r.
 Qed.
 
 End Section3.
