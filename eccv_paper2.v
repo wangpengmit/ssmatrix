@@ -48,7 +48,7 @@
       Corresponds to Equation (28)~(31) 
 
     d_eps1 : 
-      \\d eps1 = 0 - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)
+      \\d eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) 
                  *ml \\d (vec U)
       Corresponds to Equation (32)~(34) 
 
@@ -219,14 +219,14 @@ Notation "~V*" := (V* *o I).
 Notation T := (trT _ _ _).
 
 (* Corresponds to Equation (32)~(34) *)
-Lemma d_eps1 : \\d eps1 = 0 - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) *ml \\d (vec U).
+Lemma d_eps1 : \\d eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) *ml \\d (vec U).
 Proof.
   set goal := RHS.
 
   suff ?: 0 - (H *m ~W) *ml (I *ol \\d U) *mr vec V*^T - ((~W *m ~U) ^- v)^T *ml (I *ol (\\d U)^T) *mr vec (W .* R) = goal
   by rewrite d_eps1_part1 to_vec_dot {1}to_Vstar.
 
-  by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -sub0r.
+  by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -(lmulNmx _ (\\d _)).
 Qed.
 
 Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
