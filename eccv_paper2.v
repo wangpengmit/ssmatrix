@@ -26,7 +26,12 @@
                V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
                 R == W .* (M - U *m V*^T)
               ~V* == V* *o I
-                T == (trT _ _ _). The permutation matrix for transposing.
+                T == trT _ _ _. The permutation matrix for transposing.
+               v* == (~W *m ~U)^-v *m ~W *m \m
+                J == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
+                     ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
+                     ((W .* R)^T *o I) *m T.
+                     The Jacobian matrix of v*
 
   Main results: 
     vec_dot : forall V,
@@ -46,6 +51,22 @@
       \\d eps1 = 0 - (H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)
                  *ml \\d (vec U)
       Corresponds to Equation (32)~(34) 
+
+    d_vstar_part1 : 
+      \\d v* = 0 - (~W *m ~U)^-v *m ~W *ml (I *ol \\d U) *mr 
+               ((~W *m ~U)^-v *m ~W *m \m) + 
+               ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *ml 
+               (I *ol \\d U)^T *mr (~W^T *m (I - (~W *m ~U) *m (~W *m ~U)^-v) 
+               *m ~W *m \m)
+      Corresponds to Equation (36)~(40)
+
+    d_vstar : 
+      \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U)
+      Corresponds to Equation (40')~(48) 
+
+    J_simpl : 
+      J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)
+      Corresponds to Equation (49)~(52) 
 
   All results are under the assumption: invertible (mupinv_core v (~W *m ~U)).
   Sometimes I write (0 - a *m b) instead of (- a *m b) because the unary minus 
