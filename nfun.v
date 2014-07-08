@@ -130,13 +130,13 @@ Implicit Types d : E -> 'rV[E]_n.
 (* the Jacobian matrix of a vector of functions, which is just the gradients stacked together *)
 Definition jacob d m (v : 'cV[E]_m) := flatten (map_mx d v).
 
-Notation "\J" := jacob.
+Notation J := jacob.
 
 Record mixin_of d := Mixin {
   (* behavior of the derivation on base variables *)
-  _ : \J d \x = I;
+  _ : J d \x = I;
   (* behavior of the derivation on composition, which is the "chain rule" *)
-  _ : forall f v, d (f \o v) = (d f \\o v) *m \J d v
+  _ : forall f v, d (f \o v) = (d f \\o v) *m J d v
 }.
 
 Record class_of d := Class {
