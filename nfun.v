@@ -125,19 +125,23 @@ Variable R : ringType.
 (* n-variable functions *)
 Variable E : funType n R.
 
+Section Mixin.
+
 (* the gradient/derivation operator *)
-Implicit Types d : E -> 'rV[E]_n.
+Variable d : E -> 'rV[E]_n.
 (* the Jacobian matrix of a vector of functions, which is just the gradients stacked together *)
-Definition jacob d m (v : 'cV[E]_m) := flatten (map_mx d v).
+Definition jacob m (v : 'cV[E]_m) := flatten (map_mx d v).
 
 Notation J := jacob.
 
-Record mixin_of d := Mixin {
+Record mixin_of := Mixin {
   (* behavior of the derivation on base variables *)
-  _ : J d \x = I;
+  _ : J \x = I;
   (* behavior of the derivation on composition, which is the "chain rule" *)
-  _ : forall f v, d (f \o v) = (d f \\o v) *m J d v
+  _ : forall f v, d (f \o v) = (d f \\o v) *m J v
 }.
+
+End Mixin.
 
 Record class_of d := Class {
   base : linearDer d;
