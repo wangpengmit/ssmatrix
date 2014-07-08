@@ -266,6 +266,7 @@ Notation linearDer f := (class_of f).
 Coercion apply : map >-> Funclass.
 Coercion class : map >-> class_of.
 Coercion base : class_of >-> derAdd.
+Coercion base2 : class_of >-> Linear.class_of.
 Coercion mixin : class_of >-> Linear.mixin_of.
 Coercion to_der : map >-> DerMorph.map.
 Canonical to_der.
