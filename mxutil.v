@@ -2,7 +2,7 @@
 
 (*****************************************************************************
   Some matrix operations and lemmas: column-wise vectorization, Kronecker 
-product, Hadamard (element-wise) product, the permutation matrix for transposing, etc.
+product, Hadamard (element-wise) product, the commutation matrix, etc.
 
       rvec A == row-wise vectorization of A, synonym of mxvec
        vec A == column-wise vectorization A, reshaping an m x n matrix into 
@@ -23,7 +23,7 @@ product, Hadamard (element-wise) product, the permutation matrix for transposing
                   (map2_mx f A B) i j = f (A i j) (B i j) for all i and j. 
                   A and B must have the same size.
       A .* B == Hadamard (element-wise) product
-         trT == the permutation matrix for transposing, whose characteristic properties are:
+         trT == the commutation matrix, whose characteristic properties are:
                 (1) in terms of rvec:
                   trTP : rvec A *m trT^T = rvec A^T
                 (2) in terms of vec:
@@ -237,13 +237,13 @@ Proof.
   by rewrite mul_diag_mx !mxE !mxvecE !mxE.
 Qed.
 
-Section TransPerm.
+Section CommMx.
 
 Variable E : comRingType.
 
 Variable m n : nat.
 
-(* Permutation matrix for transposing *)
+(* The commutation matrix *)
 Definition trT := (lin_mx (@trmx E m n))^T.
 
 (* Characteristic properties *)
@@ -256,7 +256,7 @@ Proof.
   by apply trmx_inj; rewrite !trmx_mul (trmxK (rvec A^T)) trTP !trmxK.
 Qed.
 
-End TransPerm.
+End CommMx.
 
 (* Miscellaneous results *)
 

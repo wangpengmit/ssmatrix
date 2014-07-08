@@ -903,7 +903,7 @@ End LinMatrixAction.
 
 End LinRightAction.
 
-Section TransPerm.
+Section CommMx.
 
 Variable R : comRingType.
 Variable E : comBimodType R.
@@ -933,7 +933,7 @@ Proof.
   by apply trmx_inj; rewrite !trmx_lmulmx (trmxK (rvec A^T)) trTPrmul !trmxK.
 Qed.
 
-End TransPerm.
+End CommMx.
 
 Module Notations.
 
