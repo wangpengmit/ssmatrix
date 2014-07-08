@@ -255,6 +255,80 @@ Definition mk_c_lmodType := Eval hnf in LmodType _ _ RmodMixin.
 
 End MakeRmodule.
 
+Module RmoduleFromLmodule.
+Section RmoduleFromLmodule.
+
+Variable R : ringType.
+Variable V : lmodType R.
+
+Let rscale (v : V) (a : R^c) := (a : R) *: v.
+Lemma rassoc : forall v a b, rscale v (a * b) = rscale (rscale v a) b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerA.
+Qed.
+
+Lemma rightid : forall v, rscale v 1 = v.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scale1r.
+Qed.
+
+Lemma left_distr : forall v1 v2 a, rscale (v1 + v2) a = rscale v1 a + rscale v2 a.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDr.
+Qed.
+
+Lemma right_distr : forall v a b, rscale v (a + b) = rscale v a + rscale v b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDl.
+Qed.
+
+Definition RmodMixin_from_lmod := RmodMixin rassoc rightid left_distr right_distr.
+Definition rmod_from_lmod := Eval hnf in RmodType R^c V RmodMixin_from_lmod.
+
+End RmoduleFromLmodule.
+End RmoduleFromLmodule.
+
+Module RmoduleFromComm.
+Section RmoduleFromComm.
+
+Variable R : comRingType.
+Variable V : lmodType R.
+
+Let rscale (v : V) (a : R) := a *: v.
+Lemma rassoc : forall v a b, rscale v (a * b) = rscale (rscale v a) b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite !scalerA mulrC.
+Qed.
+
+Lemma rightid : forall v, rscale v 1 = v.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scale1r.
+Qed.
+
+Lemma left_distr : forall v1 v2 a, rscale (v1 + v2) a = rscale v1 a + rscale v2 a.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDr.
+Qed.
+
+Lemma right_distr : forall v a b, rscale v (a + b) = rscale v a + rscale v b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDl.
+Qed.
+
+Definition RmodMixin_from_comm := RmodMixin rassoc rightid left_distr right_distr.
+Definition rmod_from_comm := Eval hnf in RmodType R V RmodMixin_from_comm.
+
+End RmoduleFromComm.
+End RmoduleFromComm.
+
 
 (* Bimodule : a R-S-bimodule is both a R-Lmodule and a S-Rmodule, with a compatibility property *)
 Module Bimodule.
@@ -345,12 +419,12 @@ Section ClassDef.
 
 Variable R : ringType.
 
-Definition axiom (V : Type) (lscale : R -> V -> V) (rscale : V -> R -> V) := 
-  forall (a : R) (v : V), rscale v a = lscale a v.
+Definition mixin_of (V : bimodType R R) := 
+  forall (a : R) (v : V), v :* a = a *: v.
 
 Record class_of (T : Type) : Type := Class {
   base : Bimodule.class_of R R T;
-  mixin : @axiom T (@scale R (Lmodule.Pack _ base T)) (@rscale R (Rmodule.Pack _ base T))
+  mixin : mixin_of (Bimodule.Pack _ _ base T)
 }.
 
 Local Coercion base : class_of >-> Bimodule.class_of.
@@ -363,10 +437,9 @@ Definition clone c of phant_id class c := @Pack phR T c T.
 Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
-Definition pack T lscale rscale (axT : @axiom T lscale rscale) :=
-  fun bT b & phant_id (@Bimodule.class R R phR phR bT) (b : Bimodule.class_of R R T) =>
-  fun ax & phant_id axT ax => 
-  Pack phR (@Class T b ax) T.
+Definition pack b0 (m0 : mixin_of (@Bimodule.Pack _ _ (Phant R) (Phant R) T b0 T)) :=
+  fun bT b & phant_id (@Bimodule.class _ _ phR phR bT) b =>
+  fun m & phant_id m0 m => Pack phR (@Class T b m) T.
 
 Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
@@ -393,7 +466,7 @@ Canonical to_rmodType.
 Coercion to_bimodType : type >-> Bimodule.type.
 Canonical to_bimodType.
 Notation comBimodType R := (type (Phant R)).
-Notation ComBimodType R T a := (@pack _ (Phant R) T _ _ a _ _ id _ id).
+Notation ComBimodType R T a := (@pack _ (Phant R) T _ a _ _ id _ id).
 Notation "[ 'comBimodType' R 'of' T 'for' cT ]" := (@clone _ (Phant R) T cT _ idfun)
   (at level 0, format "[ 'comBimodType'  R 'of'  T  'for'  cT ]")
   : form_scope.
