@@ -85,6 +85,7 @@ Definition arg n (E : funRingType n) := FunRing.arg E.
 Notation "'x@' i" := (arg _ i) (at level 0, format "'x@' i") : ring_scope.
 Definition compose {n} {E : funRingType n} := FunRing.compose E.
 Notation "f \o v" := (compose f v) : ring_scope.
+Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
 
 Definition flatten T m n (A : 'cV['rV[T]_n]_m) := \matrix_(i,j) A i 0 0 j.
 
@@ -106,7 +107,6 @@ Implicit Types d : E -> 'rV[E]_n.
 Definition jacob d m (v : 'cV[E]_m) := flatten (map_mx d v).
 
 Notation "\J" := jacob.
-Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
 
 Record class_of d := Class {
   (* derivation of base variables *)
@@ -128,6 +128,7 @@ Coercion apply : map >-> Funclass.
 Coercion class : map >-> class_of.
 Notation "{ 'funDer' E }" := (map (Phant E))
   (at level 0, format "{ 'funDer'  E }") : ring_scope.
+Notation "\Jacob" := jacob.
 End Exports.
 
 End FunDer.
@@ -136,8 +137,7 @@ Import FunDer.Exports.
 Section FunDerTheory.
 
 Variables (n : nat) (E : funRingType n) (d : {funDer E}) (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
-Notation "\J" := (FunDer.jacob d).
-Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
+Notation "\J" := (\Jacob d).
 
 Lemma jacob_chain  : \J (u \\o v) = (\J u \\o v) *m \J v.
 Proof.
