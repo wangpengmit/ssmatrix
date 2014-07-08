@@ -23,10 +23,11 @@ Section ClassDef.
 Variable n : nat.
 
 Record mixin_of (T : Type) := Mixin {
-  (* parallel apply/compose/bind/subst *)
-  compose : T -> 'cV[T]_n -> T;
   (* base variables: x_1, x_2, ..., x_n *)
-  arg : 'I_n -> T
+  arg : 'I_n -> T;
+  (* parallel compose/bind/subst/apply. 
+     It is easier to define sequential substitution by parallel substitution, than the other way around. *)
+  compose : T -> 'cV[T]_n -> T
 }.
 
 Record class_of T := Class {
@@ -85,15 +86,17 @@ Definition arg n (E : funRingType n) := FunRing.arg E.
 Notation "'x@' i" := (arg _ i) (at level 0, format "'x@' i") : ring_scope.
 Definition compose {n} {E : funRingType n} := FunRing.compose E.
 Notation "f \o v" := (compose f v) : ring_scope.
+(* induced composition on a matrix of functions *)
 Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
 
+(* flatten a column vector of row vectors to a matrix *)
 Definition flatten T m n (A : 'cV['rV[T]_n]_m) := \matrix_(i,j) A i 0 0 j.
 
 Require Import bimodule.
 Require Import derivation.
 
-(* Derivation operator characterized by the partial derivatives *)
-Module FunDer.
+(* Gradient: a derivation operator defined by the partial derivatives *)
+Module Gradient.
 
 Section ClassDef.
 
@@ -101,17 +104,17 @@ Variable n : nat.
 (* ring of n-variable functions *)
 Variable E : funRingType n.
 
-(* the derivation *)
+(* the gradient/derivation operator *)
 Implicit Types d : E -> 'rV[E]_n.
-(* Jacobian matrix *)
+(* the Jacobian matrix of a vector of functions, which is just the gradients stacked together *)
 Definition jacob d m (v : 'cV[E]_m) := flatten (map_mx d v).
 
 Notation "\J" := jacob.
 
 Record class_of d := Class {
-  (* derivation of base variables *)
+  (* behavior of the derivation on base variables *)
   _ : forall i, d x@i = delta_mx 0 i;
-  (* chain rule *)
+  (* behavior of the derivation on composition, which is the "chain rule" *)
   _ : forall f v, d (f \o v) = (d f \\o v) *m \J d v
 }.
 
@@ -126,20 +129,25 @@ End ClassDef.
 Module Exports.
 Coercion apply : map >-> Funclass.
 Coercion class : map >-> class_of.
-Notation "{ 'funDer' E }" := (map (Phant E))
-  (at level 0, format "{ 'funDer'  E }") : ring_scope.
-Notation "\Jacob" := jacob.
+Notation "{ 'gradient' E }" := (map (Phant E))
+  (at level 0, format "{ 'gradient'  E }") : ring_scope.
+Notation "\J" := jacob.
 End Exports.
 
-End FunDer.
-Import FunDer.Exports.
+End Gradient.
+Import Gradient.Exports.
 
-Section FunDerTheory.
+Section GradientTheory.
 
-Variables (n : nat) (E : funRingType n) (d : {funDer E}) (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
-Notation "\J" := (\Jacob d).
+Variables (n : nat) (E : funRingType n) (d : {gradient E}) (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
 
-Lemma jacob_chain  : \J (u \\o v) = (\J u \\o v) *m \J v.
+Lemma chain f : d (f \o v) = (d f \\o v) *m \J d v.
+Proof. by case: d => /= dd []. Qed.
+
+Lemma jacob_chain  : \J d (u \\o v) = (\J d u \\o v) *m \J d v.
 Proof.
-  admit.
+  apply/matrixP => i j.
+  rewrite !mxE chain !mxE.
+  apply eq_bigr => k _.
+  by rewrite !mxE.
 Qed.

@@ -59,7 +59,119 @@ Open Local Scope ring_scope.
 
 Require Import matrix.
 
-Local Notation I := (1%:M).
+Require Import mxutil.
+Import Notations.
+Require Import bimodule.
+
+Module RmoduleFromLmodule.
+Section RmoduleFromLmodule.
+
+Variable R : ringType.
+Variable V : lmodType R.
+
+Let rscale (v : V) (a : R^c) := (a : R) *: v.
+Lemma rassoc : forall v a b, rscale v (a * b) = rscale (rscale v a) b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerA.
+Qed.
+
+Lemma rightid : forall v, rscale v 1 = v.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scale1r.
+Qed.
+
+Lemma left_distr : forall v1 v2 a, rscale (v1 + v2) a = rscale v1 a + rscale v2 a.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDr.
+Qed.
+
+Lemma right_distr : forall v a b, rscale v (a + b) = rscale v a + rscale v b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDl.
+Qed.
+
+Definition RmodMixin_from_lmod := RmodMixin rassoc rightid left_distr right_distr.
+Definition rmod_from_lmod := Eval hnf in RmodType _ _ RmodMixin_from_lmod.
+
+End RmoduleFromLmodule.
+End RmoduleFromLmodule.
+
+Section RmoduleFromComm.
+
+Variable R : comRingType.
+Variable V : lmodType R.
+
+Let rscale (v : V) (a : R) := a *: v.
+Lemma rassoc : forall v a b, rscale v (a * b) = rscale (rscale v a) b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite !scalerA mulrC.
+Qed.
+
+Lemma rightid : forall v, rscale v 1 = v.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scale1r.
+Qed.
+
+Lemma left_distr : forall v1 v2 a, rscale (v1 + v2) a = rscale v1 a + rscale v2 a.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDr.
+Qed.
+
+Lemma right_distr : forall v a b, rscale v (a + b) = rscale v a + rscale v b.
+Proof. 
+  intros; subst rscale; simpl.
+  by rewrite scalerDl.
+Qed.
+
+Definition RmodMixin_from_comm := RmodMixin rassoc rightid left_distr right_distr.
+Definition rmod_from_comm := Eval hnf in RmodType R V RmodMixin_from_comm.
+
+End RmoduleFromComm.
+
+Section ComRingElem1.
+
+Variable R : comRingType.
+Variable m n : nat.
+
+Canonical matrix_rmodType := Eval hnf in RmodType R 'M[R]_(m,n) (RmodMixin_from_comm (matrix_lmodType R m n)).
+
+End ComRingElem1.
+
+Section ComRingElem.
+
+Variable R : comRingType.
+Variable m n : nat.
+
+Lemma lrassoc (a : R) (A : 'M[R]_(m, n)) (b : R) : a *: (A :* b) = a *: A :* b.
+Proof.
+  apply/matrixP => i j; rewrite !mxE.
+  by rewrite !mulrA (mulrC a b).
+Qed.
+
+Canonical matrix_bimodType := Eval hnf in BimodType R R 'M[R]_(m, n) lrassoc.
+
+End ComRingElem.
+
+Section ComRingElem2.
+
+Variable R : comRingType.
+Variable m n : nat.
+
+Lemma lrcomm (a : R) (A : 'M[R]_(m, n)) : A :* a = a *: A.
+Proof.
+  by apply/matrixP => i j; rewrite !mxE.
+Qed.
+
+Canonical matrix_comBimodType := Eval hnf in ComBimodType R 'M[R]_(m, n) lrcomm.
+
+End ComRingElem2.
 
 (* Generalized matrix multiplication A * B = C, where A, B and C can have different element types, and C's elements only needs to be Zmodule *)
 Section GeneralMul.
@@ -428,8 +540,6 @@ Qed.
 
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.
 
-Require Import bimodule.
-
 Section RmoduleElem.
 
 Variable R : ringType.
@@ -567,9 +677,6 @@ by apply eq_bigr => j ?; rewrite !mxE lrscaleC.
 Qed.
 
 End ComBimoduleElem.
-
-Require Import mxutil.
-Import Notations.
 
 Section KroneckerProduct.
 

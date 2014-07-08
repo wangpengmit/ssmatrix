@@ -188,6 +188,7 @@ End ClassDef.
 
 Module Import Exports.
 Coercion sort : type >-> Sortclass.
+Coercion class : type >-> class_of.
 Bind Scope ring_scope with sort.
 Coercion eqType : type >-> Equality.type.
 Canonical eqType.
@@ -300,6 +301,7 @@ Module Exports.
 Coercion base : class_of >-> Rmodule.class_of.
 Coercion base2 : class_of >-> Lmodule.class_of.
 Coercion sort : type >-> Sortclass.
+Coercion class : type >-> class_of.
 Coercion eqType : type >-> Equality.type.
 Canonical eqType.
 Coercion choiceType : type >-> Choice.type.
@@ -343,13 +345,12 @@ Section ClassDef.
 
 Variable R : ringType.
 
-Record mixin_of (V : bimodType R R) := Mixin {
-  _ : forall (a : R) (v : V), v :* a = a *: v
-}.
+Definition axiom (V : Type) (lscale : R -> V -> V) (rscale : V -> R -> V) := 
+  forall (a : R) (v : V), rscale v a = lscale a v.
 
 Record class_of (T : Type) : Type := Class {
   base : Bimodule.class_of R R T;
-  mixin : mixin_of (Bimodule.Pack _ _ base T)
+  mixin : @axiom T (@scale R (Lmodule.Pack _ base T)) (@rscale R (Rmodule.Pack _ base T))
 }.
 
 Local Coercion base : class_of >-> Bimodule.class_of.
@@ -362,9 +363,10 @@ Definition clone c of phant_id class c := @Pack phR T c T.
 Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
-Definition pack b0 (m0 : mixin_of (@Bimodule.Pack _ _ (Phant R) (Phant R) T b0 T)) :=
-  fun bT b & phant_id (@Bimodule.class _ _ phR phR bT) b =>
-  fun m & phant_id m0 m => Pack phR (@Class T b m) T.
+Definition pack T lscale rscale (axT : @axiom T lscale rscale) :=
+  fun bT b & phant_id (@Bimodule.class R R phR phR bT) (b : Bimodule.class_of R R T) =>
+  fun ax & phant_id axT ax => 
+  Pack phR (@Class T b ax) T.
 
 Definition eqType := @Equality.Pack cT xclass xT.
 Definition choiceType := @Choice.Pack cT xclass xT.
@@ -391,7 +393,7 @@ Canonical to_rmodType.
 Coercion to_bimodType : type >-> Bimodule.type.
 Canonical to_bimodType.
 Notation comBimodType R := (type (Phant R)).
-Notation ComBimodType R T a := (@pack _ (Phant R) T _ a _ _ id _ id).
+Notation ComBimodType R T a := (@pack _ (Phant R) T _ _ a _ _ id _ id).
 Notation "[ 'comBimodType' R 'of' T 'for' cT ]" := (@clone _ (Phant R) T cT _ idfun)
   (at level 0, format "[ 'comBimodType'  R 'of'  T  'for'  cT ]")
   : form_scope.
@@ -409,7 +411,7 @@ Variables (R : ringType) (V : comBimodType R).
 Implicit Types (v : V).
 
 Lemma lrscaleC (a : R) v : v :* a  = a *: v.
-Proof. by case: V v => sort [] base []. Qed.
+Proof. by case: V v => sort [] base. Qed.
 
 End ComBimoduleTheory.
 
