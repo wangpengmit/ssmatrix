@@ -29,7 +29,7 @@ Variable n : nat.
 
 Record mixin_of (T : Type) := Mixin {
   (* base variables: x_1, x_2, ..., x_n *)
-  arg : 'I_n -> T;
+  arg : 'cV[T]_n;
   (* parallel compose/bind/subst/apply. 
      It is easier to define sequential substitution by parallel substitution, than the other way around. *)
   compose : T -> 'cV[T]_n -> T
@@ -103,7 +103,9 @@ End Exports.
 End Fun.
 Import Fun.Exports.
 
-Definition arg n (R : ringType) (E : funType n R) := Fun.arg E.
+Definition args n (R : ringType) (E : funType n R) := Fun.arg E.
+Notation "\x" := (args _) : ring_scope.
+Definition arg n (R : ringType) (E : funType n R) i := args E i 0.
 Notation "'x@' i" := (arg _ i) (at level 0, format "'x@' i") : ring_scope.
 Definition compose {n} {R : ringType} {E : funType n R} := Fun.compose E.
 Notation "f \o v" := (compose f v) : ring_scope.
@@ -132,7 +134,7 @@ Notation "\J" := jacob.
 
 Record mixin_of d := Mixin {
   (* behavior of the derivation on base variables *)
-  _ : forall i, d x@i = delta_mx 0 i;
+  _ : \J d \x = I;
   (* behavior of the derivation on composition, which is the "chain rule" *)
   _ : forall f v, d (f \o v) = (d f \\o v) *m \J d v
 }.
@@ -186,7 +188,7 @@ Notation "[ 'gradient' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
 Notation "[ 'gradient' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
   (at level 0, format "[ 'gradient'  'of'  f ]") : form_scope.
 
-Notation "\J" := jacob.
+Notation Jacob := jacob.
 
 End Exports.
 
@@ -197,10 +199,19 @@ Section GradientTheory.
 
 Variables (n : nat) (R : ringType) (E : funType n R) (d : {gradient E}) (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
 
-Lemma chain f : d (f \o v) = (d f \\o v) *m \J d v.
+Notation J := (Jacob d).
+
+(* analogous to the single-variable derivative base rule:
+   x' = 1 *)
+Lemma jacob_base : J \x = I.
 Proof. by case: d => /= dd [] base []. Qed.
 
-Lemma jacob_chain  : \J d (u \\o v) = (\J d u \\o v) *m \J d v.
+Lemma chain f : d (f \o v) = (d f \\o v) *m J v.
+Proof. by case: d => /= dd [] base []. Qed.
+
+(* analogous to the single-variable derivative chain rule:
+   f(g(x))' = f'(g(x)) * g'(x) or (f \o g)' = (f' \o g) * g' *)
+Lemma jacob_chain  : J (u \\o v) = (J u \\o v) *m J v.
 Proof.
   apply/matrixP => i j.
   rewrite !mxE chain !mxE.
