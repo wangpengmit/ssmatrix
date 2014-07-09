@@ -5,33 +5,33 @@
   Matrix Factorization with Missing Data" (ECCV 2014 submission)
 
   Main definitions:
-                C : ringType. Type of constants.
-                E : unitComAlgType C. Type of variables and matrix elements.
-                D : comBimodType E. The co-domain of differentiation operator.
-               \d : {linearDer E -> D}. The differentiation operator (derivation)
-                    on elements.
-              \\d : Matrix differentiation, which is just element-wise 
-                    differentiation.
-            m n r : non-zero natural numbers
-              W M : 'M[E]_(m,n). The weight and target matrix in the matrix 
-                    decomposition problem. They are lifted from 'M[C]_(m,n), 
-                    so they are constant.
-                U : 'M[E]_(m,r)
-                v : C
-               ~W == diag_mx (vec W)^T
-               \m == vec M
-               ~U == I *ol U
-             eps1 == ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m
-                H == I - ~W *m ~U *m (~W *m ~U)^-v
-               V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
-                R == W .* (M - U *m V*^T)
-              ~V* == V* *o I
-                T == trT _ _ _. The permutation matrix for transposing.
-               v* == (~W *m ~U)^-v *m ~W *m \m
-                J == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
-                     ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
-                     ((W .* R)^T *o I) *m T.
-                     The Jacobian matrix of v*
+        C :  ringType. Type of constants.
+        E :  unitComAlgType C. Type of variables and matrix elements.
+        D :  comBimodType E. The co-domain of differentiation operator.
+       \d :  {linearDer E -> D}. The differentiation operator (derivation)
+             on elements.
+      \\d :  Matrix differentiation, which is just element-wise 
+             differentiation.
+    m n r :  non-zero natural numbers
+      W M :  'M[E]_(m,n). The weight and target matrix in the matrix 
+             decomposition problem. They are lifted from 'M[C]_(m,n), 
+             so they are constant.
+        U :  'M[E]_(m,r)
+        v :  C
+       ~W == diag_mx (vec W)^T
+       \m == vec M
+       ~U == I *ol U
+     eps1 == ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m
+        H == I - ~W *m ~U *m (~W *m ~U)^-v
+       V* == (cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T
+    R == W .* (M - U *m V*^T)
+      ~V* == V* *o I
+        T == trT _ _ _. The permutation matrix for transposing.
+       v* == (~W *m ~U)^-v *m ~W *m \m
+        J == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
+             ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
+             ((W .* R)^T *o I) *m T.
+             The Jacobian matrix of v*
 
   Main results: 
     vec_dot : forall V,
@@ -60,13 +60,37 @@
                *m ~W *m \m)
       Corresponds to Equation (36)~(40)
 
-    d_vstar : 
+    d_vstar_part2 : 
       \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U)
       Corresponds to Equation (40')~(48) 
 
     J_simpl : 
       J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)
       Corresponds to Equation (49)~(52) 
+
+    d_vstar : 
+      \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U)
+      direct corollary from d_vstar_part2 and J_simpl.
+
+  When instantiate the previous results with the following instantiation:
+        p == r * m. The number of free variables (which is also the 
+             number of elements of U).
+        E :  funType p C. Single-value functions on C with up-to p arity.
+             The vector of the p free variables are denoted as \x.
+       \d :  {gradient E}. A gradient operator on E. This is where
+             the Jacobian matrix is defined.
+        U == cvec_mx \x. 
+             (vec U) is the basis vector of the free variables, with 
+             regard to which we want to compute the Jacobian matrices.
+       \J == Jacob \d. The Jacobian matrix operator from \d.
+
+  With this instantiation, we then have the following results:
+    J_eps1 : 
+      \J eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)
+
+    J_vstar : 
+      \J v* = -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
+              ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T))
 
   All results are under the assumption: invertible (mupinv_core v (~W *m ~U)).
   Sometimes I write (0 - a *m b) instead of (- a *m b) because the unary minus 
@@ -277,11 +301,11 @@ Proof.
   by rewrite [in _ - _]trmx_mul [in ~U^T]trmx_kron trmx1 -sub0r.
 Qed.
 
-Lemma d_vstar : \\d v* = (0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml vec (\\d U).
+Lemma d_vstar : \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U).
 Proof.
   set goal := RHS.
 
-  by rewrite d_vstar_part2 J_simpl.
+  by rewrite d_vstar_part2 J_simpl sub0r -(map_vec _ U).
 Qed.
 
 End Section3.
@@ -321,9 +345,9 @@ Notation R := (W .* (M - U *m V*^T)).
 Notation "~V*" := (V* *o I).
 Notation T := (trT _ _ _).
 
-Notation J := (Jacob d).
+Notation "\J" := (Jacob \d).
 
-Lemma J_eps1 : J eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T).
+Lemma J_eps1 : \J eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T).
 Proof.
   set goal := RHS.
 
@@ -332,11 +356,11 @@ Qed.
 
 Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
 
-Lemma J_vstar : J v* = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
+Lemma J_vstar : \J v* = -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)).
 Proof.
   set goal := RHS.
 
-  by rewrite /Jacob (d_vstar _ _ h_invertible) /= flatten_lmul /= -(map_vec _ U) cvec_mxK /= fold_jacob jacob_base mulmx1.
+  by rewrite /Jacob (d_vstar _ _ h_invertible) /= flatten_lmul /= cvec_mxK /= fold_jacob jacob_base mulmx1.
 Qed.
 
 End Jacobian.
