@@ -50,13 +50,18 @@ GradientMixin dI dcomp == builds an Gradient mixin from lemmas about the operato
                         where J := Jacob d.
     packGradient V m == packs a Gradient mixin into a Gradient structure
 
+  The following lemmas use notations J := (Jacob d) and \\d := (map_mx d).
+
+  This lemma can be used to "read off" the Jacobian matrix from a 
+  canonical form:
+     jacob_intro : \\d u = A *ml \\d \x -> J u = A
+
   There are two view to express the chain rules. The first is in terms of (J v):
            chain : d (f \o v) = (d f \\o v) *m J v
      jacob_chain : J (u \\o v) = (J u \\o v) *m J v
   The second is in terms of (\\d v):
           chain2 : d (f \o v) = ((d f \\o v) *ml \\d v) 0 0
     jacob_chain2 : \\d (u \\o v) = (J u \\o v) *ml \\d v
-  where J := Jacob d and \\d := map_mx d.
 
   The first view is analogous to the single-variable derivative chain rule:
     f(g(x))' = f'(g(x)) * g'(x)
@@ -273,9 +278,13 @@ Import Gradient.Exports.
 
 Section GradientTheory.
 
-Variables (n : nat) (R : ringType) (E : funType n R) (d : {gradient E}) (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
-
+Variables (n : nat) (R : ringType) (E : funType n R) (d : {gradient E}). 
 Notation J := (Jacob d).
+Notation "\\d" := (map_mx d).
+
+Section ChainRules.
+
+Variables (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
 
 (* analogous to the single-variable derivative base rule:
    x' = 1 *)
@@ -294,8 +303,6 @@ Proof.
   apply eq_bigr => k _.
   by rewrite !mxE.
 Qed.
-
-Notation "\\d" := (map_mx d).
 
 (* another view of the chain rule lemmas, in the format of df(v)=J(f,v)*dv *)
 
@@ -317,6 +324,15 @@ Qed.
 
 Lemma fold_jacob : flatten_mx (\\d u) = J u.
 Proof. by []. Qed.
+
+End ChainRules.
+
+Variables (m : nat) (u : 'cV[E]_m).
+
+Lemma jacob_intro A : \\d u = A *ml \\d \x -> J u = A.
+Proof.
+  by move => h; rewrite /Jacob h /= flatten_lmul /= fold_jacob jacob_base mulmx1.
+Qed.
 
 End GradientTheory.
 

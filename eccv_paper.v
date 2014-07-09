@@ -346,18 +346,14 @@ Notation "\J" := (Jacob \d).
 
 Lemma J_eps1 : \J eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T).
 Proof.
-  set goal := RHS.
-
-  by rewrite /Jacob (d_eps1 _ _ h_invertible) /= flatten_lmul /= cvec_mxK /= fold_jacob jacob_base mulmx1.
+  by apply jacob_intro; rewrite (d_eps1 _ _ h_invertible) cvec_mxK.
 Qed.
 
 Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
 
 Lemma J_vstar : \J v* = -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)).
 Proof.
-  set goal := RHS.
-
-  by rewrite /Jacob (d_vstar _ _ h_invertible) /= flatten_lmul /= cvec_mxK /= fold_jacob jacob_base mulmx1.
+  by apply jacob_intro; rewrite (d_vstar _ _ h_invertible) cvec_mxK.
 Qed.
 
 End Jacobian.
