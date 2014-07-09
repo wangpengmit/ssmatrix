@@ -116,9 +116,9 @@ Require Import mxutil.
 Import Notations.
 Require Import mxmodule.
 Import Notations.
-Require Import mxdiff2.
+Require Import mxdiff.
 Import Notations.
-Require Import eccv_paper_appendix2.
+Require Import eccv_paper_appendix.
 Import Notations.
 
 Section Section3.

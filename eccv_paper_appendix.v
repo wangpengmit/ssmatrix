@@ -45,7 +45,7 @@ Require Import bimodule.
 Require Import derivation.
 Require Import mxmodule.
 Import Notations.
-Require Import mxdiff2.
+Require Import mxdiff.
 
 Section Sym.
 

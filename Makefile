@@ -3,10 +3,10 @@ MODULES := \
 	bimodule \
 	derivation \
 	mxmodule \
-	mxdiff2 \
-	eccv_paper_appendix2 \
-	eccv_paper2 \
+	mxdiff \
 	nfun \
+	eccv_paper_appendix \
+	eccv_paper \
 
 VS      := $(MODULES:%=%.v)
 
