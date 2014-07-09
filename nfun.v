@@ -254,4 +254,10 @@ Proof.
   by rewrite !mxE.
 Qed.
 
+Lemma fold_jacob : flatten (\\d u) = J u.
+Proof. by []. Qed.
+
 End GradientTheory.
+
+Export Fun.Exports.
+Export Gradient.Exports.

@@ -148,7 +148,7 @@ Qed.
 (* Regularization rate *)
 Variable v : C.
 
-Definition eps1 := ~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m.
+Notation eps1 := (~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m).
 Notation H := (I - ~W *m ~U *m (~W *m ~U)^-v).
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
 
@@ -171,9 +171,6 @@ Qed.
 Lemma d_eps1_part1 : \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m).
 Proof.
   set goal := RHS.
-
-  suff ?: \\d (~W *m \m - ~W *m ~U *m (~W *m ~U) ^- v *m ~W *m \m) = goal
-  by rewrite /eps1.
 
   suff ?: 0 - \\d (~W *m ~U *m (~W *m ~U) ^- v) *mr ~W *mr \m = goal
   by rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
@@ -251,7 +248,7 @@ Proof.
 Qed.
 
 (* Corresponds to Equation (40')~(48) *)
-Lemma d_vstar : \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U).
+Lemma d_vstar_part2 : \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U).
 Proof.
   set goal := RHS.
 
@@ -280,5 +277,66 @@ Proof.
   by rewrite [in _ - _]trmx_mul [in ~U^T]trmx_kron trmx1 -sub0r.
 Qed.
 
+Lemma d_vstar : \\d v* = (0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml vec (\\d U).
+Proof.
+  set goal := RHS.
+
+  by rewrite d_vstar_part2 J_simpl.
+Qed.
+
 End Section3.
 
+Require Import nfun.
+
+Section Jacobian.
+
+(* All dimensions are non-zero. All matrices are non-empty. *)
+Variable m' n' r' : nat.
+Notation m := m'.+1.
+Notation n := n'.+1.
+Notation r := r'.+1.
+(* The number of free variables, which is the number of elements of U *)
+Notation p := (r * m)%nat.
+
+Variable C : ringType.
+Variable E : funType p C.
+Variable d : {gradient E}.
+Notation "\d" := (Gradient.apply d).
+Notation "\\d" := (map_mx \d).
+
+Variable cW cM : 'M[C]_(m, n).
+Notation W := (lift cW).
+Notation M := (lift cM).
+(* (vec U) is the basis vector of the free variables *)
+Definition  U : 'M[E]_(m, r) := cvec_mx \x.
+Notation "~W" := (diag_mx (vec W)^T).
+Notation "\m" := (vec M).
+Notation "~U" := (I *o U).
+Variable v : C.
+Notation eps1 := (~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m).
+Notation H := (I - ~W *m ~U *m (~W *m ~U)^-v).
+Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
+Notation "V*" := ((cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T).
+Notation R := (W .* (M - U *m V*^T)).
+Notation "~V*" := (V* *o I).
+Notation T := (trT _ _ _).
+
+Notation J := (Jacob d).
+
+Lemma J_eps1 : J eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T).
+Proof.
+  set goal := RHS.
+
+  by rewrite /Jacob (d_eps1 _ _ h_invertible) /= flatten_lmul /= cvec_mxK /= fold_jacob jacob_base mulmx1.
+Qed.
+
+Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
+
+Lemma J_vstar : J v* = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
+Proof.
+  set goal := RHS.
+
+  by rewrite /Jacob (d_vstar _ _ h_invertible) /= flatten_lmul /= -(map_vec _ U) cvec_mxK /= fold_jacob jacob_base mulmx1.
+Qed.
+
+End Jacobian.
