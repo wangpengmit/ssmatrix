@@ -110,9 +110,6 @@ Require Import ssralg.
 Import GRing.Theory.
 Open Local Scope ring_scope.
 
-Require Import diffalg.
-Open Local Scope diff_scope.
-
 Require Import bimodule.
 Require Import derivation.
 Require Import mxutil.

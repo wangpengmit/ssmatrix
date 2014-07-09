@@ -1,4 +1,5 @@
 MODULES := \
+	mxutil \
 	bimodule \
 	derivation \
 	mxmodule \
@@ -6,11 +7,6 @@ MODULES := \
 	eccv_paper_appendix2 \
 	eccv_paper2 \
 	nfun \
-	diffalg \
-	mxutil \
-	mxdiff \
-	eccv_paper_appendix \
-	eccv_paper \
 
 VS      := $(MODULES:%=%.v)
 
