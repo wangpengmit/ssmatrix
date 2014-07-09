@@ -115,6 +115,17 @@ Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
 (* flatten a column vector of row vectors to a matrix *)
 Definition flatten T m n (A : 'cV['rV[T]_n]_m) := \matrix_(i,j) A i 0 0 j.
 
+Lemma flatten1 T n (A : 'M['rV[T]_n]_1) : flatten A = A 0 0.
+Proof. by apply/matrixP => i j; rewrite !mxE !ord1. Qed.
+
+Lemma flatten_lmul (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'cV['rV[R]_p]_n) : flatten (A *ml B) = A *m flatten B.
+Proof.
+  apply/matrixP => i j.
+  rewrite !mxE summxE.
+  apply eq_bigr => k _.
+  by rewrite !mxE.
+Qed.
+
 (* Gradient: a derivation operator defined by the partial derivatives *)
 Module Gradient.
 
@@ -219,6 +230,26 @@ Lemma jacob_chain  : J (u \\o v) = (J u \\o v) *m J v.
 Proof.
   apply/matrixP => i j.
   rewrite !mxE chain !mxE.
+  apply eq_bigr => k _.
+  by rewrite !mxE.
+Qed.
+
+Notation "\\d" := (map_mx d).
+
+(* another view of the chain rule lemmas, in the format of df(v)=J(v)*dv *)
+
+(* the (0,0) indexing is because the result of (row * col) is a 1x1 matrix, not a scalar *)
+Lemma chain2 f : d (f \o v) = ((d f \\o v) *ml \\d v) 0 0.
+Proof.
+  by rewrite chain -flatten1 flatten_lmul.
+Qed.
+
+Lemma jacob_chain2 : \\d (u \\o v) = (J u \\o v) *ml \\d v.
+Proof.
+  apply/matrixP => i j.
+  rewrite !mxE chain.
+  apply/matrixP => ii jj.
+  rewrite !mxE !ord1 !summxE.
   apply eq_bigr => k _.
   by rewrite !mxE.
 Qed.
