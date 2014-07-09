@@ -1,3 +1,75 @@
+(* (c) Copyright ? *)
+
+(*****************************************************************************
+  This file defines the algebra of finite-arity functions and the gradient
+  operator on them.
+
+  * Fun (the algebra of n-arity functions, which is a unital commutative algebra, 
+    with n formal arguments (or variables), and a composition (or substitution/
+    application/binding) operation):  
+         funType n R == interface type for an Fun structure with     
+                        arity n and scalars of type R; R must have a ringType  
+                        structure.                                       
+   FunMixin arg comp == builds an Fun mixin from an n-length column vector of 
+                        formal arguments and a composition operation. 
+                        Each formal argument x_i can be seen as a n-arity 
+                        function that returns the namesake argument, i.e. 
+                        x_i = fun x1 x2 ... xn => xi.
+                  \x == the vector of formal arguments (the "basis vector"). The
+                        ambient funType structure is infered.
+                \x_i == the i-th formal argument, i.e. the i-th element of \x
+              f \o v == the composition of f with an n-length column vector of
+                        functions v. (f : E, v : 'cV[E]_n, E : funType n
+                        R). This operation returns an n-arity function which is
+                        f with x_i replaced by v_i, for all i at the same
+                        time. Using the parallel substitution notation, it means
+                        f[v_1/x_1, v_2/x_2, ..., v_n/x_n]. We choose total
+                        parallel substitution as the primitive operation because
+                        partial and/or sequential substitution can be achieved
+                        by it with some of v's elements being formal arguments,
+                        and in this way we don't need to specify which arguments
+                        are to be substituted for.
+             A \\o v == map_mx (fun f => f \o v) A. The induced composition of 
+                        a matrix of functions. 
+
+
+  * Gradient (the gradient operator, which is a linear derivation from a function
+    to a row vector of functions, called its partial derivatives):  
+        {gradient E} == the interface type. Coercible to {linearDer E -> 'rV[E]_n}.
+                        The resulting row vector of functions is call the (row)
+                        gradient vector or the partial derivative vector. E :
+                        funType n R.
+           Jacob d u == flatten_mx (map_mx d u). The Jacobian matrix of a column 
+                        vector of functions, which is just the (row) gradient
+                        vectors stacked together and flattened into a matrix. d
+                        : {gradient E}, u : 'cV[E]_m.
+GradientMixin dI dcomp == builds an Gradient mixin from lemmas about the operator's
+                        behavior on the basis vector and on function composition.
+                        dI : J \x = I.
+                        dcomp : forall f v, d (f \o v) = (d f \\o v) *m J v.
+                        where J := Jacob d.
+    packGradient V m == packs a Gradient mixin into a Gradient structure
+
+  There are two view to express the chain rules. The first is in terms of (J v):
+           chain : d (f \o v) = (d f \\o v) *m J v
+     jacob_chain : J (u \\o v) = (J u \\o v) *m J v
+  The second is in terms of (\\d v):
+          chain2 : d (f \o v) = ((d f \\o v) *ml \\d v) 0 0
+    jacob_chain2 : \\d (u \\o v) = (J u \\o v) *ml \\d v
+  where J := Jacob d and \\d := map_mx d.
+
+  The first view is analogous to the single-variable derivative chain rule:
+    f(g(x))' = f'(g(x)) * g'(x)
+    or
+    (f \o g)' = (f' \o g) * g'
+  The second view is in the usual vector function differentiation format:
+    df(v)=J(f,v)*dv
+
+  The (0,0) indexing in chian2 is because the result of (row * col) is a 1x1 
+  matrix, not a scalar.                        
+                        
+******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
@@ -97,34 +169,22 @@ Canonical comUnitRingType.
 
 Notation funType n R := (type n (Phant R)).
 Notation FunType n R T a := (@pack n _ (Phant R) T a _ _ id _ id).
+Notation FunMixin := Mixin.
 
 End Exports.
 
 End Fun.
 Import Fun.Exports.
 
-Definition args n (R : ringType) (E : funType n R) := Fun.arg E.
-Notation "\x" := (args _) : ring_scope.
-Definition arg n (R : ringType) (E : funType n R) i := args E i 0.
-Notation "'x@' i" := (arg _ i) (at level 0, format "'x@' i") : ring_scope.
+Definition basis n (R : ringType) (E : funType n R) := Fun.arg E.
+Notation "\x" := (basis _) : ring_scope.
+Definition arg n (R : ringType) (E : funType n R) i := basis E i 0.
+Notation "'\x_' i" := (arg _ i) (at level 0, format "'\x_' i") : ring_scope.
 Definition compose {n} {R : ringType} {E : funType n R} := Fun.compose E.
 Notation "f \o v" := (compose f v) : ring_scope.
 (* induced composition for a matrix of functions *)
 Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
 
-(* flatten a column vector of row vectors to a matrix *)
-Definition flatten T m n (A : 'cV['rV[T]_n]_m) := \matrix_(i,j) A i 0 0 j.
-
-Lemma flatten1 T n (A : 'M['rV[T]_n]_1) : flatten A = A 0 0.
-Proof. by apply/matrixP => i j; rewrite !mxE !ord1. Qed.
-
-Lemma flatten_lmul (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'cV['rV[R]_p]_n) : flatten (A *ml B) = A *m flatten B.
-Proof.
-  apply/matrixP => i j.
-  rewrite !mxE summxE.
-  apply eq_bigr => k _.
-  by rewrite !mxE.
-Qed.
 
 (* Gradient: a derivation operator defined by the partial derivatives *)
 Module Gradient.
@@ -141,7 +201,7 @@ Section Mixin.
 (* the gradient/derivation operator *)
 Variable d : E -> 'rV[E]_n.
 (* the Jacobian matrix of a vector of functions, which is just the gradients stacked together *)
-Definition jacob m (v : 'cV[E]_m) := flatten (map_mx d v).
+Definition jacob m (v : 'cV[E]_m) := flatten_mx (map_mx d v).
 
 Notation J := jacob.
 
@@ -202,6 +262,7 @@ Notation "[ 'gradient' 'of' f 'as' g ]" := (@clone _ _ _ f g _ _ idfun id)
   (at level 0, format "[ 'gradient'  'of'  f  'as'  g ]") : form_scope.
 Notation "[ 'gradient' 'of' f ]" := (@clone _ _ _ f f _ _ id id)
   (at level 0, format "[ 'gradient'  'of'  f ]") : form_scope.
+Notation GradientMixin := Mixin.
 
 Notation Jacob := jacob.
 
@@ -236,12 +297,12 @@ Qed.
 
 Notation "\\d" := (map_mx d).
 
-(* another view of the chain rule lemmas, in the format of df(v)=J(v)*dv *)
+(* another view of the chain rule lemmas, in the format of df(v)=J(f,v)*dv *)
 
 (* the (0,0) indexing is because the result of (row * col) is a 1x1 matrix, not a scalar *)
 Lemma chain2 f : d (f \o v) = ((d f \\o v) *ml \\d v) 0 0.
 Proof.
-  by rewrite chain -flatten1 flatten_lmul.
+  by rewrite chain -flatten_mx11 flatten_lmul.
 Qed.
 
 Lemma jacob_chain2 : \\d (u \\o v) = (J u \\o v) *ml \\d v.
@@ -254,7 +315,7 @@ Proof.
   by rewrite !mxE.
 Qed.
 
-Lemma fold_jacob : flatten (\\d u) = J u.
+Lemma fold_jacob : flatten_mx (\\d u) = J u.
 Proof. by []. Qed.
 
 End GradientTheory.

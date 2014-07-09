@@ -199,8 +199,8 @@ Proof.
   suff ?: 0 - sym (H *ml \\d (~W *m ~U) *mr (~W *m ~U) ^- v) *mr ~W *mr \m = goal
   by rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
 
-  suff ?: 0 - sym ((H *m ~W) *ml (I *ol map_mx der U) *mr (~W *m ~U) ^- v) *mr ~W *mr \m = goal
-  by rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA. (* (25) *)
+  suff ?: 0 - sym ((H *m ~W) *ml (I *ol \\d U) *mr (~W *m ~U) ^- v) *mr ~W *mr \m = goal
+  by rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
 
   by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
 Qed.

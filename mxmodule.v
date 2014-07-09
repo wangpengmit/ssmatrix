@@ -34,6 +34,8 @@
                           | a11 a12 |        | a11*ml:B  a12*ml:B |
                           |         | *o B = |                    |
                           | a21 a22 |        | a21*ml:B  a22*ml:B |
+       flatten_mx A == flatten a column vector of row vectors to a matrix. 
+                       'cV['rV_n]_m -> 'M_(m,n)
 
   Module-element matrices form Lmodule structures with both *ml: and *ml as the
   scale function. To register those canonical structures, the former canonical
@@ -934,6 +936,20 @@ Proof.
 Qed.
 
 End CommMx.
+
+(* flatten a column vector of row vectors to a matrix *)
+Definition flatten_mx T m n (A : 'cV['rV[T]_n]_m) := \matrix_(i,j) A i 0 0 j.
+
+Lemma flatten_mx11 T n (A : 'M['rV[T]_n]_1) : flatten_mx A = A 0 0.
+Proof. by apply/matrixP => i j; rewrite !mxE !ord1. Qed.
+
+Lemma flatten_lmul (R : ringType) m n p (A : 'M[R]_(m,n)) (B : 'cV['rV[R]_p]_n) : flatten_mx (A *ml B) = A *m flatten_mx B.
+Proof.
+  apply/matrixP => i j.
+  rewrite !mxE summxE.
+  apply eq_bigr => k _.
+  by rewrite !mxE.
+Qed.
 
 Module Notations.
 
