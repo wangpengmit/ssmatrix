@@ -285,10 +285,10 @@ Proof.
   by rewrite -trTPcrmul !lmulmxA sub0r addrC -!(lmulmxBl _ _ (vec (\\d U))) addrC -sub0r.
 Qed.
 
-Notation J := (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T).
+Notation J2 := (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T).
 
 (* Corresponds to Equation (49)~(52) *)
-Lemma J_simpl : J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
+Lemma J2_simpl : J2 = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
 Proof.
   set goal := RHS.
 
@@ -302,7 +302,7 @@ Lemma d_vstar : \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *
 Proof.
   set goal := RHS.
 
-  by rewrite d_vstar_part2 J_simpl sub0r -(map_vec _ U).
+  by rewrite d_vstar_part2 J2_simpl sub0r -(map_vec _ U).
 Qed.
 
 End Section3.
