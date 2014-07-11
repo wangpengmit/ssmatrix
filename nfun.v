@@ -39,6 +39,9 @@
                         The resulting row vector of functions is call the (row)
                         gradient vector or the partial derivative vector. E :
                         funType n R.
+                        Since a gradient is a total function from E to 'rV[E]_n,
+                        E should be interrepted as infinitely differentiable 
+                        functions.
            Jacob d u == flatten_mx (map_mx d u). The Jacobian matrix of a column 
                         vector of functions, which is just the (row) gradient
                         vectors stacked together and flattened into a matrix. d
@@ -294,16 +297,6 @@ Proof. by case: d => /= dd [] base []. Qed.
 Lemma chain f : d (f \o v) = (d f \\o v) *m J v.
 Proof. by case: d => /= dd [] base []. Qed.
 
-(* analogous to the single-variable derivative chain rule:
-   f(g(x))' = f'(g(x)) * g'(x) or (f \o g)' = (f' \o g) * g' *)
-Lemma jacob_chain  : J (u \\o v) = (J u \\o v) *m J v.
-Proof.
-  apply/matrixP => i j.
-  rewrite !mxE chain !mxE.
-  apply eq_bigr => k _.
-  by rewrite !mxE.
-Qed.
-
 (* another view of the chain rule lemmas, in the format of df(v)=J(f,v)*dv *)
 
 (* the (0,0) indexing is because the result of (row * col) is a 1x1 matrix, not a scalar *)
@@ -324,6 +317,13 @@ Qed.
 
 Lemma fold_jacob : flatten_mx (\\d u) = J u.
 Proof. by []. Qed.
+
+(* analogous to the single-variable derivative chain rule:
+   f(g(x))' = f'(g(x)) * g'(x) or (f \o g)' = (f' \o g) * g' *)
+Lemma jacob_chain  : J (u \\o v) = (J u \\o v) *m J v.
+Proof.
+  by rewrite /Jacob jacob_chain2 flatten_lmul.
+Qed.
 
 End ChainRules.
 

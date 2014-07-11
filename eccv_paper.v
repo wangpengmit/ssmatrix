@@ -28,7 +28,7 @@
       ~V* == V* *o I
         T == trT _ _ _. The permutation matrix for transposing.
        v* == (~W *m ~U)^-v *m ~W *m \m
-        J == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
+        J2 == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
              ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
              ((W .* R)^T *o I) *m T.
              The Jacobian matrix of v*
@@ -64,13 +64,13 @@
       \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U)
       Corresponds to Equation (40')~(48) 
 
-    J_simpl : 
-      J = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)
+    J2_simpl : 
+      J2 = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)
       Corresponds to Equation (49)~(52) 
 
     d_vstar : 
       \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U)
-      direct corollary from d_vstar_part2 and J_simpl.
+      direct corollary from d_vstar_part2 and J2_simpl.
 
   When instantiate the previous results with the following instantiation:
         p == r * m. The number of free variables (which is also the 
