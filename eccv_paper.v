@@ -175,18 +175,12 @@ Notation "A ^+" := (A^-0) (at level 2, format "A ^+").
 
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
 
-(* The 'suff' tactic is for explicitly expressing the desired immediate results of each step. If the immediate results are not interesting, the 'suff' tactic can be removed and only rewrites are needed *)
 (* Corresponds to Equation (10)~(13) *)
 Lemma vec_dot V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
 Proof.
   set goal := RHS.
-
-  suff ?: ~W *m vec (M - U *m V^T) = goal
-  by rewrite vec_elemprod.
-
-  suff ?: ~W *m \m - ~W *m vec (U *m V^T) = goal
-  by rewrite !raddfB /=.
-
+  rewrite vec_elemprod.
+  rewrite !raddfB /=.
   by rewrite vec_kron !mulmxA.
 Qed.
 
@@ -209,16 +203,9 @@ Qed.
 Lemma d_eps1_part1 : \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m).
 Proof.
   set goal := RHS.
-
-  suff ?: 0 - \\d (~W *m ~U *m (~W *m ~U) ^- v) *mr ~W *mr \m = goal
-  by rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
-
-  suff ?: 0 - sym (H *ml \\d (~W *m ~U) *mr (~W *m ~U) ^- v) *mr ~W *mr \m = goal
-  by rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
-
-  suff ?: 0 - sym ((H *m ~W) *ml (I *ol \\d U) *mr (~W *m ~U) ^- v) *mr ~W *mr \m = goal
-  by rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
-
+  rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
+  rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
+  rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
   by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
 Qed.
 
@@ -231,16 +218,9 @@ Qed.
 Lemma to_vec_dot : ~W^T *m H *m ~W *m \m = vec (W .* R).
 Proof.
   set goal := RHS.
-
-  suff ?: ~W^T *m ~W *m \m - ~W^T *m ~W *m ~U *m (~W *m ~U) ^- v *m ~W *m \m = goal
-  by rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
-
-  suff ?: ~W^T *m ~W *m \m - ~W^T *m ~W *m ~U *m vec V*^T = goal
-  by rewrite -(mulmxA _ _ ~W) -(mulmxA _ (_ *m _) \m) to_Vstar.
-  
-  suff ?: ~W^T *m vec R = goal
-  by rewrite -!mulmxA -mulmxBr !mulmxA -vec_dot.
-
+  rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
+  rewrite -(mulmxA _ _ ~W) -(mulmxA _ (_ *m _) \m) to_Vstar.
+  rewrite -!mulmxA -mulmxBr !mulmxA -vec_dot.
   by rewrite tr_diag_mx -vec_elemprod.
 Qed.
 
@@ -248,10 +228,7 @@ Qed.
 Lemma d_eps1 : \\d eps1 = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T) *ml \\d (vec U).
 Proof.
   set goal := RHS.
-
-  suff ?: 0 - (H *m ~W) *ml (I *ol \\d U) *mr vec V*^T - ((~W *m ~U) ^- v)^T *ml (I *ol (\\d U)^T) *mr vec (W .* R) = goal
-  by rewrite d_eps1_part1 to_vec_dot {1}to_Vstar.
-
+  rewrite d_eps1_part1 to_vec_dot {1}to_Vstar.
   by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -(lmulNmx _ (\\d _)).
 Qed.
 
@@ -264,13 +241,8 @@ Qed.
 Lemma d_vstar_part1 : \\d v* = 0 - (~W *m ~U)^-v *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *ml (I *ol \\d U)^T *mr (~W^T *m (I - (~W *m ~U) *m (~W *m ~U)^-v) *m ~W *m \m).
 Proof.
   set goal := RHS.
-
-  suff ?: \\d ((~W *m ~U) ^- v) *mr ~W *mr \m = goal
-  by rewrite dmmr dmWr.
-
-  suff ?: 0 - (~W *m ~U) ^- v *ml \\d (~W *m ~U) *mr (~W *m ~U) ^- v *mr ~W *mr \m + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^-1 *ml (\\d (~W *m ~U))^T *mr H *mr ~W *mr \m = goal
-  by rewrite (dm_mupinv _ h_invertible) 2!rmulmxDl 2!rmulmxBl !rmul0mx.
-
+  rewrite dmmr dmWr.
+  rewrite (dm_mupinv _ h_invertible) 2!rmulmxDl 2!rmulmxBl !rmul0mx.
   by rewrite (map_trmx \d) trmx_mul dmWl dmWTr -(map_trmx \d) !(dm_lkron1mx _ _ U) /= !lrmulmxA !lmulmxA -!rmulmxA !mulmxA -trmx_mul -[in _^T *m _ *m _]mulmxA.
 Qed.
 
@@ -278,16 +250,9 @@ Qed.
 Lemma d_vstar_part2 : \\d v* = (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T) *ml vec (\\d U).
 Proof.
   set goal := RHS.
-
-  suff ?: 0 - ((~W *m ~U) ^- v *m ~W) *ml (I *ol \\d U) *mr v* + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m) = goal
-  by rewrite d_vstar_part1 trmx_lkron trmx1.
-
-  suff ?: 0 - ((~W *m ~U) ^- v *m ~W) *ml (I *ol \\d U) *mr vec V*^T + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *ml (I *ol (\\d U)^T) *mr vec (W .* R) = goal
-  by rewrite to_Vstar to_vec_dot.
-
-  suff ?: 0 - ((~W *m ~U) ^- v *m ~W *m ~V*) *ml vec (\\d U) + (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *m ((W .* R)^T *o I)) *ml vec (\\d U)^T = goal
-  by rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA.
-
+  rewrite d_vstar_part1 trmx_lkron trmx1.
+  rewrite to_Vstar to_vec_dot.
+  rewrite -!lrmulmxA !lkron_shift (trmxK V*) !lmulmxA.
   by rewrite -trTPcrmul !lmulmxA sub0r addrC -!(lmulmxBl _ _ (vec (\\d U))) addrC -sub0r.
 Qed.
 
@@ -295,17 +260,13 @@ Qed.
 Lemma J2_simpl : J2 = 0 - ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T).
 Proof.
   set goal := RHS.
-
-  suff ?: -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I) ^^-1 *m ((~W *m ~U)^T *m ~W *m ~V* - (W .* R)^T *o I *m T)) = goal
-  by rewrite -{1}fold_mupinv sub0r addrC -opprB -!(mulmxA _^^-1) -mulmxBr.
-
+  rewrite -{1}fold_mupinv sub0r addrC -opprB -!(mulmxA _^^-1) -mulmxBr.
   by rewrite [in _ - _]trmx_mul [in ~U^T]trmx_kron trmx1 -sub0r.
 Qed.
 
 Lemma d_vstar : \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U).
 Proof.
   set goal := RHS.
-
   by rewrite d_vstar_part2 J2_simpl sub0r -(map_vec _ U).
 Qed.
 
@@ -358,11 +319,8 @@ Qed.
 Lemma J1_J1 : J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T.
 Proof.
   set goal := RHS.
-
   rewrite J1_simpl [in _^T] raddfN /= mulNmx mulmxN opprK [in _^T] raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) [_ *m (_ + _)]mulmxDl mulmxDr mulmxDr !mulmxA !addrA.
-
   rewrite -!(mulmxA _ _ H) WU_H_0 -!(mulmxA _ _ _^+^T) -[H^T *m _^+^T]trmx_mul WU_H_0 !mulmxA trmx0 !mulmx0 !mul0mx !addr0.
-  
   by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
 Qed.
 
