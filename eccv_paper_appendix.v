@@ -77,8 +77,6 @@ Fact mupinv_key : unit. by []. Qed.
 Definition mupinv := locked_with mupinv_key mupinv_def.
 Canonical mupinv_unlockable := [unlockable fun mupinv].
 
-Definition pinv := mupinv 0.
-
 Local Notation "A ^- u" := (mupinv u A) : ring_scope.
 
 Lemma fold_mupinv u A : (A^T *m A + u *ml: I)^^-1 *m A^T = A^-u.

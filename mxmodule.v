@@ -189,6 +189,9 @@ Proof. by apply/matrixP=> i j; rewrite !mxE. Qed.
 Lemma lscalemx0 c : c *ml: 0 = 0 :> 'M[V]_(m,n).
 Proof. by apply/matrixP=> i j; rewrite !mxE scaler0. Qed.
 
+Lemma lscale0mx A : 0 *ml: A = 0 :> 'M[V]_(m,n).
+Proof. by apply/matrixP=> i j; rewrite !mxE scale0r. Qed.
+
 Definition lscale_lmodMixin := 
   LmodMixin lscalemxA lscale1mx lscalemxDr (fun v a b => lscalemxDl a b v).
 
