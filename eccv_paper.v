@@ -28,7 +28,11 @@
       ~V* == V* *o I
         T == trT _ _ _. The permutation matrix for transposing.
        v* == (~W *m ~U)^-v *m ~W *m \m
-        J2 == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
+      ~WR == (W .* R) *o I
+      A^+ == A^-0
+       J1 == -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)
+             The Jacobian matrix of eps1
+       J2 == 0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + 
              ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m 
              ((W .* R)^T *o I) *m T.
              The Jacobian matrix of v*
@@ -71,6 +75,10 @@
     d_vstar : 
       \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U)
       direct corollary from d_vstar_part2 and J2_simpl.
+
+    J1_J1 : 
+      J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T
+      Corresponds to Equation (54)~(56) 
 
   When instantiate the previous results with the following instantiation:
         p == r * m. The number of free variables (which is also the 
@@ -165,63 +173,7 @@ Notation J1 := (-(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T))
 Notation "~WR" := ((W .* R) *o I).
 Notation "A ^+" := (A^-0) (at level 2, format "A ^+").
 
-Lemma mulpinvmx m n (A : 'M[E]_(m,n)) : invertible (mupinv_core 0 A) -> A^+ *m A = I.
-Proof.
-  rewrite unlock /mupinv /mupinv_core lscale0mx addr0.
-  by move => h; rewrite -(mulmxA _^^-1) mulVmx.
-Qed.
-
-Lemma pinv_pinv m n (A : 'M[E]_(m,n)) : invertible (mupinv_core 0 A) -> A^+ *m A^+^T = (A^T *m A)^^-1.
-Proof.
-  move => h.
-  by rewrite [in _^+^T]unlock /mupinv /mupinv_core /= lscale0mx addr0 !trmx_mul !trmxK !mulmxA (mulpinvmx h) mul1mx trmx_inv !trmx_mul !trmxK.
-Qed.
-
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
-
-Hypothesis v_0 : v = 0.
-
-Lemma pinvWU_WU : (~W *m ~U)^+ *m ~W *m ~U = I.
-Proof.
-  move: h_invertible; rewrite v_0 => h.
-  by rewrite -mulmxA (mulpinvmx h).
-Qed.
-
-Lemma WU_H_0 : (~W *m ~U)^+ *m H = 0.
-Proof.
-  by rewrite mulmxBr mulmx1 !mulmxA pinvWU_WU mul1mx v_0 addrN.
-Qed.
-
-Lemma trmx_kronmx1 (R : comRingType) m1 n1 m2 (A : 'M[R]_(m1,n1)) : (A *o I)^T = A^T *o (I : 'M_m2).
-Proof. by rewrite trmx_kron trmx1. Qed.
-
-Lemma J1_simpl : J1 = -(H *m ~W *m ~V* + ((~W *m ~U)^+)^T *m ~WR^T *m T).
-Proof.
-  set goal := RHS.
-  by rewrite [in (_^-v)^T]v_0 -[in (W .* R)^T *o _]trmx_kronmx1.
-Qed.
-
-Lemma H_H : H^T *m H = H.
-Proof.
-  by rewrite !raddfB /= AmupinvA_sym !trmx1 mulmx1 mulmxBl mul1mx -!mulmxA ![in _^-v *m _]mulmxA v_0 pinvWU_WU !mulmxA !mulmx1 addrN subr0.
-Qed.
-
-Lemma pinvWU_pinvWU : (~W *m ~U)^+ *m (~W *m ~U)^+^T = ((~W *m ~U)^T *m (~W *m ~U))^^-1.
-Proof.
-  move: h_invertible; rewrite v_0 => h.
-  by rewrite (pinv_pinv h).
-Qed.
-
-Lemma J1_J1 : J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T.
-Proof.
-  set goal := RHS.
-
-  rewrite J1_simpl [in _^T] raddfN /= mulNmx mulmxN opprK [in _^T] raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) [_ *m (_ + _)]mulmxDl mulmxDr mulmxDr !mulmxA !addrA.
-
-  rewrite -!(mulmxA _ _ H) WU_H_0 -!(mulmxA _ _ _^+^T) -[H^T *m _^+^T]trmx_mul WU_H_0 !mulmxA trmx0 !mulmx0 !mul0mx !addr0.
-  
-  by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
-Qed.
 
 (* The 'suff' tactic is for explicitly expressing the desired immediate results of each step. If the immediate results are not interesting, the 'suff' tactic can be removed and only rewrites are needed *)
 (* Corresponds to Equation (10)~(13) *)
@@ -355,6 +307,63 @@ Proof.
   set goal := RHS.
 
   by rewrite d_vstar_part2 J2_simpl sub0r -(map_vec _ U).
+Qed.
+
+Hypothesis v_0 : v = 0.
+
+Lemma mulpinvmx m n (A : 'M[E]_(m,n)) : invertible (mupinv_core 0 A) -> A^+ *m A = I.
+Proof.
+  rewrite unlock /mupinv /mupinv_core lscale0mx addr0.
+  by move => h; rewrite -(mulmxA _^^-1) mulVmx.
+Qed.
+
+Lemma pinv_pinv m n (A : 'M[E]_(m,n)) : invertible (mupinv_core 0 A) -> A^+ *m A^+^T = (A^T *m A)^^-1.
+Proof.
+  move => h.
+  by rewrite [in _^+^T]unlock /mupinv /mupinv_core /= lscale0mx addr0 !trmx_mul !trmxK !mulmxA (mulpinvmx h) mul1mx trmx_inv !trmx_mul !trmxK.
+Qed.
+
+Lemma pinvWU_WU : (~W *m ~U)^+ *m ~W *m ~U = I.
+Proof.
+  move: h_invertible; rewrite v_0 => h.
+  by rewrite -mulmxA (mulpinvmx h).
+Qed.
+
+Lemma WU_H_0 : (~W *m ~U)^+ *m H = 0.
+Proof.
+  by rewrite mulmxBr mulmx1 !mulmxA pinvWU_WU mul1mx v_0 addrN.
+Qed.
+
+Lemma trmx_kronmx1 (R : comRingType) m1 n1 m2 (A : 'M[R]_(m1,n1)) : (A *o I)^T = A^T *o (I : 'M_m2).
+Proof. by rewrite trmx_kron trmx1. Qed.
+
+Lemma J1_simpl : J1 = -(H *m ~W *m ~V* + ((~W *m ~U)^+)^T *m ~WR^T *m T).
+Proof.
+  set goal := RHS.
+  by rewrite [in (_^-v)^T]v_0 -[in (W .* R)^T *o _]trmx_kronmx1.
+Qed.
+
+Lemma H_H : H^T *m H = H.
+Proof.
+  by rewrite !raddfB /= AmupinvA_sym !trmx1 mulmx1 mulmxBl mul1mx -!mulmxA ![in _^-v *m _]mulmxA v_0 pinvWU_WU !mulmxA !mulmx1 addrN subr0.
+Qed.
+
+Lemma pinvWU_pinvWU : (~W *m ~U)^+ *m (~W *m ~U)^+^T = ((~W *m ~U)^T *m (~W *m ~U))^^-1.
+Proof.
+  move: h_invertible; rewrite v_0 => h.
+  by rewrite (pinv_pinv h).
+Qed.
+
+(* Corresponds to Equation (54)~(56) *)
+Lemma J1_J1 : J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T.
+Proof.
+  set goal := RHS.
+
+  rewrite J1_simpl [in _^T] raddfN /= mulNmx mulmxN opprK [in _^T] raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) [_ *m (_ + _)]mulmxDl mulmxDr mulmxDr !mulmxA !addrA.
+
+  rewrite -!(mulmxA _ _ H) WU_H_0 -!(mulmxA _ _ _^+^T) -[H^T *m _^+^T]trmx_mul WU_H_0 !mulmxA trmx0 !mulmx0 !mul0mx !addr0.
+  
+  by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
 Qed.
 
 End Section3.
