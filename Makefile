@@ -7,6 +7,8 @@ MODULES := \
 	nfun \
 	eccv_paper_appendix \
 	eccv_paper \
+	monad \
+	prover \
 
 VS      := $(MODULES:%=%.v)
 
