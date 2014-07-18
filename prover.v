@@ -36,7 +36,8 @@ Inductive Prp :=
 Inductive Cmd := 
 | CmdRewrite : Prp -> Cmd
 | CmdPattern : Cmd
-| CmdCompute : Cmd
+| CmdComputeConst : Cmd
+| CmdBeta : Cmd
 .
 
 Record Trans := MkTrans {
@@ -81,9 +82,10 @@ Fixpoint doTrans (expr : Expr) (trans : Trans) : Env Expr :=
     | CmdPattern =>
       let f := replace_all expr subterm (EBoundVar 0) in
       ret (EApp f subterm)
-    | CmdCompute => lift $
+    | CmdComputeConst => lift $
       value <- doCompute subterm;;
       expr <- replace_at expr pos value;;
       ret expr
+    | _ => throwError "not implemented"
   end
 .
