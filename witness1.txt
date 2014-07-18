@@ -1,16 +1,19 @@
 ex1:
-2 * a + a * 4 = 6 * a
-rewrite mulrC, a * 4
-rewrite -mulrDl, 2 * a + 4 * a
-fold, 2 + 4, 6  
+from 2 * a + a * 4
+rewrite mulrC a * 4
+rewrite -mulrDl 2 * a + 4 * a
+fold 2 + 4 into 6  
+to 6 * a
 
 ex2:
-(a - a)^2 + (a - a) = 0
-lift, a - a
-rewrite addrN, a - a
+from (a - a)^2 + (a - a)
+lift a - a
+rewrite addrN a - a
 beta
-fold, 0^2 + 0, 0
+fold 0^2 + 0 into 0
+to 0
 
 ex3:
-a / a = 1
-rewrite divrr, a / a
+from a / a
+rewrite divrr a / a
+to 1
