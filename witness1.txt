@@ -1,16 +1,16 @@
 ex1:
-2 * a + a * 4, 6 * a
-r mulrC, a * 4
-r -mulrDl, 2 * a + 4 * a
-compute, 2 + 4
+2 * a + a * 4 = 6 * a
+rewrite mulrC, a * 4
+rewrite -mulrDl, 2 * a + 4 * a
+fold, 2 + 4, 6  
 
 ex2:
-(a - a)^2 + (a - a), 0
+(a - a)^2 + (a - a) = 0
 lift, a - a
-r addrN, a - a
+rewrite addrN, a - a
 beta
-compute, 0^2 + 0
+fold, 0^2 + 0, 0
 
 ex3:
-a / a, 1
-r unitrE, a / a
+a / a = 1
+rewrite divrr, a / a
