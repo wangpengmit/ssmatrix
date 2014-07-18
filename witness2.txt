@@ -1,0 +1,6 @@
+(ex1
+(= (+ (* 2 a) (* a 4)) (* 6 a))
+(rewrite mulrC (* a 4))
+(rewrite -mulrDl (+ (* 2 a) (* 4 a)))
+(fold (+ 2 4) 6)
+)
