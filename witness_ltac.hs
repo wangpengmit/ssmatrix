@@ -118,7 +118,6 @@ getExpr = \case
     b <- first >>= lift . getExpr
     return (Binop op a b)
 
-getBinop :: SExpr -> MayThrow Binop
 getBinop node = 
   getSymbol node >>= \case 
     "+" -> return Plus
@@ -127,7 +126,6 @@ getBinop node =
     "/" -> return Div
     op -> throwError (strMsg $ "unknown binary operator" ++ op)
 
-getSymbol :: SExpr -> MayThrow String
 getSymbol = \case
   Symbol x -> return x
   node -> throwError $ MismatchError "symbol" (show node)
@@ -174,74 +172,3 @@ main = do
         Right traces -> print traces
         Left err -> print err
     Left err -> print err
-
--- main = do 
---     let expr = "((data \"quoted data\" 123 4.5)\n  (data (!@# (4.5) \"(more\" \"data)\")))"
---     putStrLn $ "The input:\n" ++ expr ++ "\n"
---     putStr "Parsed as:\n"
---     p expr
-
-
-
-
--- import Text.ParserCombinators.Parsec
-
--- traces = many trace
--- trace =
---   do
---     name
---     delimit
---     cmds
-
--- name =
---   do
---     id
---     try delimit
---     char ':'
---     try delimit
-
--- id =
---   try (string "ex1")
---   <|> try (string "ex2")
---   <|> string "ex3"
---   <?> "identifier"
-    
--- delimit = many1 (space <|> comment)
-
--- comment =
---   do
---     string "(*"
-           
-
-
-
--- csvFile = sepBy line eol
--- line = sepBy cell (char ',')
--- cell = quotedCell <|> many (noneOf ",\n\r")
-
--- quotedCell = 
---   do
---     char '"'
---     content <- many quotedChar
---     char '"' <?> "quote at end of cell"
---     return content
-
--- quotedChar =
---   noneOf "\""
---   <|> try (string "\"\"" >> return '"')
-  
--- eol =   try (string "\n\r")
---         <|> try (string "\r\n")
---         <|> string "\n"
---         <|> string "\r"
---         <?> "end of line"
-
--- parseCSV :: String -> Either ParseError [[String]]
--- parseCSV input = parse csvFile "(unknown)" input
-
--- main =
---   do c <- getContents
---      case parse csvFile "(stdin)" c of
---        Left e -> do putStrLn "Error parsing input:"
---                     print e
---        Right r -> mapM_ print r
