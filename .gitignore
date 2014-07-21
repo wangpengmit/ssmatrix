@@ -33,3 +33,6 @@ timing/
 *.orig
 *.\#*
 .dir-locals.el
+
+*.exe
+*.hi
