@@ -22,7 +22,7 @@ data Expr =
   | Binop Binop Expr Expr
     deriving (Eq, Show)
 
-data Binop = Plus | Minus | Mult | Div
+data Binop = Plus | Minus | Mult | Div | Exp
              deriving (Eq, Show)
 
 data Trans = Rewrite String Expr
@@ -92,6 +92,7 @@ getBinop node =
     "-" -> return Minus
     "*" -> return Mult
     "/" -> return Div
+    "^" -> return Exp
     op -> throwError (strMsg $ "unknown binary operator" ++ op)
 
 getSymbol = \case
@@ -109,9 +110,11 @@ child node child_name = case node of
   _ -> throw
   where throw = throwError $ strMsg $ "can't find child " ++ child_name ++ " in " ++ show node
   
-enter node m = case node of
-  List ls -> liftM fst (runStateT m ls)
-  _ -> throwError (strMsg "can't enter a non-list node")
+enter node m = 
+    liftM fst (runStateT m ls)
+    where ls = case node of
+               List l -> l
+               x -> [x]
     
 enterWith node sym m = enter node (first >>= exact (Symbol sym) >> m)
 
@@ -133,6 +136,8 @@ every f = do
 
 removeLast ls = take (length ls - 1) ls
 
+ltacAll traces = unlines $ prelude : map ltacTrace traces
+
 prelude = unlines [
            "Set Implicit Arguments.",
            "Unset Strict Implicit.",
@@ -141,7 +146,7 @@ prelude = unlines [
            "Require Import prelude.",
            "Import prelude.Exports."]
 
-ltacTrace trace = printf "Section %s.\n\nVariables VARS.\n\nLemma %s : %s = %s.\nProof.\n%sQed.\n\nEnd %s.\n" (name trace) (name trace) (ltacExpr $ from trace) (ltacExpr $ to trace) (ltacTransPath $ trans trace) (name trace)
+ltacTrace trace = printf "Section %s.\n\nVariables %s : int.\n\nLemma %s : %s = %s.\nProof.\n%sQed.\n\nEnd %s.\n" (name trace) (unwords $ freeVars (from trace) `union` freeVars (to trace)) (name trace) (ltacExpr $ from trace) (ltacExpr $ to trace) (ltacTransPath $ trans trace) (name trace)
 
 ltacTransPath path = unlines . map ("  " ++) $ (map ltacTrans path) ++ ["by []."]
 
@@ -163,6 +168,12 @@ ltacBinop = \case
   Minus -> "-"
   Mult -> "*"
   Div -> "/"
+  Exp -> "^"
+
+freeVars = \case
+  Var x -> [x]
+  ConstInt _ -> []
+  Binop _ a b -> union (freeVars a) (freeVars b)
 
 main = do
   args <- getArgs
@@ -170,17 +181,16 @@ main = do
          fileName : _ -> openFile fileName ReadMode
          _ -> return stdin
   str <- hGetContents h
-  print str
-  putStrLn ""
+  hPrint stderr str
+  hPutStrLn stderr ""
   case parse tProg "" str of
     Right sexprs -> do
-      print sexprs
-      putStrLn ""
+      hPrint stderr sexprs
+      hPutStrLn stderr ""
       case sequence (map getTrace sexprs) of
         Right traces -> do
-          print traces
-          putStrLn ""
-          putStrLn prelude
-          putStrLn $ unlines $ map ltacTrace traces
+          hPrint stderr traces
+          hPutStrLn stderr ""
+          putStrLn $ ltacAll traces
         Left err -> print err
     Left err -> print err

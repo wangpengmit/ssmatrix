@@ -36,3 +36,4 @@ timing/
 
 *.exe
 *.hi
+*_out.v
