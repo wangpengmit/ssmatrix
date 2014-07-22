@@ -34,16 +34,4 @@ Qed.
 
 End ex2.
 
-Section ex3.
-
-Variables a : int.
-
-Lemma ex3 : (a / a) = $1.
-Proof.
-  rewrite [(a / a)]divrr.
-  by [].
-Qed.
-
-End ex3.
-
 
