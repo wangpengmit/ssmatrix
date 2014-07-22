@@ -1,7 +1,6 @@
 (trace 
  (name ex1)
  (from (+ (* 2 a) (* a 4)))
- ;; can have line comment
  (trans
   (rewrite mulrC (* a 4))
   (rewrite -mulrDl (+ (* 2 a) (* 4 a)))
@@ -18,9 +17,10 @@
   (fold (+ (^ 0 2) 0) 0))
  (to 0))
 
-(trace
- (name ex3)
- (from (/ a a))
- (trans
-  (rewrite divrr (/ a a)))
- (to 1))
+;; This example will cause Coq to complain that a side condition (a \is a unit) if required
+;; (trace
+;;  (name ex3)
+;;  (from (/ a a))
+;;  (trans
+;;   (rewrite divrr (/ a a)))
+;;  (to 1))

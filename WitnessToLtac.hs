@@ -1,11 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 import System.IO 
 import System.Environment
+import System.Exit
 import Control.Monad.Error
 import Control.Monad.State
 import Data.List
 import Text.Parsec
 import Text.Printf
+import System.Console.GetOpt
 
 import SExprParser
 
@@ -175,22 +177,42 @@ freeVars = \case
   ConstInt _ -> []
   Binop _ a b -> union (freeVars a) (freeVars b)
 
+data Flag = Help 
+          deriving (Eq)
+                   
+flags = [
+ Option ['h'] ["help"] (NoArg Help) "Print this help message"
+ ]
+
+parseOpt argv = case getOpt Permute flags argv of
+  (args, files, []) -> do
+    if Help `elem` args then do
+      hPutStrLn stderr usage
+      exitWith ExitSuccess
+    else return (args, files)
+  (_,_,errs) -> do
+    hPutStrLn stderr (concat errs ++ usage)
+    exitWith (ExitFailure 1)
+
+usage = usageInfo "Usage: WitnessToLtac [-h] [input file] [output file]" flags
+
 main = do
-  args <- getArgs
-  h <- case args of
-         fileName : _ -> openFile fileName ReadMode
-         _ -> return stdin
-  str <- hGetContents h
-  hPrint stderr str
-  hPutStrLn stderr ""
+  (options, fs) <- getArgs >>= parseOpt
+  fin <- if length fs >= 1 then openFile (fs !! 0) ReadMode else return stdin
+  fout <- if length fs >= 2 then openFile (fs !! 1) WriteMode else return stdout
+  str <- hGetContents fin
+  -- hPrint stderr str
+  -- hPutStrLn stderr ""
   case parse tProg "" str of
     Right sexprs -> do
-      hPrint stderr sexprs
-      hPutStrLn stderr ""
+      -- hPrint stderr sexprs
+      -- hPutStrLn stderr ""
       case sequence (map getTrace sexprs) of
         Right traces -> do
-          hPrint stderr traces
-          hPutStrLn stderr ""
-          putStrLn $ ltacAll traces
+          -- hPrint stderr traces
+          -- hPutStrLn stderr ""
+          hPutStrLn fout $ ltacAll traces
         Left err -> print err
     Left err -> print err
+  hClose fin
+  hClose fout
