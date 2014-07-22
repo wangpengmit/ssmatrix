@@ -1,57 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
-
-import Text.ParserCombinators.Parsec ((<|>), (<?>), many, many1, char, try, parse, sepBy, choice)
-import Text.ParserCombinators.Parsec.Char (noneOf)
-import Text.ParserCombinators.Parsec.Token (natural, integer, float, whiteSpace, stringLiteral, makeTokenParser)
-import Text.ParserCombinators.Parsec.Language (haskellDef)
 import System.IO 
 import System.Environment
 import Control.Monad.Error
 import Control.Monad.State
-
-data SExpr = Int Integer
-         | Float Double
-         | String String
-         | Symbol String
-         | List [SExpr] deriving (Eq, Show)
- 
-lexer = makeTokenParser haskellDef
- 
-tInteger = (natural lexer) >>= (return . Int) <?> "integer"
- 
-tFloat = (float lexer) >>= (return . Float) <?> "floating point number"
- 
-tString = (stringLiteral lexer) >>= (return . String) <?> "string"
- 
-tSymbol = (many1 $ noneOf "()\" \t\n\r") >>= (return . Symbol) <?> "symbol"
- 
-tAtom = choice [try tFloat, try tInteger, try tSymbol, tString] <?> "atomic expression"
- 
-tSExpr = do 
-    whiteSpace lexer
-    expr <- tList <|> tAtom
-    whiteSpace lexer
-    return expr
-    <?> "S-expression"
- 
-tList = do 
-    char '('
-    list <- many tSExpr
-    char ')'
-    return $ List list
-    <?> "list"
- 
-tProg = many tSExpr <?> "program"
- 
-p ex = case parse tProg "" ex of
-              Right x -> putStrLn $  unwords $ map show x
-              Left err -> print err
+import Data.List
+import Text.Parsec
+import SExprParser
 
 data Trace = Trace {
       name :: String,
       from :: Expr,
       to :: Expr,
-      cmds :: [Cmd]
+      trans :: [Trans]
     } deriving (Eq, Show)
 
 data Expr =
@@ -63,7 +23,7 @@ data Expr =
 data Binop = Plus | Minus | Mult | Div
              deriving (Eq, Show)
 
-data Cmd = Rewrite String Expr
+data Trans = Rewrite String Expr
          | Fold Expr Expr
          | Lift Expr
          | Beta
@@ -81,20 +41,26 @@ instance Error ExprError where
   
 type MayThrow = Either ExprError
 
-getTrace node = enterWith node "trace" $ do
-  name <- first >>= lift . getSymbol
-  from <- first >>= lift . getFrom
-  to <- last_ >>= lift. getTo
-  cmds <- every $ lift . getCmd
-  return (Trace name from to cmds)
+getTrace node = do
+  name <- child node "name" >>= getName <??> "name"
+  from <- child node "from" >>= getFrom <??> "from"
+  to <- child node "to" >>= getTo <??> "to"
+  trans <- child node "trans" >>= getTransPath <??> "trans"
+  return (Trace name from to trans)
 
+getName node =
+  enterWith node "name" $ first >>= lift. getSymbol <??> "name string"
+  
 getFrom node =
   enterWith node "from" $ first >>= lift . getExpr <??> "original expression"
 
 getTo node =
   enterWith node "to" $ first >>= lift . getExpr <??> "final expression"
-  
-getCmd node = enter node $ do
+
+getTransPath node =
+  enterWith node "trans" $ every $ lift . getTrans
+
+getTrans node = enter node $ do
   first >>= lift . getSymbol >>= \case
     "rewrite" -> do
       rule <- first >>= lift . getSymbol <??> "rewrite rule"
@@ -130,6 +96,17 @@ getSymbol = \case
   Symbol x -> return x
   node -> throwError $ MismatchError "symbol" (show node)
 
+child node child_name = case node of
+  List (_ : children) -> case find p children of
+    Just n -> return n
+    _ -> throw
+    where p = \case
+               Symbol sym | sym == child_name -> True
+               List (Symbol sym : _) | sym == child_name -> True
+               _ -> False
+  _ -> throw
+  where throw = throwError $ strMsg $ "can't find child " ++ child_name ++ " in " ++ show node
+  
 enter node m = case node of
   List ls -> liftM fst (runStateT m ls)
   _ -> throwError (strMsg "can't enter a non-list node")
@@ -146,13 +123,11 @@ first =
   get >>= \case
     x : xs -> put xs >> return x
     _ -> throwError EmptyListError
-  
-last_ =
-  get >>= \case
-    [] -> throwError EmptyListError
-    ls -> put (removeLast ls) >> return (last ls)
 
-every f = get >>= sequence . (map f)
+every f = do
+  ls <- get
+  put []
+  sequence (map f ls)
 
 removeLast ls = take (length ls - 1) ls
 
