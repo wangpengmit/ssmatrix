@@ -375,4 +375,25 @@ Proof.
   by apply jacob_intro; rewrite (d_vstar _ _ h_invertible) cvec_mxK.
 Qed.
 
+(* An exercise to find the Jacobian matrix of vec (U^T *m U) *)
+Lemma exercise xxx : \J (vec (U^T *m U)) = xxx.
+Proof.
+  apply jacob_intro.
+  set goal := RHS.
+
+  rewrite vec_kron.
+  rewrite dmM /=.
+  rewrite dm_lkron1mx /=.
+  rewrite lkron_shift.
+  rewrite -map_trmx.
+  rewrite -trTPcrmul.
+  rewrite lmulmxA.
+  rewrite -map_vec.
+  rewrite -lmulmxDl.
+  rewrite cvec_mxK.
+  
+  subst goal.
+  (* Now we see the answer is (U^T *o I *m T + I *o U^T) *)
+  Abort.
+
 End Jacobian.
