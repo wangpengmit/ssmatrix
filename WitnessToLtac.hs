@@ -5,6 +5,8 @@ import Control.Monad.Error
 import Control.Monad.State
 import Data.List
 import Text.Parsec
+import Text.Printf
+
 import SExprParser
 
 data Trace = Trace {
@@ -131,6 +133,37 @@ every f = do
 
 removeLast ls = take (length ls - 1) ls
 
+prelude = unlines [
+           "Set Implicit Arguments.",
+           "Unset Strict Implicit.",
+           "Unset Printing Implicit Defensive.",
+           "",
+           "Require Import prelude.",
+           "Import prelude.Exports."]
+
+ltacTrace trace = printf "Section %s.\n\nVariables VARS.\n\nLemma %s : %s = %s.\nProof.\n%sQed.\n\nEnd %s.\n" (name trace) (name trace) (ltacExpr $ from trace) (ltacExpr $ to trace) (ltacTransPath $ trans trace) (name trace)
+
+ltacTransPath path = unlines . map ("  " ++) $ (map ltacTrans path) ++ ["by []."]
+
+ltacTrans = \case
+  Rewrite rule subterm -> 
+      let (d, n) = if isPrefixOf "-" rule then ("-", tail rule) else ("", rule) in
+      printf "rewrite %s[%s]%s." d (ltacExpr subterm) n
+  Fold from to -> printf "rewrite -[%s]/%s." (ltacExpr from) (ltacExpr to)
+  Lift subterm -> printf "pattern_set %s." (ltacExpr subterm)
+  Beta -> printf "red."
+
+ltacExpr = \case
+  Var x -> x
+  ConstInt n -> "$" ++ show n
+  Binop op a b -> printf "(%s %s %s)" (ltacExpr a) (ltacBinop op) (ltacExpr b)
+
+ltacBinop = \case
+  Plus -> "+"
+  Minus -> "-"
+  Mult -> "*"
+  Div -> "/"
+
 main = do
   args <- getArgs
   h <- case args of
@@ -144,6 +177,10 @@ main = do
       print sexprs
       putStrLn ""
       case sequence (map getTrace sexprs) of
-        Right traces -> print traces
+        Right traces -> do
+          print traces
+          putStrLn ""
+          putStrLn prelude
+          putStrLn $ unlines $ map ltacTrace traces
         Left err -> print err
     Left err -> print err

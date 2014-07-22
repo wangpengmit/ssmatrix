@@ -4,18 +4,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
-Require Import ssreflect ssrbool ssrfun eqtype ssrnat seq div choice fintype.
-Require Import finfun bigop prime binomial ssralg.
-Require Import perm zmodp.
-Require Import matrix.
-Require Import ssrint.
-
-Import GRing.Theory.
-Open Local Scope int_scope.
-Open Local Scope ring_scope.
-
-Local Notation "$ n" := (n%:Z) (at level 0, format "$ n").
-Local Ltac pattern_set t := pattern t; let X := fresh "temp" in set X := (F in F t).
+Require Import prelude.
+Import prelude.Exports.
 
 Section ex1.
 

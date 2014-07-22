@@ -9,6 +9,7 @@ MODULES := \
 	eccv_paper \
 	monad \
 	prover \
+	prelude \
 
 VS      := $(MODULES:%=%.v)
 
