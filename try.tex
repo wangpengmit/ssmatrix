@@ -1,0 +1,36 @@
+\documentclass{article}
+
+\begin{document}
+
+Hello world!
+
+\begin{coq_eval}
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Require Import prelude.
+Import prelude.Exports.
+
+\end{coq_eval}
+
+\begin{coq_example}
+Section ex1.
+
+Variable a : int.
+
+Lemma ex1 : (($2 * a) + (a * $4)) = ($6 * a).
+Proof.
+  rewrite [(a * $4)]mulrC.
+  rewrite -[(($2 * a) + ($4 * a))]mulrDl.
+  rewrite -[($2 + $4)]/$6.
+  by [].
+Qed.
+
+End ex1.
+\end{coq_example}
+
+\begin{coq_eval}
+\end{coq_eval}
+
+\end{document}
