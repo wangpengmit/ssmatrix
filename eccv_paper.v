@@ -382,7 +382,8 @@ Proof.
   set goal := RHS.
 
   rewrite vec_kron.
-  rewrite dmM /=.
+  rewrite dmM.
+  rewrite /=.
   rewrite dm_lkron1mx /=.
   rewrite lkron_shift.
   rewrite -map_trmx.
@@ -393,6 +394,7 @@ Proof.
   rewrite cvec_mxK.
   
   subst goal.
+  congr (_ *ml _).
   (* Now we see the answer is (U^T *o I *m T + I *o U^T) *)
   Abort.
 
