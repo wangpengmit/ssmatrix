@@ -28,6 +28,21 @@ Proof.
 Qed.
 
 End ex1.
+
+Section ex2.
+
+Variables a : int.
+
+Lemma ex2 : (((a - a) ^ $2) + (a - a)) = $0.
+Proof.
+  pattern_set (a - a).
+  rewrite [(a - a)]addrN.
+  red.
+  rewrite -[(($0 ^ $2) + $0)]/$0.
+  by [].
+Qed.
+
+End ex2.
 \end{coq_example}
 
 \begin{coq_eval}
