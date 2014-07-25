@@ -11,6 +11,7 @@ import Numeric
 import Text.Printf
 import Data.String.Utils
 import Text.Regex.PCRE
+import Data.Array
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -31,30 +32,35 @@ beginBlock = isInfixOf "\\begin{flushleft}"
 endBlock = isInfixOf "\\end{flushleft}"
 
 processBlock = \case
-  (On, b) -> concat . map processLemma . lemmas $ b
+  (On, b) -> concat . map printLemma . mapMaybe parseLemma . mergeRegion Begin On . lemmas $ b
   (_, b) -> b
 
 lemmas = regions beginLemma endLemma
 
 beginLemma = oneIsInfixOf ["~Lemma~", "~Theorem~"]
 
-oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
-
 endLemma = isInfixOf "~Qed."
 
-processLemma = \case
-  (On, b) -> unique . concat . map processGoal . goals $ b
-  (Begin, s : _) -> [printf "%s:" . getLemmaName $ s]
-  _ -> []
+printLemma (name, formulas) = printf "%s:" name : formulas
 
-getLemmaName s = case s =~ "~(?:Lemma|Theorem)~([^~:]+)~" :: (String, String, String, [String]) of
-  (_, _, _, name : _) -> name
+parseLemma = \case
+  (On, b) -> 
+      let (name, lhs, rhs) = getLemma b in
+      let steps = map processGoal . goals $ b in
+      let formulas = unique . trim $ lhs : steps ++ [rhs] in
+      Just (name, formulas)
+  _ -> Nothing
 
+getLemma = getLemmaParts . untex . takeWhile (isInfixOf "Coq~{<}~")
 
--- instance (RegexLike a b) => RegexContext a b [b] where 
---   match r s = maybe [] id (matchM r s)
---   matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
-           
+getLemmaParts :: String -> (String, String, String)
+getLemmaParts s = fromMaybe ("", "", "") $ do
+  s <- return $ removeForall s
+  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
+  return (name, lhs, rhs)
+
+removeForall = sub "forall[^,]*," ""
+
 goals = regions beginGoal endGoal
 
 beginGoal = isInfixOf "=========="
@@ -62,27 +68,18 @@ beginGoal = isInfixOf "=========="
 endGoal = isInfixOf "\\medskip"
 
 processGoal = \case
-  (On, b) -> map (unchar . untilde . uncommand "texttt" . uneol) b
-  _ -> []
+  (On, b) -> lhs . untex $ b
+  _ -> ""
 
-unchar = subF "{\\\\char'([^}]+)}" $ \(_ : s : _) -> singleton . chr . oct $ s
+untex = unescape . unchar . unwords . map (strip . untilde . uncommand "texttt" . uneol)
 
-singleton a = [a]
+lhs s = fromMaybe "" $ s =~~ "(.*)=" >>= return . (!! 1)
 
-oct s = case readOct s of
-  (i, _) : _ -> i
-  _ -> 0
+unescape = unescapeC '_' . unescapeC '$'
 
-subF regex func str =
-  case str =~ regex of
-    (before, matched, after, groups) | not $ null matched ->
-      before ++ func (matched : groups) ++ (subF regex func after)
-    _ -> str
+unescapeC c = sub ("\\\\\\" ++ [c]) [c]
 
-sub r s = subF r (fromStr s)
-
-fromStr s = fst . foldl f (s, 0) where
-  f (s, i) group = (replace ("\\" ++ show i) group s, i + 1)
+unchar = subF "{\\\\char'(\\d+)}" $ \(_ : s : _) -> singleton . chr . oct $ s
 
 uncommand name = sub ("^\\\\" ++ name ++ "{(.*)}$") "\\1"
 
@@ -90,25 +87,7 @@ untilde = sub "~" " "
 
 uneol = sub "\\\\\\\\$" ""
 
-get2_4 t = let (_, x, _, _) = t in x
-
-regions begin end = groupRegion . reverse . snd. foldl f (False, []) where
-  f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
-  f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
-
-data Region = On | Off | Begin | End
-              deriving (Eq)
-
-groupRegion = map liftFst . groupBy eqFst
-
-liftFst x@((r,_) : _) = (r, map snd x)
-
-eqFst a b = fst a == fst b
-
-p x = traceShow x x
-
-unique :: Eq a => [a] -> [a]
-unique = map head . group
+-- commandline interface
 
 data Flag = Help 
             deriving (Eq)
@@ -128,4 +107,65 @@ parseOpt argv = case getOpt Permute flags argv of
     exitWith (ExitFailure 1)
 
 usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]" flags
+
+-- utilities
+
+singleton a = [a]
+
+oct s = case readOct s of
+  (i, _) : _ -> i
+  _ -> 0
+
+subF regex func str =
+  case str =~ regex of
+    (before, matched, after, groups) | not $ null matched ->
+      before ++ func (matched : groups) ++ (subF regex func after)
+    _ -> str
+
+sub r s = subF r (fromStr s)
+
+fromStr s = fst . foldl f (s, 0) where
+  f (s, i) group = (replace ("\\" ++ show i) group s, i + 1)
+
+oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
+
+regions begin end = groupRegion . reverse . snd. foldl f (False, []) where
+  f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
+  f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
+
+data Region = On | Off | Begin | End
+              deriving (Eq)
+
+groupRegion = map liftFst . groupBy eqFst
+
+liftFst x@((r,_) : _) = (r, map snd x)
+
+eqFst a b = fst a == fst b
+
+p x = traceShow x x
+
+unique :: Eq a => [a] -> [a]
+unique = map head . group
+
+instance (RegexLike a b) => RegexContext a b [b] where 
+  match r s = maybe [] id (matchM r s)
+  matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
+
+-- regexFailed and actOn are copied from Text.Regex.Base.Context
+regexFailed :: (Monad m) => m b
+regexFailed =  fail $ "regex failed to match"
+
+actOn :: (RegexLike r s,Monad m) => ((s,MatchText s,s)->t) -> r -> s -> m t
+actOn f r s = case matchOnceText r s of
+    Nothing -> regexFailed
+    Just preMApost -> return (f preMApost)
+    
+removeEmptyLines = filter (\l -> strip l /= "")
+
+trim = removeEmptyLines . map strip
+
+mergeRegion a b = mapRegion concat . groupRegion . map f where
+  f (r, x) = (if r == a then b else r, x)
+
+mapRegion f = map (\(r, x) -> (r, f x))
 
