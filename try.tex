@@ -2,8 +2,6 @@
 
 \begin{document}
 
-Hello world!
-
 \begin{coq_eval}
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -15,17 +13,27 @@ Import prelude.Exports.
 \end{coq_eval}
 
 \begin{coq_example}
+(*! \coqadd{\$(\d+)}{\1} *)
+(*! \coqadd{\*}{} *)
+(*! \coqadd{a}{\\alpha} *)
+
 Section ex1.
 
 Variable a : int.
 
+(*! \begin{align} *)
 Lemma ex1 : (($2 * a) + (a * $4)) = ($6 * a).
 Proof.
+  (*! \coqvar{from} &= *)
   rewrite [(a * $4)]mulrC.
+  (*! \coqvar{lhs} \\ *)
   rewrite -[(($2 * a) + ($4 * a))]mulrDl.
+  (*! &= \coqvar{lhs} \\ *)
   rewrite -[($2 + $4)]/$6.
+  (*! &= \coqvar{to} \label{eq:\coqvar{name}}\\ *)
   by [].
 Qed.
+(*! \end{align} *)
 
 End ex1.
 
@@ -44,8 +52,5 @@ Qed.
 
 End ex2.
 \end{coq_example}
-
-\begin{coq_eval}
-\end{coq_eval}
 
 \end{document}

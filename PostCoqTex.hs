@@ -23,17 +23,77 @@ main = do
   hClose fin
   hClose fout
 
-process = unlines . concatMap processBlock . coqBlocks . map strip . lines
+process :: String -> String
+process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
-coqBlocks = regions beginBlock endBlock
+-- Coq regions
 
-beginBlock = isInfixOf "\\begin{flushleft}"
+coqRegions = regions beginCoq endCoq
 
-endBlock = isInfixOf "\\end{flushleft}"
+beginCoq = isInfixOf "\\begin{flushleft}"
 
-processBlock = \case
-  (On, b) -> concat . map printLemma . mapMaybe parseLemma . mergeRegion Begin On . lemmas $ b
-  (_, b) -> b
+endCoq = isInfixOf "\\end{flushleft}"
+
+processRegion (r, b) = case r of
+  On -> onCoqRegion . map untex $ b
+  Off -> tell b
+  _ -> return ()
+
+onCoqRegion = mapM_ onCmd . cmds
+
+cmds = groupSections . sections beginCmd
+
+beginCmd = isPrefixOf cmdPrefix
+
+cmdPrefix = "Coq < "
+
+onCmd (cmds, resp) = do
+  mapM_ runCmd . getCmds . map (sub cmdPrefix "") $ cmds
+  mapM_ onGoal . goals $ resp
+
+onGoal s =
+  _ : lhs : rhs : _ <- s =~~ "(.*)=(.*)"
+  modify $ \x -> x {subgoal := (lhs, rhs)}
+
+data Cmd = Lemma (String, String, String) | Tex String
+
+getCmds = mapMaybe getCmd
+
+getCmd = msum [
+  getLemma,
+  getTex
+  ]
+         
+getLemma s = do
+  s <- return $ removeForall s
+  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
+  return $ Lemma (name, lhs, rhs)
+
+getTex s = do
+  _ : c : _ <- s = ~~ "\\(\\*!(.*?)\\*\\)"
+  return $ Tex c
+
+runCmd = \case
+  Lemma c -> runLemma c,
+  Tex c -> runTex c
+
+runLemma c = modify $ \x -> x {lemma := c}
+
+runTex s = do
+  s <- foldM subM s texCmds
+  {rules := rules} <- get
+  s <- return $ foldl sub s rules
+  tell s
+
+texCmds = [
+  texAddRule
+  ]
+
+texAddRule s = subM
+  _ : pattern : replacement : _ <- s =~~ "\\\\coqadd{(.*)}{(.*)}"
+  addRule pattern replacement
+  
+  concat . map printLemma . mapMaybe parseLemma . mergeRegion Begin On . lemmas
 
 lemmas = regions beginLemma endLemma
 
@@ -110,11 +170,7 @@ usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]" flags
 
 -- utilities
 
-singleton a = [a]
-
-oct s = case readOct s of
-  (i, _) : _ -> i
-  _ -> 0
+-- regex utilities
 
 subF regex func str =
   case str =~ regex of
@@ -126,26 +182,6 @@ sub r s = subF r (fromStr s)
 
 fromStr s = fst . foldl f (s, 0) where
   f (s, i) group = (replace ("\\" ++ show i) group s, i + 1)
-
-oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
-
-regions begin end = groupRegion . reverse . snd. foldl f (False, []) where
-  f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
-  f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
-
-data Region = On | Off | Begin | End
-              deriving (Eq)
-
-groupRegion = map liftFst . groupBy eqFst
-
-liftFst x@((r,_) : _) = (r, map snd x)
-
-eqFst a b = fst a == fst b
-
-p x = traceShow x x
-
-unique :: Eq a => [a] -> [a]
-unique = map head . group
 
 instance (RegexLike a b) => RegexContext a b [b] where 
   match r s = maybe [] id (matchM r s)
@@ -159,13 +195,43 @@ actOn :: (RegexLike r s,Monad m) => ((s,MatchText s,s)->t) -> r -> s -> m t
 actOn f r s = case matchOnceText r s of
     Nothing -> regexFailed
     Just preMApost -> return (f preMApost)
-    
-removeEmptyLines = filter (\l -> strip l /= "")
 
-trim = removeEmptyLines . map strip
+-- non-embedding regions with explicit begin and end mark
+    
+data Region = On | Off | Begin | End
+              deriving (Eq)
+
+regions begin end = groupRegion . reverse . snd. foldl f (False, []) where
+  f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
+  f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
+
+groupRegion = map liftFst . groupBy eqFst
 
 mergeRegion a b = mapRegion concat . groupRegion . map f where
   f (r, x) = (if r == a then b else r, x)
 
 mapRegion f = map (\(r, x) -> (r, f x))
+
+liftFst x@((r,_) : _) = (r, map snd x)
+
+eqFst a b = fst a == fst b
+
+-- miscellaneous
+
+p x = traceShow x x
+
+unique :: Eq a => [a] -> [a]
+unique = map head . group
+
+removeEmptyLines = filter (\l -> strip l /= "")
+
+trim = removeEmptyLines . map strip
+
+singleton a = [a]
+
+oct s = case readOct s of
+  (i, _) : _ -> i
+  _ -> 0
+
+oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
 
