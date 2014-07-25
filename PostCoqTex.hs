@@ -49,11 +49,7 @@ cmdPrefix = "Coq < "
 
 onCmd (cmds, resp) = do
   mapM_ runCmd . getCmds . map (sub cmdPrefix "") $ cmds
-  mapM_ onGoal . goals $ resp
-
-onGoal s =
-  _ : lhs : rhs : _ <- s =~~ "(.*)=(.*)"
-  modify $ \x -> x {subgoal := (lhs, rhs)}
+  mapM_ onSubGoal . subGoals $ resp
 
 data Cmd = Lemma (String, String, String) | Tex String
 
@@ -80,60 +76,36 @@ runCmd = \case
 runLemma c = modify $ \x -> x {lemma := c}
 
 runTex s = do
-  s <- foldM subM s texCmds
+  s <- mconcat texCmds s
   {rules := rules} <- get
-  s <- return $ foldl sub s rules
-  tell s
+  tell . mconcat . map (uncurry sub) rules $ s
 
 texCmds = [
   texAddRule
   ]
 
-texAddRule s = subM
-  _ : pattern : replacement : _ <- s =~~ "\\\\coqadd{(.*)}{(.*)}"
-  addRule pattern replacement
+texAddRule = subM "\\\\coqadd{(.*)}{(.*)}" $ 
+  \(_ : pattern : replacement : _) -> do
+    addRule pattern replacement
+    return ""
+
+addRule a b = do
+  st <- get
+  put st{rules := (a, b) : rules st}
   
   concat . map printLemma . mapMaybe parseLemma . mergeRegion Begin On . lemmas
 
-lemmas = regions beginLemma endLemma
-
-beginLemma = oneIsInfixOf ["~Lemma~", "~Theorem~"]
-
-endLemma = isInfixOf "~Qed."
-
-printLemma (name, formulas) = printf "%s:" name : formulas
-
-parseLemma = \case
-  (On, b) -> 
-      let (name, lhs, rhs) = getLemma b in
-      let steps = map processGoal . goals $ b in
-      let formulas = unique . trim $ lhs : steps ++ [rhs] in
-      Just (name, formulas)
-  _ -> Nothing
-
-getLemma = getLemmaParts . untex . takeWhile (isInfixOf "Coq~{<}~")
-
-getLemmaParts :: String -> (String, String, String)
-getLemmaParts s = fromMaybe ("", "", "") $ do
-  s <- return $ removeForall s
-  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
-  return (name, lhs, rhs)
-
-removeForall = sub "forall[^,]*," ""
-
-goals = regions beginGoal endGoal
+subGoals = map tail . sections beginGoal
 
 beginGoal = isInfixOf "=========="
 
-endGoal = isInfixOf "\\medskip"
+onSubGoal s =
+  _ : lhs : rhs : _ <- s =~~ "(.*)=(.*)"
+  modify $ \x -> x {subgoal := (lhs, rhs)}
 
-processGoal = \case
-  (On, b) -> lhs . untex $ b
-  _ -> ""
+untex = unescape . unchar . untilde . uncommand' "medskip" . uncommand "texttt" . uneol . strip
 
-untex = unescape . unchar . unwords . map (strip . untilde . uncommand "texttt" . uneol)
-
-lhs s = fromMaybe "" $ s =~~ "(.*)=" >>= return . (!! 1)
+removeForall = sub "forall[^,]*," ""
 
 unescape = unescapeC '_' . unescapeC '$'
 
@@ -141,7 +113,9 @@ unescapeC c = sub ("\\\\\\" ++ [c]) [c]
 
 unchar = subF "{\\\\char'(\\d+)}" $ \(_ : s : _) -> singleton . chr . oct $ s
 
-uncommand name = sub ("^\\\\" ++ name ++ "{(.*)}$") "\\1"
+uncommand name = sub ("\\\\" ++ name ++ "{(.*)}") "\\1"
+
+uncommand' name = sub ("\\\\" ++ name) ""
 
 untilde = sub "~" " "
 
@@ -177,6 +151,14 @@ subF regex func str =
     (before, matched, after, groups) | not $ null matched ->
       before ++ func (matched : groups) ++ (subF regex func after)
     _ -> str
+
+subF regex func str =
+  case str =~ regex of
+    (before, matched, after, groups) | not $ null matched -> do
+      s <- func (matched : groups)
+      k <- subF regex func after
+      return $ before ++ s ++ k
+    _ -> return str
 
 sub r s = subF r (fromStr s)
 
@@ -235,3 +217,10 @@ oct s = case readOct s of
 
 oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
 
+-- instance Monad m => Monoid (a -> m a) where
+--   mempty = return
+--   mappend = (>=>)
+  
+sections = foldl f (False, []) where
+  f = \case
+    (False, a)

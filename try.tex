@@ -51,6 +51,13 @@ Proof.
 Qed.
 
 End ex2.
+
+Lemma ex3 : forall P Q : Prop, P -> Q -> P /\ Q.
+  intros.
+  split.
+  eauto.
+Qed.
+
 \end{coq_example}
 
 \end{document}
