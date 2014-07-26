@@ -12,6 +12,8 @@ import Text.Printf
 import Data.String.Utils
 import Text.Regex.PCRE
 import Data.Array
+import Control.Monad.Writer
+import Control.Monad.Trans.State
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -23,12 +25,38 @@ main = do
   hClose fin
   hClose fout
 
+data St = St {
+  lemma :: Lemma,
+  subgoal :: Equation,
+  rules :: [(String, String)]
+  }
+
+data Lemma = Lemma {
+  name :: String,
+  equation :: Equation
+  }
+
+data Equation = Equation {
+  lhs :: String,
+  rhs :: String
+}
+  
 process :: String -> String
-process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
+process = unlines . getOutput . flip run initState . mapM_ processRegion . coqRegions . map strip . lines
+
+initState = St {
+  lemma = Lemma "" (Equation "" ""),
+  subgoal = (Equation "" ""),
+  rules = []
+  }
+
+run m s = runWriter $ runStateT m s
+
+getOutput = snd
 
 -- Coq regions
 
-coqRegions = regions beginCoq endCoq
+coqRegions = partitionByBeginEnd beginCoq endCoq
 
 beginCoq = isInfixOf "\\begin{flushleft}"
 
@@ -39,19 +67,21 @@ processRegion (r, b) = case r of
   Off -> tell b
   _ -> return ()
 
-onCoqRegion = mapM_ onCmd . cmds
+onCoqRegion = mapM_ onConversation . conversations
 
-cmds = groupSections . sections beginCmd
+conversations = itemizeBeginOn . concatByFst. partitionByBegin beginCmd
 
 beginCmd = isPrefixOf cmdPrefix
 
 cmdPrefix = "Coq < "
 
-onCmd (cmds, resp) = do
-  mapM_ runCmd . getCmds . map (sub cmdPrefix "") $ cmds
-  mapM_ onSubGoal . subGoals $ resp
+onConversation (cmds, resp) = do
+  onCmds cmds
+  onResp resp
+  
+onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
-data Cmd = Lemma (String, String, String) | Tex String
+data Cmd = CmdLemma Lemma | CmdTex String
 
 getCmds = mapMaybe getCmd
 
@@ -63,25 +93,26 @@ getCmd = msum [
 getLemma s = do
   s <- return $ removeForall s
   _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
-  return $ Lemma (name, lhs, rhs)
+  return $ CmdLemma $ Lemma name $ Equation lhs rhs
 
 getTex s = do
-  _ : c : _ <- s = ~~ "\\(\\*!(.*?)\\*\\)"
-  return $ Tex c
+  _ : c : _ <- s =~~ "\\(\\*!(.*?)\\*\\)"
+  return $ CmdTex c
 
 runCmd = \case
-  Lemma c -> runLemma c,
-  Tex c -> runTex c
+  CmdLemma c -> runLemma c
+  CmdTex c -> runTex c
 
-runLemma c = modify $ \x -> x {lemma := c}
+runLemma c = modify $ \x -> x {lemma = c}
 
 runTex s = do
   s <- mconcat texCmds s
-  {rules := rules} <- get
+  St {rules = rules} <- get
   tell . mconcat . map (uncurry sub) rules $ s
 
 texCmds = [
-  texAddRule
+  texAddRule,
+  texVar
   ]
 
 texAddRule = subM "\\\\coqadd{(.*)}{(.*)}" $ 
@@ -91,17 +122,33 @@ texAddRule = subM "\\\\coqadd{(.*)}{(.*)}" $
 
 addRule a b = do
   st <- get
-  put st{rules := (a, b) : rules st}
+  put st{rules = (a, b) : rules st}
   
-  concat . map printLemma . mapMaybe parseLemma . mergeRegion Begin On . lemmas
+texVar = mconcat . map (uncurry subVar) vars
 
-subGoals = map tail . sections beginGoal
+subVar name f = subM (printf "\\\\coqvar{%s}" name) $ get >>= return . f
+  
+vars = [
+  ("name", name . lemma),
+  ("begin", lhs . equation . lemma),
+  ("end", lhs . equation . lemma),
+  ("lhs", lhs . subgoal),
+  ("rhs", rhs . subgoal)
+  ]
+
+-- currently only process the first subgoal
+
+onResp =  onSubgoal . fromMaybe [] . listToMaybe . subgoals
+
+subgoals = filterByEqFst On . partitionByBegin beginGoal
 
 beginGoal = isInfixOf "=========="
 
-onSubGoal s =
+onSubgoal s = do
   _ : lhs : rhs : _ <- s =~~ "(.*)=(.*)"
-  modify $ \x -> x {subgoal := (lhs, rhs)}
+  modify $ \x -> x {subgoal = Equation lhs rhs}
+
+-- text processors
 
 untex = unescape . unchar . untilde . uncommand' "medskip" . uncommand "texttt" . uneol . strip
 
@@ -152,11 +199,11 @@ subF regex func str =
       before ++ func (matched : groups) ++ (subF regex func after)
     _ -> str
 
-subF regex func str =
+subM regex func str =
   case str =~ regex of
     (before, matched, after, groups) | not $ null matched -> do
       s <- func (matched : groups)
-      k <- subF regex func after
+      k <- subM regex func after
       return $ before ++ s ++ k
     _ -> return str
 
@@ -178,21 +225,40 @@ actOn f r s = case matchOnceText r s of
     Nothing -> regexFailed
     Just preMApost -> return (f preMApost)
 
--- non-embedding regions with explicit begin and end mark
+-- non-embedding regions with begin and/or end mark
     
 data Region = On | Off | Begin | End
-              deriving (Eq)
+            deriving (Eq)
 
-regions begin end = groupRegion . reverse . snd. foldl f (False, []) where
+partitionByBeginEnd begin end = groupLiftByFst . reverse . snd. foldl f (False, []) where
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
 
-groupRegion = map liftFst . groupBy eqFst
+partitionByBegin begin = foldl f (False, []) where
+  f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
+  f (True, acc) x = (True, if begin x then Begin else On : acc)
 
-mergeRegion a b = mapRegion concat . groupRegion . map f where
+itemizeBeginOn = final . foldl f (Nothing, []) . filterByNeFst Off where
+  f (cur, acc) (Begin, x) = (Just (x, mempty), case cur of {Just cur -> cur : acc ;  _ -> acc})
+  f (Just (a, _), acc) (On, x) = (Just (a, x), acc)
+  f a _ = a
+  final (Just cur, acc) = cur : acc
+  final (_, acc) = acc
+
+groupByFst = groupBy eqFst
+
+groupLiftByFst = map liftFst . groupByFst
+
+concatByFst = mapSnd concat . groupLiftByFst
+
+combineByFst a b = concatByFst . map f where
   f (r, x) = (if r == a then b else r, x)
 
-mapRegion f = map (\(r, x) -> (r, f x))
+mapSnd f = map (\(r, x) -> (r, f x))
+
+filterByEqFst a = map snd . filter (\x -> fst x == a)
+
+filterByNeFst a = map snd . filter (\x -> fst x /= a)
 
 liftFst x@((r,_) : _) = (r, map snd x)
 
@@ -220,7 +286,3 @@ oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
 -- instance Monad m => Monoid (a -> m a) where
 --   mempty = return
 --   mappend = (>=>)
-  
-sections = foldl f (False, []) where
-  f = \case
-    (False, a)
