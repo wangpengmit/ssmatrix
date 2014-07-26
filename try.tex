@@ -1,5 +1,10 @@
 \documentclass{article}
 
+\usepackage{amsmath}
+
+%% a marker for further formula typesetting
+\newcommand{\pruneParen}[1]{#1}
+
 \begin{document}
 
 \begin{coq_eval}
@@ -14,8 +19,8 @@ Import prelude.Exports.
 
 \begin{coq_example}
 (*!- \coqadd{\$(\d+)}{\1} *)
-(*!- \coqadd{\*}{} *)
-(*!- \coqadd{a}{\\alpha} *)
+(*!- \coqadd{\*}{\times} *)
+(*!- \coqadd{\ba\b}{\beta} *)
 
 Section ex1.
 
@@ -30,7 +35,7 @@ Proof.
   rewrite -[(($2 * a) + ($4 * a))]mulrDl.
   (*! &= \coqvar{lhs} \\ *)
   rewrite -[($2 + $4)]/$6.
-  (*! &= \coqvar{to} \label{eq:\coqvar{name}}\\ *)
+  (*! &= \coqvar{to} \label{eq:\coqvar{name}} *)
   by [].
 Qed.
 (*! \end{align} *)
@@ -41,22 +46,23 @@ Section ex2.
 
 Variables a : int.
 
+(*! \begin{align} *)
 Lemma ex2 : (((a - a) ^ $2) + (a - a)) = $0.
 Proof.
+  (*! \pruneParen{\coqvar{from}} &= *)
   pattern_set (a - a).
+  (*! \coqvar{lhs} \\ *)
   rewrite [(a - a)]addrN.
+  (*! &= \coqvar{lhs} \\ *)
   red.
+  (*! &= \coqvar{lhs} \\ *)
   rewrite -[(($0 ^ $2) + $0)]/$0.
+  (*! &= \coqvar{to} \label{eq:\coqvar{name}} *)
   by [].
 Qed.
+(*! \end{align} *)
 
 End ex2.
-
-Lemma ex3 : forall P Q : Prop, P -> Q -> P /\ Q.
-  intros.
-  split.
-  eauto.
-Qed.
 
 \end{coq_example}
 

@@ -45,8 +45,8 @@ data Equation = Equation {
 process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
 initState = St {
-  lemma = Lemma "" (Equation "" ""),
-  subgoal = (Equation "" ""),
+  lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
+  subgoal = (Equation "*no-lhs*" "*no-rhs*"),
   rules = []
   }
 
@@ -92,7 +92,7 @@ getCmd = first [
 
 getLemmaCmd s = do
   s <- return $ removeForall s
-  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)"
+  _ : name : lhs : rhs : _ <- s =~~ "\\b(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)"
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
@@ -137,7 +137,7 @@ texVar = chainM $ map (uncurry subVar) vars
 vars = [
   ("name", name . lemma),
   ("from", lhs . equation . lemma),
-  ("to", lhs . equation . lemma),
+  ("to", rhs . equation . lemma),
   ("lhs", lhs . subgoal),
   ("rhs", rhs . subgoal)
   ]
@@ -165,8 +165,10 @@ onSubgoal s =
 
 untex = unescape . unchar . untilde . untag "medskip" . uncommand "texttt" . uneol . strip
 
-unescape = unescapeC '_' . unescapeC '$'
+unescape = unescapes "{}_$&" . sub "{<}" "<"
 
+unescapes = chain . map unescapeC
+  
 unescapeC c = sub ("\\\\\\" ++ [c]) [c]
 
 unchar = subF "{\\\\char'(\\d+)}" $ \(_ : s : _) -> singleton . chr . oct $ s
@@ -243,7 +245,7 @@ actOn f r s = case matchOnceText r s of
 -- non-embedding regions with begin and/or end mark
     
 data Region = On | Off | Begin | End
-            deriving (Eq)
+            deriving (Eq, Show)
 
 partitionByBeginEnd begin end = groupLiftByFst . reverse . snd. foldl f (False, []) where
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
@@ -253,8 +255,9 @@ partitionByBegin begin = groupLiftByFst . reverse . snd . foldl f (False, []) wh
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = (True, (if begin x then Begin else On, x) : acc)
 
--- convert a sequence of [(Off, _), (Begin, x1), (On, y1), (Begin, x2), (On, y2), ...] to [(x1,y1), (x2, y2), ...] 
-itemizeBeginOn = final . foldl f (Nothing, []) . filterByNeFst Off where
+-- convert a sequence of [(Off, _), (Begin, x1), (On, y1), (Begin, x2), (On, y2), ...] to [(x1,y1), (x2, y2), ...]
+itemizeBeginOn :: Monoid a => [(Region, a)] -> [(a, a)]
+itemizeBeginOn = reverse . final . foldl f (Nothing, []) . filterByNeFst Off where
   f (cur, acc) (Begin, x) = (Just (x, mempty), case cur of {Just cur -> cur : acc ;  _ -> acc})
   f (Just (a, _), acc) (On, x) = (Just (a, x), acc)
   f a _ = a
@@ -285,8 +288,6 @@ fmap2 = fmap . fmap
 
 -- miscellaneous
 
-p x = traceShow x x
-
 unique :: Eq a => [a] -> [a]
 unique = map head . group
 
@@ -313,4 +314,8 @@ first fs x = msum $ map ($ x) fs
 chain = appEndo . mconcat . map Endo
 
 chainM = appEndoM . mconcat . map EndoM
+
+-- p x = traceShow x x
+
+-- pf f x = traceShow (f x) x
 
