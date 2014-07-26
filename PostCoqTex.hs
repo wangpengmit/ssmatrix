@@ -42,7 +42,6 @@ data Equation = Equation {
   rhs :: String
 }
   
-process :: String -> String
 process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
 initState = St {
@@ -82,7 +81,7 @@ onConversation (cmds, resp) = do
   
 onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
-data Cmd = LemmaCmd Lemma | InCommentCmd String
+data Cmd = LemmaCmd Lemma | InCommentCmd (Bool, String)
 
 getCmds = mapMaybe getCmd
 
@@ -91,16 +90,14 @@ getCmd = first [
   getInCommentCmd
   ]
 
-first fs x = msum $ map ($ x) fs
-
 getLemmaCmd s = do
   s <- return $ removeForall s
-  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
+  _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)"
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
-  _ : c : _ <- s =~~ "\\(\\*!(.*?)\\*\\)"
-  return $ InCommentCmd c
+  _ : isPrint : c : _ <- s =~~ "\\(\\*(!-?)(.*?)\\*\\)"
+  return $ InCommentCmd (isPrint /= "!-", c)
 
 runCmd = \case
   LemmaCmd c -> runLemmaCmd c
@@ -108,50 +105,55 @@ runCmd = \case
 
 runLemmaCmd c = modify $ \x -> x {lemma = c}
 
-runInCommentCmd s = do
+runInCommentCmd (isPrint, s) = do
+  -- run builtin \coqXXX commands
   s <- chainM texCmds s
-  St {rules = rules} <- get
-  tell . singleton . chain (map (uncurry sub) rules) $ s
-
-chain = appEndo . mconcat . map Endo
-
-chainM = appEndoM . mconcat . map EndoM
+  if isPrint then do
+    -- string substitution using rules registered on-the-fly
+    St {rules = rules} <- get
+    tell . singleton . chain (map (uncurry sub) rules) $ s
+  else
+    return ()
 
 texCmds = [
+  -- \coqadd{}{}
   texAddRule,
+  -- \coqvar{}
   texVar
   ]
 
 texAddRule = subM "\\\\coqadd{(.*)}{(.*)}" $ 
-  \(_ : pattern : replacement : _) -> do
-    addRule pattern replacement
+  \(_ : p : s : _) -> do
+    addRule p s
     return ""
 
 addRule a b = do
   st <- get
-  put st{rules = (a, b) : rules st}
-  
+  put st{ rules = rules st ++ [(a, b)] }
+
+-- replace \coqvar{...} with corresponding value according to vars
 texVar = chainM $ map (uncurry subVar) vars
+
+vars = [
+  ("name", name . lemma),
+  ("from", lhs . equation . lemma),
+  ("to", lhs . equation . lemma),
+  ("lhs", lhs . subgoal),
+  ("rhs", rhs . subgoal)
+  ]
 
 subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
 
 varTag name =  printf "\\\\coqvar{%s}" name
 
-vars = [
-  ("name", name . lemma),
-  ("begin", lhs . equation . lemma),
-  ("end", lhs . equation . lemma),
-  ("lhs", lhs . subgoal),
-  ("rhs", rhs . subgoal)
-  ]
-
+-- process coqtop responses
 -- currently only process the first subgoal
 
-onResp =  onSubgoal . fromMaybe [] . listToMaybe . subgoals
+onResp =  onSubgoal . fromMaybe "" . listToMaybe . subgoals
 
-subgoals = map unwords . filterByEqFst On . partitionByBegin beginGoal
+subgoals = map unwords . filterByEqFst On . partitionByBegin beginSubgoal
 
-beginGoal = isInfixOf "=========="
+beginSubgoal = isInfixOf "=========="
 
 onSubgoal s = 
   case s =~ "(.*)=(.*)" of
@@ -161,9 +163,7 @@ onSubgoal s =
 
 -- text processors
 
-untex = unescape . unchar . untilde . uncommand' "medskip" . uncommand "texttt" . uneol . strip
-
-removeForall = sub "forall[^,]*," ""
+untex = unescape . unchar . untilde . untag "medskip" . uncommand "texttt" . uneol . strip
 
 unescape = unescapeC '_' . unescapeC '$'
 
@@ -173,11 +173,13 @@ unchar = subF "{\\\\char'(\\d+)}" $ \(_ : s : _) -> singleton . chr . oct $ s
 
 uncommand name = sub ("\\\\" ++ name ++ "{(.*)}") "\\1"
 
-uncommand' name = sub ("\\\\" ++ name) ""
+untag name = sub ("\\\\" ++ name) ""
 
 untilde = sub "~" " "
 
 uneol = sub "\\\\\\\\$" ""
+
+removeForall = sub "forall[^,]*," ""
 
 -- commandline interface
 
@@ -226,6 +228,7 @@ fromStr s = fst . foldl f (s, 0) where
 
 -- regexFailed and actOn are copied from Text.Regex.Base.Context
 
+-- s =~ r :: [String], the first match and its subgroups
 instance (RegexLike a b) => RegexContext a b [b] where 
   match r s = maybe [] id (matchM r s)
   matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
@@ -233,7 +236,6 @@ instance (RegexLike a b) => RegexContext a b [b] where
 regexFailed :: (Monad m) => m b
 regexFailed =  fail $ "regex failed to match"
 
-actOn :: (RegexLike r s,Monad m) => ((s,MatchText s,s)->t) -> r -> s -> m t
 actOn f r s = case matchOnceText r s of
     Nothing -> regexFailed
     Just preMApost -> return (f preMApost)
@@ -251,6 +253,7 @@ partitionByBegin begin = groupLiftByFst . reverse . snd . foldl f (False, []) wh
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = (True, (if begin x then Begin else On, x) : acc)
 
+-- convert a sequence of [(Off, _), (Begin, x1), (On, y1), (Begin, x2), (On, y2), ...] to [(x1,y1), (x2, y2), ...] 
 itemizeBeginOn = final . foldl f (Nothing, []) . filterByNeFst Off where
   f (cur, acc) (Begin, x) = (Just (x, mempty), case cur of {Just cur -> cur : acc ;  _ -> acc})
   f (Just (a, _), acc) (On, x) = (Just (a, x), acc)
@@ -262,12 +265,9 @@ groupByFst = groupBy eqFst
 
 groupLiftByFst = map liftFst . groupByFst
 
-concatByFst = mapSnd concat . groupLiftByFst
+concatByFst = fmap2 concat . groupLiftByFst
 
-combineByFst a b = concatByFst . map f where
-  f (r, x) = (if r == a then b else r, x)
-
-mapSnd f = map (\(r, x) -> (r, f x))
+combineByFst a b = concatByFst . (map . mapFst) (change a b)
 
 filterByEqFst a = map snd . filter (\x -> fst x == a)
 
@@ -275,7 +275,13 @@ filterByNeFst a = filter (\x -> fst x /= a)
 
 liftFst x@((r,_) : _) = (r, map snd x)
 
+mapFst f (a, b) = (f a, b)
+
 eqFst = (==) `on` fst
+
+change a b x = if x == a then b else x
+
+fmap2 = fmap . fmap
 
 -- miscellaneous
 
@@ -301,3 +307,10 @@ newtype EndoM m a = EndoM { appEndoM :: a -> m a}
 instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
+
+first fs x = msum $ map ($ x) fs
+
+chain = appEndo . mconcat . map Endo
+
+chainM = appEndoM . mconcat . map EndoM
+
