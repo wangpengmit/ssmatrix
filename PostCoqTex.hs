@@ -14,6 +14,7 @@ import Text.Regex.PCRE
 import Data.Array
 import Control.Monad.Writer
 import Control.Monad.Trans.State
+import Data.Function
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -42,7 +43,7 @@ data Equation = Equation {
 }
   
 process :: String -> String
-process = unlines . getOutput . flip run initState . mapM_ processRegion . coqRegions . map strip . lines
+process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
 initState = St {
   lemma = Lemma "" (Equation "" ""),
@@ -50,7 +51,7 @@ initState = St {
   rules = []
   }
 
-run m s = runWriter $ runStateT m s
+run s = runWriter . flip runStateT s
 
 getOutput = snd
 
@@ -69,7 +70,7 @@ processRegion (r, b) = case r of
 
 onCoqRegion = mapM_ onConversation . conversations
 
-conversations = itemizeBeginOn . concatByFst. partitionByBegin beginCmd
+conversations = itemizeBeginOn . partitionByBegin beginCmd
 
 beginCmd = isPrefixOf cmdPrefix
 
@@ -81,34 +82,40 @@ onConversation (cmds, resp) = do
   
 onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
-data Cmd = CmdLemma Lemma | CmdTex String
+data Cmd = LemmaCmd Lemma | InCommentCmd String
 
 getCmds = mapMaybe getCmd
 
-getCmd = msum [
-  getLemma,
-  getTex
+getCmd = first [
+  getLemmaCmd,
+  getInCommentCmd
   ]
-         
-getLemma s = do
+
+first fs x = msum $ map ($ x) fs
+
+getLemmaCmd s = do
   s <- return $ removeForall s
   _ : name : lhs : rhs : _ <- s =~~ "\\s(?:Lemma|Theorem)\\s([^\\s:]+)[^:]*:(.*)=(.*)"
-  return $ CmdLemma $ Lemma name $ Equation lhs rhs
+  return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
-getTex s = do
+getInCommentCmd s = do
   _ : c : _ <- s =~~ "\\(\\*!(.*?)\\*\\)"
-  return $ CmdTex c
+  return $ InCommentCmd c
 
 runCmd = \case
-  CmdLemma c -> runLemma c
-  CmdTex c -> runTex c
+  LemmaCmd c -> runLemmaCmd c
+  InCommentCmd c -> runInCommentCmd c
 
-runLemma c = modify $ \x -> x {lemma = c}
+runLemmaCmd c = modify $ \x -> x {lemma = c}
 
-runTex s = do
-  s <- mconcat texCmds s
+runInCommentCmd s = do
+  s <- chainM texCmds s
   St {rules = rules} <- get
-  tell . mconcat . map (uncurry sub) rules $ s
+  tell . singleton . chain (map (uncurry sub) rules) $ s
+
+chain = appEndo . mconcat . map Endo
+
+chainM = appEndoM . mconcat . map EndoM
 
 texCmds = [
   texAddRule,
@@ -124,10 +131,12 @@ addRule a b = do
   st <- get
   put st{rules = (a, b) : rules st}
   
-texVar = mconcat . map (uncurry subVar) vars
+texVar = chainM $ map (uncurry subVar) vars
 
-subVar name f = subM (printf "\\\\coqvar{%s}" name) $ get >>= return . f
-  
+subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
+
+varTag name =  printf "\\\\coqvar{%s}" name
+
 vars = [
   ("name", name . lemma),
   ("begin", lhs . equation . lemma),
@@ -140,13 +149,15 @@ vars = [
 
 onResp =  onSubgoal . fromMaybe [] . listToMaybe . subgoals
 
-subgoals = filterByEqFst On . partitionByBegin beginGoal
+subgoals = map unwords . filterByEqFst On . partitionByBegin beginGoal
 
 beginGoal = isInfixOf "=========="
 
-onSubgoal s = do
-  _ : lhs : rhs : _ <- s =~~ "(.*)=(.*)"
-  modify $ \x -> x {subgoal = Equation lhs rhs}
+onSubgoal s = 
+  case s =~ "(.*)=(.*)" of
+    _ : lhs : rhs : _ ->
+      modify $ \x -> x {subgoal = Equation lhs rhs}
+    _ -> return ()
 
 -- text processors
 
@@ -199,6 +210,7 @@ subF regex func str =
       before ++ func (matched : groups) ++ (subF regex func after)
     _ -> str
 
+subM :: Monad m => String -> ([String] -> m String) -> String -> m String
 subM regex func str =
   case str =~ regex of
     (before, matched, after, groups) | not $ null matched -> do
@@ -212,11 +224,12 @@ sub r s = subF r (fromStr s)
 fromStr s = fst . foldl f (s, 0) where
   f (s, i) group = (replace ("\\" ++ show i) group s, i + 1)
 
+-- regexFailed and actOn are copied from Text.Regex.Base.Context
+
 instance (RegexLike a b) => RegexContext a b [b] where 
   match r s = maybe [] id (matchM r s)
   matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
 
--- regexFailed and actOn are copied from Text.Regex.Base.Context
 regexFailed :: (Monad m) => m b
 regexFailed =  fail $ "regex failed to match"
 
@@ -234,9 +247,9 @@ partitionByBeginEnd begin end = groupLiftByFst . reverse . snd. foldl f (False, 
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
 
-partitionByBegin begin = foldl f (False, []) where
+partitionByBegin begin = groupLiftByFst . reverse . snd . foldl f (False, []) where
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
-  f (True, acc) x = (True, if begin x then Begin else On : acc)
+  f (True, acc) x = (True, (if begin x then Begin else On, x) : acc)
 
 itemizeBeginOn = final . foldl f (Nothing, []) . filterByNeFst Off where
   f (cur, acc) (Begin, x) = (Just (x, mempty), case cur of {Just cur -> cur : acc ;  _ -> acc})
@@ -258,11 +271,11 @@ mapSnd f = map (\(r, x) -> (r, f x))
 
 filterByEqFst a = map snd . filter (\x -> fst x == a)
 
-filterByNeFst a = map snd . filter (\x -> fst x /= a)
+filterByNeFst a = filter (\x -> fst x /= a)
 
 liftFst x@((r,_) : _) = (r, map snd x)
 
-eqFst a b = fst a == fst b
+eqFst = (==) `on` fst
 
 -- miscellaneous
 
@@ -283,6 +296,8 @@ oct s = case readOct s of
 
 oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
 
--- instance Monad m => Monoid (a -> m a) where
---   mempty = return
---   mappend = (>=>)
+newtype EndoM m a = EndoM { appEndoM :: a -> m a}
+
+instance Monad m => Monoid (EndoM m a) where
+  mempty = EndoM return
+  EndoM f `mappend` EndoM g = EndoM (f >=> g)

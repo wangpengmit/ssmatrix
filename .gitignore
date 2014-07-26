@@ -38,3 +38,4 @@ timing/
 *.hi
 *_out.v
 WitnessToLtac
+PostCoqTex
