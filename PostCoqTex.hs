@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 import System.IO 
 import System.Environment
 import System.Exit
@@ -14,6 +14,7 @@ import Text.Regex.PCRE
 import Data.Array
 import Control.Monad.Writer
 import Control.Monad.Trans.State
+import Control.Monad.Identity
 import Data.Function
 
 main = do
@@ -92,7 +93,7 @@ getCmd = first [
 
 getLemmaCmd s = do
   s <- return $ removeForall s
-  _ : name : lhs : rhs : _ <- s =~~ "\\b(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)"
+  _ : name : lhs : rhs : _ <- s =~~ "\\b(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)\\."
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
@@ -208,20 +209,17 @@ usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]" flags
 
 -- regex utilities
 
-subF regex func str =
-  case str =~ regex of
-    (before, matched, after, groups) | not $ null matched ->
-      before ++ func (matched : groups) ++ (subF regex func after)
-    _ -> str
-
+-- subsitute all occurances of regex
 subM :: Monad m => String -> ([String] -> m String) -> String -> m String
 subM regex func str =
-  case str =~ regex of
-    (before, matched, after, groups) | not $ null matched -> do
+  fromMaybe (return str) $ do
+    (before, matched, after, groups) <- str =~~~ regex
+    return $ do
       s <- func (matched : groups)
       k <- subM regex func after
       return $ before ++ s ++ k
-    _ -> return str
+
+subF r f = runIdentity . subM r (return . f)
 
 sub r s = subF r (fromStr s)
 
@@ -241,6 +239,16 @@ regexFailed =  fail $ "regex failed to match"
 actOn f r s = case matchOnceText r s of
     Nothing -> regexFailed
     Just preMApost -> return (f preMApost)
+
+-- a safer version of =~~, where compile error of regex won't crash the execution
+(=~~~) :: (RegexMaker Regex CompOption ExecOption source,RegexContext Regex source1 target,Monad m)
+      => source1 -> source -> m target
+
+(=~~~) x r = let makeM :: (RegexMaker Regex CompOption ExecOption a, Monad m) => a -> m Regex
+                 makeM = makeRegexM
+             in do
+               r <- makeM r
+               matchM r x
 
 -- non-embedding regions with begin and/or end mark
     
@@ -311,7 +319,7 @@ instance Monad m => Monoid (EndoM m a) where
 
 first fs x = msum $ map ($ x) fs
 
-chain = appEndo . mconcat . map Endo
+chain = appEndo . mconcat . reverse . map Endo
 
 chainM = appEndoM . mconcat . map EndoM
 

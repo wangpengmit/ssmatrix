@@ -39,3 +39,4 @@ timing/
 *_out.v
 WitnessToLtac
 PostCoqTex
+*.o.tex
