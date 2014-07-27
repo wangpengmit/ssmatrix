@@ -1,21 +1,24 @@
 {-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 import System.IO 
-import System.Environment
+import System.Environment (getArgs)
 import System.Exit
 import System.Console.GetOpt
 import Data.List
 import Data.Maybe
-import Data.Char
-import Debug.Trace
-import Numeric
-import Text.Printf
-import Data.String.Utils
+import Data.Char (chr)
+import Debug.Trace (traceShow)
+import Numeric (readOct)
+import Text.Printf (printf)
+import Data.String.Utils (strip, replace)
 import Text.Regex.PCRE
-import Data.Array
-import Control.Monad.Writer
-import Control.Monad.Trans.State
-import Control.Monad.Identity
-import Data.Function
+import Data.Array (elems)
+import Control.Monad ((>=>))
+import Control.Monad.Writer (runWriter, tell)
+import Control.Monad.State (runStateT, get, put, modify)
+import Control.Monad.Identity (runIdentity)
+import Data.Function (on)
+import Data.Foldable (asum)
+import Data.Monoid
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -86,7 +89,7 @@ data Cmd = LemmaCmd Lemma | InCommentCmd (Bool, String)
 
 getCmds = mapMaybe getCmd
 
-getCmd = first [
+getCmd = choice [
   getLemmaCmd,
   getInCommentCmd
   ]
@@ -312,8 +315,8 @@ oct s = case readOct s of
 
 oneIsInfixOf ls s = any (flip isInfixOf s) ls
 
--- returns the first of (f x) that is not Nothing, where f is in fs
-first fs x = msum $ map ($ x) fs
+-- returns the result of the first function in fs to succeed
+choice fs x = asum $  map ($ x) fs
 
 -- chain [f, g, h, ...] = ... . h . g . f
 chain = appEndo . mconcat . map Endo . reverse
