@@ -226,20 +226,6 @@ sub r s = subF r (fromStr s)
 fromStr s = fst . foldl f (s, 0) where
   f (s, i) group = (replace ("\\" ++ show i) group s, i + 1)
 
--- regexFailed and actOn are copied from Text.Regex.Base.Context
-
--- s =~ r :: [String], the first match and its subgroups
-instance (RegexLike a b) => RegexContext a b [b] where 
-  match r s = maybe [] id (matchM r s)
-  matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
-
-regexFailed :: (Monad m) => m b
-regexFailed =  fail $ "regex failed to match"
-
-actOn f r s = case matchOnceText r s of
-    Nothing -> regexFailed
-    Just preMApost -> return (f preMApost)
-
 -- a safer version of =~~, where compile error of regex won't crash the execution
 (=~~~) :: (RegexMaker Regex CompOption ExecOption source,RegexContext Regex source1 target,Monad m)
       => source1 -> source -> m target
@@ -250,15 +236,30 @@ actOn f r s = case matchOnceText r s of
                r <- makeM r
                matchM r x
 
--- non-embedding regions with begin and/or end mark
+-- s =~ r :: [String] will return the first match and its subgroups
+instance (RegexLike a b) => RegexContext a b [b] where 
+  match r s = maybe [] id (matchM r s)
+  matchM = actOn (\(_,ma,_) -> map fst $ elems ma)
+
+-- regexFailed and actOn are copied from Text.Regex.Base.Context
+regexFailed :: (Monad m) => m b
+regexFailed =  fail $ "regex failed to match"
+
+actOn f r s = case matchOnceText r s of
+    Nothing -> regexFailed
+    Just preMApost -> return (f preMApost)
+
+-- non-embedding regions with begin and/or end marks
     
 data Region = On | Off | Begin | End
             deriving (Eq, Show)
 
+-- partition with explicit begin and end marks
 partitionByBeginEnd begin end = groupLiftByFst . reverse . snd. foldl f (False, []) where
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = if end x then (False, (End, x) : acc) else (True, (On, x) : acc)
 
+-- partition with only begin marks
 partitionByBegin begin = groupLiftByFst . reverse . snd . foldl f (False, []) where
   f (False, acc) x = if begin x then (True, (Begin, x) : acc) else (False, (Off, x) : acc)
   f (True, acc) x = (True, (if begin x then Begin else On, x) : acc)
@@ -276,7 +277,7 @@ groupByFst = groupBy eqFst
 
 groupLiftByFst = map liftFst . groupByFst
 
-concatByFst = fmap2 concat . groupLiftByFst
+concatByFst = (map . mapSnd) concat . groupLiftByFst
 
 combineByFst a b = concatByFst . (map . mapFst) (change a b)
 
@@ -288,11 +289,11 @@ liftFst x@((r,_) : _) = (r, map snd x)
 
 mapFst f (a, b) = (f a, b)
 
+mapSnd f (a, b) = (a, f b)
+
 eqFst = (==) `on` fst
 
 change a b x = if x == a then b else x
-
-fmap2 = fmap . fmap
 
 -- miscellaneous
 
@@ -309,19 +310,22 @@ oct s = case readOct s of
   (i, _) : _ -> i
   _ -> 0
 
-oneIsInfixOf ls s = any (\x -> isInfixOf x s) ls
+oneIsInfixOf ls s = any (flip isInfixOf s) ls
+
+-- returns the first of (f x) that is not Nothing, where f is in fs
+first fs x = msum $ map ($ x) fs
+
+-- chain [f, g, h, ...] = ... . h . g . f
+chain = appEndo . mconcat . map Endo . reverse
+
+-- chain [f, g, h, ...] = f >=> g >=> h >=> ...
+chainM = appEndoM . mconcat . map EndoM
 
 newtype EndoM m a = EndoM { appEndoM :: a -> m a}
 
 instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
-
-first fs x = msum $ map ($ x) fs
-
-chain = appEndo . mconcat . reverse . map Endo
-
-chainM = appEndoM . mconcat . map EndoM
 
 -- p x = traceShow x x
 
