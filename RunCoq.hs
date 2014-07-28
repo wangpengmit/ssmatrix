@@ -15,6 +15,7 @@ main = do
     hSetBuffering err LineBuffering
     hSetBuffering out LineBuffering
     forkIO $ parseUntilPrompt "stdin" out >> return ()
+    waitPrompt err
     forkIO $ hPutStrLn inn "Require Import matrix."
     waitPrompt err
     putStrLn "input"
@@ -22,15 +23,16 @@ main = do
     waitPrompt err
     putStrLn "input"
     forkIO $ hPutStrLn inn "Quit."
-    waitPrompt err
 
-waitPrompt h = do
-  ln <- hGetLine h
-  putStrLn $ "stderr: " ++ ln
-  if isPrefixOf "Coq <" ln then do
-    return ln
-  else
-    waitPrompt h
+waitPrompt h = hGetUntil h "Coq <"
+
+  -- do
+  -- ln <- hGetLine h
+  -- putStrLn $ "stderr: " ++ ln
+  -- if isPrefixOf "Coq <" ln then do
+  --   return ln
+  -- else
+  --   waitPrompt h
 
 parseUntilPrompt src out = do
   tryIOError (hGetLine out) >>= \case
@@ -42,6 +44,15 @@ parseUntilPrompt src out = do
         putStrLn $ src ++ ": " ++ latest
         (:) <$> return latest <*> parseUntilPrompt src out
 
+hGetUntil h str = 
+  if null str then
+    return ""
+  else
+    do
+      c <- hGetChar h
+      let str' = if c == head str then tail str else str
+      (c :) <$> hGetUntil h str'
+    
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
