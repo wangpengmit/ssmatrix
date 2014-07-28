@@ -12,19 +12,17 @@ main = do
     (inn, out, err, idd) <- runInteractiveCommand "coqtop"    
     mapM_ (flip hSetBinaryMode False) [inn, err, out]             
     hSetBuffering inn NoBuffering
-    hSetBuffering err LineBuffering
-    hSetBuffering out LineBuffering
-    forkIO $ getResp out >> return ()
-    waitPrompt err >>= putStr
-    mapM_ ($ "Require Import matrix.") [putStrLn, (input inn)] 
-    waitPrompt err >>= putStr
-    mapM_ ($ "About bool.") [putStrLn, (input inn)] 
-    waitPrompt err >>= putStr
-    mapM_ ($ "Quit.") [(input inn)] 
+    hSetBuffering stdout NoBuffering
+    hSetBuffering err NoBuffering
+    hSetBuffering out NoBuffering
+    forkIO $ getResp out
+    waitPrompt err
+    str <- getContents
+    flip mapM_ (lines str) $ \ln -> do
+      mapM_ (flip hPutStrLn ln) [stdout, inn] 
+      waitPrompt err
 
-waitPrompt h = hGetUntil h "Coq < "
-
-input inn str = (forkIO $ hPutStrLn inn str) >> return ()
+waitPrompt h = hGetUntil h " < " >> putStr "Coq < "
 
 getResp out = hGetLine out >>= putStrLn >> getResp out
 

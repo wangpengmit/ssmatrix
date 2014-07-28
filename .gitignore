@@ -41,3 +41,6 @@ WitnessToLtac
 PostCoqTex
 *.o.tex
 ttt.*
+RunCoq
+YieldParser
+YieldParseTree
