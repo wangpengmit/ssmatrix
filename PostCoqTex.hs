@@ -46,7 +46,7 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-process = unlines . getOutput . run initState . mapM_ processRegion . pf length . coqRegions . map strip . lines
+process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
@@ -71,7 +71,7 @@ processRegion (r, b) = case r of
   Off -> tell b
   _ -> return ()
 
-onCoqRegion = mapM_ onConversation . pf length . conversations
+onCoqRegion = mapM_ onConversation . conversations
 
 conversations = itemizeBeginOn . partitionByBegin beginCmd
 
@@ -344,7 +344,7 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
-p x = traceShow x x
+-- p x = traceShow x x
 
-pf f x = traceShow (f x) x
+-- pf f x = traceShow (f x) x
 
