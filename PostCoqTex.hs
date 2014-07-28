@@ -85,7 +85,7 @@ onConversation (cmds, resp) = do
   
 onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
-data Cmd = LemmaCmd Lemma | InCommentCmd (Bool, String) deriving (Show)
+data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 getCmds = mapMaybe getCmd
 
@@ -100,8 +100,15 @@ getLemmaCmd s = do
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
-  _ : isPrint : c : _ <- s =~~ "\\(\\*(!-?)(.*?)\\*\\)"
-  return $ InCommentCmd (isPrint /= "!-", c)
+  _ : opts : c : _ <- s =~~ "\\(\\*(![-n]*)(.*?)\\*\\)"
+  return $ InCommentCmd (parseInCommentOpts opts, c)
+
+parseInCommentOpts s = concat [
+  if elem '-' s then [NoPrint] else [],
+  if elem 'n' s then [NoSub] else []
+  ]
+
+data InCommentOpts = NoPrint | NoSub deriving (Eq, Show)
 
 runCmd c = case c of
   LemmaCmd c -> runLemmaCmd c
@@ -109,13 +116,18 @@ runCmd c = case c of
 
 runLemmaCmd c = modify $ \x -> x {lemma = c}
 
-runInCommentCmd (isPrint, s) = do
+runInCommentCmd (opts, s) = do
   -- run builtin \coqXXX commands
   s <- chainM texCmds s
-  if isPrint then do
-    -- string substitution using rules registered on-the-fly
-    St {rules = rules} <- get
-    tell . singleton . chain (map (uncurry sub) rules) $ s
+  if not $ elem NoPrint opts then do
+    s <- if not $ elem NoSub opts then
+           do
+             -- string substitution using rules registered on-the-fly
+             St {rules = rules} <- get
+             return . chain (map (uncurry sub) rules) $ s
+         else
+             return s
+    tell . singleton $ s
   else
     return ()
 

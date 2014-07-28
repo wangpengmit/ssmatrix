@@ -1,0 +1,605 @@
+% last updated in April 2002 by Antje Endemann
+% Based on CVPR 07 and LNCS, with modifications by DAF, AZ and elle, 2008 and AA, 2010, and CC, 2011
+
+\documentclass[runningheads]{llncs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,mathtools} % define this before the line numbering.
+\usepackage{ruler}
+\usepackage{color}
+\usepackage[width=122mm,left=12mm,paperwidth=146mm,height=193mm,top=12mm,paperheight=217mm]{geometry}
+
+
+%% Generic latex macros macx
+\def\eqref#1{(\ref{eq:#1})}
+\def\eqlabel#1{\label{eq:#1}}
+%\let\be=\equation
+%\let\ee=\endequation
+\def\tr{^\top}
+\def\xcomment#1{\textcolor[gray]{.2}{\text{\em---#1}}}
+\def\comment#1{\kern-1cm\xcomment{#1}}
+
+\def\vec{\operatorname{vec}}
+\DeclareMathOperator{\trace}{trace}
+
+\def\hadamard{\odot}
+\def\m#1{\ensuremath{\mathtt{#1}}}
+\def\mt#1{\ensuremath{\mathtt{\tilde{#1}}}}
+\def\v#1{\ensuremath{\mathbf{#1}}}
+
+% paper-specific macros
+\def\mU{\m U}
+\def\mV{\m V}
+\def\mW{\m W}
+\def\mM{\m M}
+\def\err{\epsilon}
+\def\verr{\boldsymbol \epsilon}
+
+\def\twiddle#1{{\tilde{#1}}}
+\def\tU{\twiddle\mU}
+\def\tW{\twiddle\mW}
+\def\tV{\twiddle\mV}
+\def\tVstar{{\twiddle\mV}^*}
+
+\begin{document}
+% \renewcommand\thelinenumber{\color[rgb]{0.2,0.5,0.8}\normalfont\sffamily\scriptsize\arabic{linenumber}\color[rgb]{0,0,0}}
+% \renewcommand\makeLineNumber {\hss\thelinenumber\ \hspace{6mm} \rlap{\hskip\textwidth\ \hspace{6.5mm}\thelinenumber}}
+% \linenumbers
+\pagestyle{headings}
+\mainmatter
+\def \ECCV12SubNumber{1348}  % Insert your submission number here
+
+\title{Exact-Wiberg Algorithm for Matrix Factorization with Missing Data} % Replace with your title
+
+\titlerunning{ECCV-14 submission ID \ECCV12SubNumber}
+
+\authorrunning{ECCV-14 submission ID \ECCV12SubNumber}
+
+\author{Anonymous ECCV submission}
+\institute{Paper ID \ECCV12SubNumber}
+
+
+\maketitle
+
+\begin{abstract}
+We present a new derivation of the Wiberg algorithm for matrix factorization with missing data, showing how to compute the exact Jacobian of the projected problem, while previous research has used an approximate Jacobian.   The exact Jacobian, while sometimes considerably different to the approximation, makes little difference to convergence rates on real-world benchmarks.   The new derivation does, however, allow the derivation of a ``further damped'' Wiberg algorithm which can improve convergence on problems with very little data, and thus represents a new practical contribution to the state of the art in matrix factorization.
+\end{abstract}
+
+
+\section{Introduction}
+For many applications of machine learning and computer vision, a key computational step is in the low-rank approximation of a given $m\times n$ matrix $\m M$, where some of the values are unobserved or, more generally, are accompanied with a weight matrix \mW.    This involves the minimization of the error function
+\def\fro#1{\|#1\|_F^2}
+\begin{equation}
+\err(\m U,\m V) = \fro{\mW\hadamard(\m M -\m U \m V\tr)} + \frac\mu2(\fro \mU + \fro \mV)
+\eqlabel{E}
+\end{equation}
+over unknown matrices $\m U, \m V$ each with $r$ columns.   The operator~$\hadamard$ is Hadamard (or elementwise) product, and the norms are Frobenius.  For this paper, we will focus on the 2-norm problem as stated above, but we expect that our observations will shed light on the 1-norm and other variants also.  We further note that although the question of choice of hyperparameters~$r, \mu$ is of great interest, our focus here is on finding the global optimum of~\eqref{E}, assuming the hyperparameters have been set.  Furthermore, there are other settings of the problem, for example using the nuclear norm, but as shown by Cabral et al.~\cite{cabral2013unifying}, there are many scenarios in which \eqref{E} is equivalent to nuclear norm factorization.
+
+It is known that optimization of \eqref{E} with a nontrivial~$\mW$ is an intrinsically hard problem~\cite{cabral2013unifying}.   It is also known that for some standard representative datasets, it is hard in practice.   Recently however, great strides forward in the practical solution of these problems have been made using variants of the Wiberg algorithm~\cite{Wiberg76}.   In particular the family of damped Wiberg algorithms of Okatani et al.~\cite{okatani2011efficient} dramatically improved performance on real-world problems.   These algorithms may be loosely characterized as Levenberg-Marquardt algorithms applied to the function
+\def\erru{\varepsilon}
+\def\verru{{\boldsymbol\varepsilon}}
+\begin{align}
+\erru(\mU) = \min_\mV \err(\m U, \m V)
+\end{align}
+with a certain approximation to the Jacobian appearing in $\partial\erru/\partial\mU$.  Because the Wiberg algorithm derives the Jacobian in a somewhat oblique way, terms in the true Jacobian are discarded, and it has not previously been known what effect these neglected terms may have.   Generalizations of the Wiberg algorithm~\cite{strelow2012general} inherit this approximation, so our results on the specific case of matrix factorization may impact those generalizations, but that is beyond our scope here.
+
+The contributions of this paper are as follows:
+\begin{enumerate}
+\item We provide a simple new derivation of the Wiberg algorithm directly applying (extensions of) the matrix calculus rules of~\cite{minka00}.
+\item This new derivation allows us to easily include the derivative terms neglected in previous Wiberg-based methods, so that we are using the true analytic derivatives for the Levenberg-Marquardt algorithm.   We show that inclusion of these terms makes little difference to the performance of the algorithm, so that earlier approximations were indeed justified.
+\item We further develop the relationship between Wiberg and Schur-complement Gauss-Newton, showing how there is opportunity for further damping in the Damped Wiberg algorithm~\cite{okatani2011efficient}, which further improves covergence.   This yields a practical algorithm for factorization which converges almost always in practice on problems once considered difficult.
+\end{enumerate}
+
+%-------------------------------------------------------------------------
+
+
+\def\sym{\operatorname{sym}}
+\def\inv#1{{#1}^{\mathsf{-1}}}
+\def\mA{\m A}
+
+\def\Id#1{\m{I}_{#1}}
+\def\kron#1#2{{#1}\otimes{#2}}
+\def\pinv#1{{{#1}^\dagger}}
+\definecolor{diffcol}{rgb}{0,0,.35}
+%\def\diff[#1]{\textcolor{diffcol}{\partial[}#1\textcolor{diffcol}{]}}
+\def\diff[#1]{\textcolor{diffcol}{\partial[#1]}}
+
+\section{Matrix calculus rules}
+As a preliminary step, we recall some standard matrix calculus rules from~\cite{minka00}, and derive some extensions which will prove useful in the following.   The derivative operator passes through matrix inverse as follows
+\begin{equation}
+\diff[\inv \mA] = -\inv \mA \diff[\mA] \inv \mA
+\end{equation}
+where the colouring of arguments has no mathematical significance, but makes it easier to follow the ``drilling down'' of the derivative operator.  
+
+Defining the Moore-Penrose pseudoinverse as
+\begin{equation}
+\pinv \mA = \inv{(\mA\tr \mA)}\mA\tr
+\end{equation}
+we obtain a rule for differentiating through pseudoinverse (see appendix for derivation):
+\begin{align}
+\diff[\pinv \mA] = -\pinv \mA \diff[\mA] \pinv \mA +
+\inv{(\mA\tr\mA)}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
+\eqlabel{diffpinv}
+\end{align}
+and we observe that the second term is zero for invertible \mA.  We will also use a rule for $\mA \pinv \mA$ as follows:
+\begin{align}
+\diff[\mA \pinv \mA] = \sym((\Id{} - \mA\pinv \mA) \diff[\mA] \pinv \mA)
+\end{align}
+where $\sym(\mA) := \mA\tr + \mA$. 
+
+%\def\mupinv#1{{{#1}^{-\mu}}}
+%Defining the $\mu$-pseudoinverse as
+%\begin{equation}
+%\mupinv \mA = \inv{(\mA\tr \mA + \mu\Id{})}\mA\tr
+%\end{equation}
+%we obtain a very similar rule for differentiating through it:
+%\begin{align}
+%\diff[\mupinv \mA] = -\pinv \mA \diff[\mA] \pinv \mA +
+%\inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
+%\eqlabel{diffpinv}
+%\end{align}
+%and
+%\begin{align}
+%\diff[\mA \mupinv \mA] = \sym((\Id{} - \mA\mupinv \mA) \diff[\mA] \pinv \mA)
+%\end{align}
+
+\section{Method}
+Observing that 
+\begin{align}
+\vec(\mW \hadamard (\mM - \mU \mV\tr))
+  & = \tW \vec(\mM - \mU \mV\tr) & \comment{ Define $\tW := \operatorname{diag}(\vec\mW)$ }
+\\& = \tW \vec(\mM) - \tW \vec(\mU \mV\tr)
+\\& = \tW \v m - \tW (\kron{\Id n}{\mU}) \vec(\mV\tr) & \xcomment{ Define $\v m := \vec\mM$ }
+\eqlabel{resvec1}
+\\& = \tW\v m - \tW \twiddle \mU \vec(\mV\tr) &
+\comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$}
+\eqlabel{resvec2}
+\end{align}
+we write
+\def\vecnorm#1{\|\!\vec{#1}\|^2}
+\begin{align}
+\err(\m U, \m V) = \|\tW\v m - \tW \twiddle \mU \vec(\mV\tr)\|^2 
+% + \frac\mu2 \vecnorm \mU + \frac\mu2\vecnorm \mV
+\end{align}
+noting that $\v m$ is a constant vector depending only on $\mM$, and that $\tU$ is simply an assemblage of the entries of~\mU.  We have omitted the regularizers (i.e.\ assuming $\mu=0$), as they are straightforward to include but would clutter the development.   In contrast to some previous derivations, we do not omit the weights, and indeed, do not assume 0/1 weights, as they are needed to implement the algorithm.
+
+Proceeding now  to derive the Wiberg algorithm, we will define the ``projected'' function $\erru(\mU)$ and minimize over $\mU$ only.   The global minima of this function are exactly the $\mU$ parts of the $(\mU, \mV)$ pairs which minimize $\err$.  Define $\erru$ as follows.
+\begin{align}
+\erru(\mU)
+& = \min_\mV \err(\mU, \mV)\\
+& = \min_{\mV\in\mathbb R^{n\times r}} \|\tW \v m - \tW \tU \vec(\mV\tr)\|^2\\
+& = \min_{\v v \in \mathbb R^{nr}} \|\tW \v m - \tW \tU \v v\|^2 & 
+\comment{As $\{\vec(\mV\tr)|\mV\in \mathbb R^{n\times r}\} = \mathbb R^{nr}$}
+%  + \frac\mu2 \vecnorm \mU + \frac\mu2\|\v v\|^2
+\eqlabel{erru}
+\intertext{which gives (using pseudoinverse to write $\min_{\v x} \|\v b - \m A \v x\|^2 = \|\v b - \m A \pinv{\m A}\v b\|^2$):}
+\erru(\mU) & = \| \tW\v m - \tW \tU \pinv{(\tW\tU)}\tW\v m\|^2.
+\eqlabel{verru}
+\end{align}
+Defining $\verru(\mU)$ as the vector of residuals of the projected problem:
+\begin{align}
+\verru(\mU) = \tW\v m - \tW \tU \pinv{(\tW\tU)}\tW\v m
+\eqlabel{verru}
+\end{align}
+we obtain $\erru(\mU) = \|\v \verru(\m U)\|^2$.
+
+\def\Vstar{{\m{V}^\ast}}
+
+In order to minimize $\erru$ using algorithms of the Gauss-Newton family, we need the Jacobian~$\m J$ which obeys $\diff[\verru] = \m J \diff[\vec\mU]$.  While previous approaches have used an indirect approach to approximate~\m J, the matrix calculus rules defined above allow a direct derivation.  First, the derivative operator is drilled down:
+\def\awfhl#1{\Bigl[#1\Bigr]}
+\begin{align}
+\diff[\verru]& = \diff[ \tW \v m - \tW \tU \pinv{(\tW\tU)} \tW \v m ]
+\\& = - \diff[\tW \tU \pinv{(\tW\tU)}]\tW \v m  & \kern-1in\comment{Sum/product rule, and $\partial[\tW\v m] = 0$}
+\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
+                \diff[\tW \tU]
+                \pinv{(\tW\tU)} \bigr) \tW \v m     & \comment{From \eqref{diffpinv}}
+\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
+                \diff[\tW (\kron{\Id n}{\mU})]
+                \pinv{(\tW\tU)} \bigr) \tW \v m      & \comment{Expanding $\tU$}
+\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
+                \tW (\kron{\Id n}{\diff[\mU]})
+                \pinv{(\tW\tU)} \bigr) \tW \v m    & \comment{Using \cite[(7)]{minka00}}
+\\& = - \sym\bigl(\m H
+                \tW (\kron{\Id n}{\diff[\mU]})
+                \pinv{(\tW\tU)} \bigr) \tW \v m    & \comment{Defining $\m H$, note $\m H=\m H\tr$}
+\\& = \begin{multlined}[c][5cm]
+- \m H \tW (\kron{\Id n}{\diff[\mU]}) \awfhl{\pinv{(\tW\tU)} \tW \v m} \\
+       - \pinv{(\tW\tU)}\tr (\kron{\Id n}{\diff[\mU]\tr}) \awfhl{\tW\tr \m H \tW \v m}
+\end{multlined}
+                                               & \comment{Expand $\sym$}
+\eqlabel{Jbrackets}
+\end{align}
+Now the Kronecker product rule
+\begin{equation}
+(\kron{\Id{}}{\m A}) \vec \m B = (\kron{\m B \tr}{\Id{}}) \vec{\m A}
+\eqlabel{kronvec}
+\end{equation}
+will allow us to move the $\diff[\mU]$ terms to the end of the expression, and hence recover~$\m J$.   To do so, the bracketed terms in~\eqref{Jbrackets} are expressed as vectorizations of appropriate matrices.
+The first bracketed term $\pinv{(\tW\tU)} \tW \v m$ is simply the minimizing~$\mV$ in \eqref{erru}, and we write it $\vec(\Vstar\tr)$. The second term is
+\begin{align}
+\tW\tr \m H \tW \v m & = \tW\tr\tW \v m - \tW\tr\tW\tU \pinv{(\tW\tU)}\tW \v m & \comment{Expand \m H}\\
+& = \tW\tr\tW \v m - \tW\tr\tW\tU \vec(\Vstar\tr) &\comment{Substitute $\Vstar$}\\
+& = \tW\tr\vec\bigl(\mW\hadamard(\mM - \mU \Vstar\tr)\bigr) &\comment{Reversing \eqref{erru}}\\
+& = \vec (\mW\hadamard\m R) & \comment{Defining $\m R := \mW\hadamard(\mM - \mU \Vstar\tr)$}
+\end{align}
+and the Jacobian calculation continues by replacing those terms
+%\def\Ttrans{\mathsf{T}}
+\def\Ttrans{\m{T}}
+\begin{align}
+\diff[\verru]
+  & = - \m H \tW(\kron{\Id n}{\diff[\mU]}) \vec(\Vstar\tr) -
+      \pinv{(\tW\tU)}\tr (\kron{\Id n}{\diff[\mU]\tr}) \vec(\mW\hadamard\m R)
+\\& = - \m H \tW(\kron{\Vstar}{\Id m})\vec{\diff[\mU]}  -
+      \pinv{(\tW\tU)}\tr (\kron{(\mW\hadamard\m R) \tr}{\Id r})\vec(\diff[\mU]\tr) & \xcomment{By \eqref{kronvec}}
+\\& = -\Biggl[\m H \tW \tVstar  +
+      \pinv{(\tW\tU)}\tr (\kron{(\mW\hadamard\m R) \tr}{\Id r})\Ttrans
+      \Biggl] \diff[\vec\mU] & 
+\kern-2cm\comment{Defining $\tVstar:=\kron{\Vstar}{\Id m}$}
+% \\&= \sym\bigl((\Id{} - \tW (\kron{\mU}{\Id m}) \pinv{(\tW(\kron{\Id m}\mU))})
+% \tW (\kron{\Id m}{\diff[\mU]}) \pinv{(\tW(\kron{\Id m}\mU))} \bigr) \tW \v m
+% & \text{from 1}
+\eqlabel{jacobian}
+\end{align}
+where $\Ttrans$ is the permutation matrix such that $\Ttrans\vec\mU = \vec(\mU\tr)$.   The object in the square brackets is the desired Jacobian, which to the best of our knowledge has not previously been derived. Moreover, we believe that the family of Wiberg algorithms illustrated by \cite{okatani2006wiberg} uses an approximation of the object above
+\begin{align}
+&\m J \approx - \m H \tW \tVstar.
+\end{align}
+It will be observed that despite the apparent plethora of intermediate variables, the Jacobian is a composition of simple functions of $\m U$, and its end-to-end computation is shown in Figure~\ref{fig:computeJ}.
+
+\subsection{Levenberg step}
+\def\tVstar_tr{{\tV^*}^\top}
+The Levenberg algorithm incorporates damping factor $\lambda \m I$ to the Gauss-Newton step. This yields
+\begin{align}
+\left( \m J \tr \m J + \lambda \m I_{mr} \right) \vec(\delta \m U) = - \m J \tr \verru
+\eqlabel{levenberg}
+\end{align}
+\def\WRT{\widetilde{\mathtt{WR}}}
+so that, writing $\WRT= (\kron{(\mW\hadamard\m R)}{\Id r})$,
+\begin{align}
+\m J \tr \m J &= \begin{multlined}[c][5cm]
+\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \tilde{\m V}^* +
+\tilde{\m V}^{*\top} \tW \tr \m H \tr \pinv{(\tW\tU)}\tr \WRT\tr\Ttrans \\
++ \Ttrans \tr \WRT \pinv{(\tW\tU)} \m H \tW \tilde{\m V}^*
++ \Ttrans \tr \WRT \pinv{(\tW\tU)} \pinv{(\tW\tU)} \tr \WRT\tr\Ttrans
+\end{multlined} & \comment{Using \eqref{jacobian}}
+\\ & = \begin{multlined}[c][5cm]
+\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \tilde{\m V}^*  + \Ttrans \tr \WRT \pinv{(\tW\tU)} \pinv{(\tW\tU)} \tr \WRT\tr\Ttrans
+\end{multlined} &
+\begin{comment}
+Noting\textrm{ }(\tW \tU)^\dagger \m H = \m 0
+\end{comment}
+\\ & = \begin{multlined}[c][5cm]
+\tilde{\m V}^{*\top} \tW \tr \m H \tW \tilde{\m V}^*  + \Ttrans \tr \WRT \left((\tW\tU) \tr (\tW\tU)\right)^{-1} \WRT\tr\Ttrans
+\end{multlined} &
+\begin{comment}
+Noting\textrm{ } \m H^2 = \m H
+\end{comment}
+\eqlabel{jtj}
+\end{align}
+and the right-hand side of the equation becomes
+\begin{align}
+- \m J \tr \verru &= \begin{multlined}[c][5cm]
+\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \v m  + \Ttrans \tr \WRT \pinv{(\tW\tU)} \m H \tW \v m
+\end{multlined} &
+\begin{comment}
+Noting\textrm{ }\verru = - \m H \tW \v m
+\end{comment}
+\\&= \tilde{\m V}^{*\top} \tW \tr \m H \tW \v m. &
+\begin{comment}
+Noting\textrm{ } \m H^2 = \m H\textrm{, }(\tW \tU)^\dagger \m H = \m 0
+\end{comment}
+\eqlabel{-jtf}
+\end{align}
+Above is considered to be the exact iteration step for solving our problem using the Damped Wiberg approach, and is the update in the ``Exact Damped Wiberg'' algorithm tested below.   The $\lambda$ initialization and update strategy is as in~\cite{okatani2006wiberg}.  In fact, the family of Wiberg algorithm introduced by \cite{okatani2006wiberg} uses 
+\begin{align}
+\m J \tr \m J \approx \tilde{\m V}^{*\top} \tW \tr \m H \tW \tV^*
+\end{align}
+which arises from the algorithm's approximation on the Jacobian.
+
+\section{Further damping}
+Suppose we were to solve this factorization problem using a standard Levenberg method where all the parameters are independent. If we define $ \verr $ as the vector of residuals, we note that
+\begin{align}
+\diff[\verr] &= - \tW \diff[\vec(\m U \m V \tr)] & \comment{ From \eqref{resvec1} }
+\\ &= - \tW \tU \diff[\vec (\m V \tr)] & \comment{From \eqref{resvec2}}
+\\ &= - \tW (\kron{\m V}{\m I_m}) \diff[\vec \m U].
+& \comment{Using \eqref{kronvec}}
+\end{align}
+Hence, the corresponding Levenberg iteration step can be written as (using $\tV:=\kron{\mV}{\Id m}$)
+\begin{align}
+\begin{multlined}[c][5cm]
+\begin{bmatrix}
+\tV \tr \tW \tr \tW \tV + \lambda \m I_{mr} &
+\tV \tr \tW \tr \tW \tU \\
+\tU \tr \tW \tr \tW \tV &
+\tU \tr \tW \tr \tW \tU + \lambda \m I_{nr}
+\end{bmatrix}
+\begin{bmatrix}
+\vec \delta \m U \\
+\vec (\delta \m V \tr) \\
+\end{bmatrix} =
+\begin{bmatrix}
+\tV \tr \tW \tr \verr \\
+\tU \tr \tW \tr \verr
+\end{bmatrix}
+\end{multlined}
+\end{align}
+Using the Schur-complement trick shown in the Appendix allows us to obtain the update step for $\m U$
+\begin{align}
+\left( \tV \tr \tW \tr \m H_\lambda \tW \tV + \lambda \m I_{mr} \right)
+\vec {\delta \m U} &= \tV \tr \m H_\lambda \tr \verr,
+\end{align}
+defining $\m H_\lambda := 
+\m I - \tW \tU \bigl((\tW \tU)\tr(\tW \tU)+\lambda\Id{}\bigr)^{-1}(\tW \tU)\tr$.
+
+The left-hand side of the equation shares similar structure to the iteration step of the Damped Wiberg algorithm \cite{okatani2011efficient} with the exceptions that $\tV$ is used instead of $ \tilde{\m V}^* $ and an additional damping factor exists within $ \m H_\lambda $. If we now apply the iteration step above to Wiberg minimization, which essentially changes $\tV$ to $\tilde{\m V}^*$, we obtain
+
+\begin{align}
+\left( \tilde{\m V}^{*\top} \tW \tr \m H_\lambda \tW \tilde{\m V}^* + \lambda \m I_{mr} \right)
+\vec {\delta \m U} &= \tilde{\m V}^{*\top} \m H_\lambda \tr \verru.
+\end{align}
+
+Despite the fact that the iteration step shown above is not a fully analytic solution, the additional damping factor seems to enable faster convergence when an initial point is far away from the desired optimum. Hence, this update step is applied for the first $\tau$ iterations, after which damped Wiberg is resumed.
+
+\def\spc{\hspace*{1em}}
+\begin{table}[b]
+\begin{center}
+\begin{tabular}{l|c|@{\spc}l}
+Algorithm \spc&\spc Successes (\%)\spc & Iterations\\\hline
+FDW &  499/500 (99.8\%) & 147\\
+EFDW & 499/500 (99.8\%) & 144\\
+DW &  499/500 (99.8\%) & 163\\
+Exact-DW & 497/500 (99.4\%) & 216
+\end{tabular}
+\end{center}
+\caption{{\bf Empirical results: Dinosaur}.   All algorithms have similar success rates (note that our DW implementation has higher success than the code of~\cite{okatani2011efficient} due to use of non-blocked QR).  Further-damped algorithms require slightly fewer iterations on average.}
+\label{tbl:results-dino}
+\end{table}
+
+\begin{table}[b]
+\begin{center}
+\begin{tabular}{l|c|@{\spc}l}
+Algorithm \spc&\spc Successes (\%)\spc & Iterations\\\hline
+FDW &  20/20 (100\%) & 83.9\\
+EFDW & 20/20 (100\%) & 94.6\\
+DW &  20/20 (100\%) & 70.7\\
+Exact-DW & 20/20 (100\%) & 92.6
+\end{tabular}
+\end{center}
+\caption{{\bf Empirical results: Giraffe}.   Further-damped algorithms require more iterations on average, suggesting that further damping helps more with harder problems.}
+\label{tbl:results-giraffe}
+\end{table}
+
+
+\begin{figure}[t]
+\begin{align*}
+\MoveEqLeft\% Precomputations\\
+&\tW = \operatorname{diag}(\vec \mW)\\
+&\v m = \vec(\mM)\\
+&\Ttrans = \operatorname{sparse}(1:mr, \vec(\operatorname{reshape}(1:mr, m, r)'), 1)\\
+\MoveEqLeft\text{\bf function}~[\verru, \m J] = \verru(\m U)\\
+&\m P = \tW * \text{kron}(\mU, \text{speye}(n))\\
+&\m {pinvP} = (\m P\tr*\m P)^{-1} \m P\tr \xcomment{Inverse implemented by QR decomposition}\\
+&\m {Vstar} = \operatorname{reshape}(\m {pinvP} * \v m, n, r)\\
+&\m R = \mW\hadamard(\m M - \mU{\m{Vstar}}\tr)\\
+&\verru = \vec{\m R}\\
+&\m J = (\Id{} - \m P \m {pinvP})*\tW* (\kron{\m{Vstar}}{\Id m})  +
+      \m {pinvP}\tr*(\kron{(\mW\hadamard\m R)}{\Id r})\tr*\Ttrans
+\end{align*}
+\caption{Computation of the Jacobian of $\verru(\mU)$.   Previous algorithms used only approximate Jacobians.  This code is not optimized for speed, as the various Kronecker products introduce sparsity that can be exploited.  However, note that the key computational cost is in the pseudoinverse of $\m P$, which is the same for all the tested algorithms.}
+\label{fig:computeJ}
+\end{figure}
+
+\section{Empirical investigation}
+We implemented four algorithms for testing: Damped (DW), Damped Exact (EDW), Further Damped (FDW), and Further Damped Exact (EFDW).   For each test, initial estimates for the entries of $\mU$ are drawn from an isotropic zero-mean Gaussian distribution with unit variance.   We considered only the Dinosaur and Giraffe datasets of~\cite{buchanan2005damped}, as those are the most difficult.
+
+Matrix inverses were computed by QR decomposition, as Cholesky was found to give significantly poorer results (i.e.\ many fewer successful runs).  Our reimplementation of DW is slightly more accurate than the released code of~\cite{okatani2011efficient} because we perform QR on a different blocking, so we report our results rather than theirs.
+Code for all algorithms is supplied in the supplementary material.  The threshold on further damped iterations $\tau$ is set to~50 in all cases.
+
+The global optima for these problems are not known, but the lowest-reported values have been reached many times by many researchers, so it appears likely that the known standard values for the global optima are correct.   Conversely, if there is a better optimum, it appears extremely unlikely that any algorithm would reach it, so in practice, ability to reach the best known optimum is a reasonable measure.  A trial is declared a ``success'' when the minimum found agrees with the known optimum to a tolerance of $10^{-5}$.   In fact, the found minima all agree to within $10^{-11}$, with any spurious minima more than .01 higher.
+
+We checked our calculations of the exact Jacobian by computing finite-difference derivatives of \eqref{verru}.   The Wiberg approximation had maximum discrepancies of the order of 100 at the initial estimate (where all quantities in $\mM, \mU, \mV$ are of the order of 1.0), reducing to about 1.0 near the minimum.  The analytic calculations agreed to the derivative-checking tolerance ($1e-7$ for a step of $1e-4$).
+
+\section{Discussion}
+We have derived the full Jacobian for the Wiberg algorithm and numerically investigated its effect on standard datasets.   We conclude that for matrix factoriztion, the neglected terms are essentially immaterial, and indeed removing them could reduce computational time.   Using the exact derivation, we have proposed a new algorithm: further damped Wiberg, which reduces iteration counts on the tested examples by about 25\%.   We have also cast further light on the connection between the Levenberg algorithm with Schur complement updates and the (Damped) Wiberg algorithm, although it may be that a closer connection could be derived.   It is unknown to what extent our conclusions extend to the related problems of generalized Wiberg and $L_1$ Wiberg.
+
+The standard datasets tested, which were considered difficult a decade ago, are now somewhat exhausted as a tool for distinguishing these modern algorithms, so a further strand of our future work will be in devising more testing scenarios and benchmarks on which to compare these and future techniques.
+
+%\clearpage
+\appendix
+\section{Matrix calculus rules}
+\label{sec:mxcalc}
+% Derivations of the matrix calculus rules are supplied in this section.   The derivative of $\mu$-pseudoinverse is:
+% \begin{align*}
+% \diff[\mupinv \mA] 
+% &= \diff[\inv{(\mA\tr\mA+\mu\Id{})}]\mA\tr + \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr
+% \\& = - \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA\tr\mA+\mu\Id{}]\inv{(\mA\tr\mA+\mu\Id{})}\mA\tr + \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr
+% \\& = - \inv{(\mA\tr\mA+\mu\Id{})}(\diff[\mA\tr]\mA - \mA\tr\diff[\mA])\inv{(\mA\tr\mA+\mu\Id{})}\mA\tr + \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr
+% \\& = - \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA\tr]\mA\mupinv{\mA} - \inv{(\mA\tr\mA+\mu\Id{})}\mA\tr\diff[\mA]\mupinv{\mA} +
+%  \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr
+% \\& = -\mupinv \mA \diff[\mA] \mupinv \mA +
+% \inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr(\Id{}-\mA\mupinv\mA)
+% \eqlabel{diffpinv}
+% \end{align*}
+% and we observe that the last term is zero for invertible \mA.  
+% The derivative of pseudoinverse is then simply the above for $\mu=0$.
+% Let's further look at 
+% \begin{align}
+% \diff[\mA \mupinv \mA]
+%  &= \diff[\mA]\mupinv \mA + \mA \diff[\mupinv \mA]\\
+%  &= \diff[\mA]\mupinv \mA -
+%     \mA\mupinv \mA \diff[\mA] \mupinv \mA +
+%     \mA\inv{(\mA\tr\mA+\mu\Id{})} \diff[\mA]\tr(\Id{}-\mA\mupinv\mA)\\
+%  &= \diff[\mA]\mupinv \mA-\mA\mupinv \mA \diff[\mA] \mupinv \mA +
+% \mupinv\mA\tr \diff[\mA]\tr(\Id{}-\mA\mupinv\mA)\\
+%  &= \diff[\mA]\mupinv \mA-\mA\mupinv \mA \diff[\mA] \mupinv \mA +
+% \mupinv\mA\tr \diff[\mA]\tr -
+% \mupinv\mA\tr \diff[\mA]\tr\mA\mupinv\mA\\
+%  &= \sym(\diff[\mA]\mupinv \mA-\mA\mupinv \mA \diff[\mA] \mupinv \mA)\\
+%  &= \sym((\Id{} - \mA\mupinv \mA) \diff[\mA] \mupinv \mA)
+% \end{align}
+Derivations of the matrix calculus rules are supplied in this section.   The derivative of pseudoinverse is:
+\begin{align*}
+\diff[\pinv \mA] 
+&= \diff[\inv{(\mA\tr\mA)}]\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
+\\& = - \inv{(\mA\tr\mA)}\diff[\mA\tr\mA]\inv{(\mA\tr\mA)}\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
+\\& = - \inv{(\mA\tr\mA)}(\diff[\mA\tr]\mA - \mA\tr\diff[\mA])\inv{(\mA\tr\mA)}\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
+\\& = - \inv{(\mA\tr\mA)}\diff[\mA\tr]\mA\pinv{\mA} - \inv{(\mA\tr\mA)}\mA\tr\diff[\mA]\pinv{\mA} +
+ \inv{(\mA\tr\mA)}\diff[\mA]\tr
+\\& = -\pinv \mA \diff[\mA] \pinv \mA +
+\inv{(\mA\tr\mA)}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
+\eqlabel{diffpinv}
+\end{align*}
+and we observe that the last term is zero for invertible \mA.  
+The derivative of pseudoinverse is then simply the above for $\mu=0$.
+Let's further look at 
+\begin{align}
+\diff[\mA \pinv \mA]
+ &= \diff[\mA]\pinv \mA + \mA \diff[\pinv \mA]\\
+ &= \diff[\mA]\pinv \mA -
+    \mA\pinv \mA \diff[\mA] \pinv \mA +
+    \mA\inv{(\mA\tr\mA)} \diff[\mA]\tr(\Id{}-\mA\pinv\mA)\\
+ &= \diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA +
+\pinv\mA\tr \diff[\mA]\tr(\Id{}-\mA\pinv\mA)\\
+ &= \diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA +
+\pinv\mA\tr \diff[\mA]\tr -
+\pinv\mA\tr \diff[\mA]\tr\mA\pinv\mA\\
+ &= \sym(\diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA)\\
+ &= \sym((\Id{} - \mA\pinv \mA) \diff[\mA] \pinv \mA)
+\end{align}
+
+
+\section{Schur-complement equations}
+Matrix equation
+\begin{align}
+\begin{bmatrix}
+\m A & \m B \\ \m B \tr & \m C
+\end{bmatrix}
+\begin{bmatrix}
+\v x \\ \v y
+\end{bmatrix} =
+\begin{bmatrix}
+\v a \\ \v b
+\end{bmatrix}
+\end{align}
+can be written as two simultaneous equations
+\begin{align}
+\m A \v x + \m B \v y &= \v a \\
+\m B \tr \v x + \m C \v y &= \v b.
+\end{align}
+Solving for $\v x$ then $\v y$ yields
+\begin{align}
+\v x & = (\m A - \m B \m C^{-1} \m B \tr)^{-1}
+				(\v a - \m B \m C^{-1} \v b) \\
+\v y &= \m C^{-1} (\v b - \m B \tr \v x).
+\end{align}
+
+% Math definitions
+\def\real{\mathbb R}
+
+\def\m{\mathbf m}
+\def\w{\mathbf w}
+\def\v{\mathbf v}
+
+\def\mt{\mathbf{\tilde m}}
+
+\def\W{\mathtt W}
+\def\I{\mathtt I}
+\def\M{\mathtt M}
+\def\U{\mathtt U}
+\def\Q{\mathtt Q}
+
+\def\Ut{\mathtt{\tilde U}}
+\def\Wt{\mathtt{\tilde W}}
+\def\V{\mathtt V}
+
+\def\col{\operatorname{col}}
+
+\def\t{^\top}
+
+\newpage
+\section{Gauss-Newton Schur Complement}
+
+\section{Damped Wiberg}
+Although the author states that they apply the Gauss-Newton approximation, their Jacobian is actually the approximation of the Gauss-Newton approximation, which is essentially same as the one derived by Gotardo.
+ 
+\subsection{Rank-filling term}
+
+\section{Chen's LM series}
+This algorithm computes the objective function as the sum of column-wise objective functions. \\
+Let $\m_j$ be the \textit{j}-th column vector of $\M$. Let us further define $\mt_j$ as the vector of the observed entries of the \textit{j}-th column satisfying $\mt_j = \Wt_j \m_j$ where $\Wt_j$ is the reduced Weight matrix with $\tilde w_{ij} \in \{0,1\} \:\forall\: i, j$.
+
+\begin{align}
+|| \W \odot (\M - \U\V\tr) ||_F^2
+&= \sum_{j=1}^n || \w_j \odot (\m_j - \U \v_j) ||^2 \\
+&= \sum_{j=1}^n || \Wt_j \m_j - \Wt_j \U \v_j) ||^2 \\
+&= \sum_{j=1}^n || \mt_j - \Ut_j \v_j) ||^2
+\end{align}
+
+$\mt_j \in \real^k$ and $\Ut \in \real^{k \times r}$. Let $\mt^*_j \in \real^{m-k}$ and $\Ut^*_j \in \real^{(m-k) \times r}$.
+
+\begin{align}
+|| \M - \U\V\tr ||_F^2
+&= \sum_{j=1}^n || \m_j - \U \v_j ||^2 \\
+&= \sum_{j=1}^n || \mt_j - \Ut_j \v_j ||^2 + || \mt^*_j - \Ut^*_j \v_j ||^2 \\
+&\geq \sum_{j=1}^n || \mt_j - \Ut_j \hat \v_j ||^2
+\end{align}
+
+For the equality to hold, $\v_j = \hat \v_j = \Ut_j^\dagger \mt_j$ and $\mt^*_j = \Ut^*_j \hat \v_j$.
+
+\begin{align}
+\min_\V || \M - \U\V ||_F^2
+&= \sum_{j=1}^n || \mt_j - \Ut_j \hat \v_j ||^2 \\
+&= \sum_{j=1}^n || \mt_j - \Ut_j \Ut_j^\dagger \mt_j ||^2 \\
+f(\col(\U)) &= \sum_{j=1}^n \mt_j \tr (\I_k - \Ut_j \Ut_j^\dagger) \mt_j
+&:= \sum_{j=1}^n \mt_j \tr \Q_j \mt_j
+\end{align}
+
+\subsection{LM-M-GN}
+This uses the Gauss-Newton approximation instead of the full Hessian.
+
+\section{CSF (Gotardo 2011)}
+This algorithm is essentially the approximated version of the LM-M-GN.
+
+\section{LM-M (Chen 2008)}
+This algorithm uses Manton's approach to constrain the search space onto a Grassmann manifold. The algorithm operates on the Stiefel manifold for numerical reasons.
+
+\section{RTRMC (Boumal 2011)}
+RTRMC
+
+\section{Augmented Lagrangian (Cabral)}
+
+\section{Stochastic gradient descent}
+
+\section{Suggestion}
+\section{LM-S (Chen 2008)}
+This algorithm essentially computes the Wiberg objective function as the sum of column-wise objective functions. The paper presents a theorem which implies why the Wiberg formulation works.\\
+Let $\m_j$ be the \textit{j}-th column vector of $\M$. Let us further define $\mt_j$ as the vector of the observed entries of the \textit{j}-th column satisfying $\mt_j = \Wt_j \m_j$ where $\Wt_j$ is the reduced Weight matrix.
+
+\begin{align}
+|| \W \odot (\M - \U\V\tr) ||_F^2
+&= \sum_{j=1}^n || \w_j \odot (\m_j - \U \v_j) ||^2 \\
+&= \sum_{j=1}^n || \Wt_j \m_j - \Wt_j \U \v_j) ||^2 \\
+&= \sum_{j=1}^n || \mt_j - \Ut \v_j) ||^2
+\end{align}
+
+$\mt_j \in \real^k$ and $\Ut \in \real^{k \times r}$. Let $\mt^*_j \in \real^{m-k}$ and $\Ut^*_j \in \real^{(m-k) \times r}$.
+
+\begin{align}
+|| \W \odot (\M - \U\V\tr) ||_F^2
+&= \sum_{j=1}^n || \Wt_j \m_j - \Wt_j \U \v_j ||^2 \\
+&= \sum_{j=1}^n || \underbrace{ \mt_j - \Ut \v_j }_{\in \Omega} ||^2 + || \underbrace{\mt^*_j - \Ut^* \v_j}_{\not\in \Omega} ||^2 \\
+&\geq \sum_{j=1}^n || \mt_j - \Ut \hat \v_j ||^2
+\end{align}
+For the equality to hold, $\v_j = \hat \v_j = \Ut^\dagger \mt_j$ and $\mt^*_j = \Ut^* \hat \v_j$.
+\begin{align}
+\min_\V || \W \odot (\M - \U\V\tr) ||_F^2
+&= \sum_{j=1}^n || \mt_j - \Ut \hat \v_j ||^2 \\
+&= \sum_{j=1}^n || \mt_j - \Ut \Ut^\dagger \mt_j ||^2 \\
+&= \sum_{j=1}^n \mt_j \tr (\I_k - \Ut \Ut^\dagger) \mt_j
+\end{align}
+
+
+\bibliographystyle{splncs}
+\bibliography{egbib}
+
+
+\end{document}

@@ -1,0 +1,282 @@
+% last updated in April 2002 by Antje Endemann
+% Based on CVPR 07 and LNCS, with modifications by DAF, AZ and elle, 2008 and AA, 2010, and CC, 2011
+
+\documentclass[runningheads]{llncs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,mathtools} % define this before the line numbering.
+\usepackage{ruler}
+\usepackage{color}
+\usepackage[width=122mm,left=12mm,paperwidth=146mm,height=193mm,top=12mm,paperheight=217mm]{geometry}
+
+
+%% Generic latex macros macx
+\def\eqref#1{(\ref{eq:#1})}
+\def\eqlabel#1{\label{eq:#1}}
+%\let\be=\equation
+%\let\ee=\endequation
+\def\tr{^\top}
+\def\xcomment#1{\textcolor[gray]{.2}{\text{\em---#1}}}
+\def\comment#1{\kern-1cm\xcomment{#1}}
+
+\def\vec{\operatorname{vec}}
+\DeclareMathOperator{\trace}{trace}
+
+\def\hadamard{\odot}
+\def\m#1{\ensuremath{\mathtt{#1}}}
+\def\mt#1{\ensuremath{\mathtt{\tilde{#1}}}}
+\def\v#1{\ensuremath{\mathbf{#1}}}
+
+% paper-specific macros
+\def\mU{\m U}
+\def\mV{\m V}
+\def\mW{\m W}
+\def\mM{\m M}
+\def\err{\epsilon}
+\def\verr{\boldsymbol \epsilon}
+
+\def\twiddle#1{{\tilde{#1}}}
+\def\tU{\twiddle\mU}
+\def\tW{\twiddle\mW}
+\def\tV{\twiddle\mV}
+\def\tVstar{{\twiddle\mV}^*}
+
+\begin{coq_eval}
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive. 
+
+Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
+Require Import finfun bigop prime binomial.
+
+Require Import matrix.
+Require Import ssralg.
+Import GRing.Theory.
+Open Local Scope ring_scope.
+
+Require Import bimodule.
+Require Import derivation.
+Require Import mxutil.
+Import Notations.
+Require Import mxmodule.
+Import Notations.
+Require Import mxdiff.
+Import Notations.
+Require Import eccv_paper_appendix.
+Import Notations.
+
+Section Section3.
+
+(* Constants *)
+Variable C : ringType.
+(* Variables and matrix elements *)
+Variable E : unitComAlgType C.
+(* Co-domain of differentiation operator *)
+Variable D : comBimodType E.
+Variable der : {linearDer E -> D}.
+Notation "\d" := (LinearDer.apply der).
+Notation "\\d" := (map_mx \d).
+
+(* All dimensions are non-zero. All matrices are non-empty. *)
+Variable m' n' r' : nat.
+Local Notation m := m'.+1.
+Local Notation n := n'.+1.
+Local Notation r := r'.+1.
+
+(* W : weight matrix 
+   M : target matrix 
+   They are constant matrices, and are lifted to participate in matrix operations. *)
+Variable cW cM : 'M[C]_(m, n).
+Notation W := (lift cW).
+Notation M := (lift cM).
+Variable U : 'M[E]_(m, r).
+Notation "~W" := (diag_mx (vec W)^T).
+Notation "\m" := (vec M).
+Notation "~U" := (I *o U).
+(* Regularization rate *)
+Variable v : C.
+Notation eps1 := (~W *m \m - ~W *m ~U *m (~W *m ~U)^-v *m ~W *m \m).
+Notation H := (I - ~W *m ~U *m (~W *m ~U)^-v).
+Notation "V*" := ((cvec_mx ((~W *m ~U)^-v *m ~W *m \m))^T).
+Notation R := (W .* (M - U *m V*^T)).
+Notation "~V*" := (V* *o I).
+(* The permutation matrix for transposing *)
+Notation T := (trT _ _ _).
+Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
+Notation J2 := (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T).
+Notation J1 := (-(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)).
+Notation "~WR" := ((W .* R) *o I).
+Notation "A ^+" := (A^-0) (at level 3, format "A ^+").
+
+Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
+\end{coq_eval}
+\begin{coq_example}
+\end{coq_example}
+
+\begin{document}
+% \renewcommand\thelinenumber{\color[rgb]{0.2,0.5,0.8}\normalfont\sffamily\scriptsize\arabic{linenumber}\color[rgb]{0,0,0}}
+% \renewcommand\makeLineNumber {\hss\thelinenumber\ \hspace{6mm} \rlap{\hskip\textwidth\ \hspace{6.5mm}\thelinenumber}}
+% \linenumbers
+\pagestyle{headings}
+\mainmatter
+\def \ECCV12SubNumber{1348}  % Insert your submission number here
+
+\title{Exact-Wiberg Algorithm for Matrix Factorization with Missing Data} % Replace with your title
+
+\titlerunning{ECCV-14 submission ID \ECCV12SubNumber}
+
+\authorrunning{ECCV-14 submission ID \ECCV12SubNumber}
+
+\author{Anonymous ECCV submission}
+\institute{Paper ID \ECCV12SubNumber}
+
+
+\maketitle
+
+\begin{abstract}
+We present a new derivation of the Wiberg algorithm for matrix factorization with missing data, showing how to compute the exact Jacobian of the projected problem, while previous research has used an approximate Jacobian.   The exact Jacobian, while sometimes considerably different to the approximation, makes little difference to convergence rates on real-world benchmarks.   The new derivation does, however, allow the derivation of a ``further damped'' Wiberg algorithm which can improve convergence on problems with very little data, and thus represents a new practical contribution to the state of the art in matrix factorization.
+\end{abstract}
+
+
+\section{Introduction}
+For many applications of machine learning and computer vision, a key computational step is in the low-rank approximation of a given $m\times n$ matrix $\m M$, where some of the values are unobserved or, more generally, are accompanied with a weight matrix \mW.    This involves the minimization of the error function
+\def\fro#1{\|#1\|_F^2}
+\begin{equation}
+\err(\m U,\m V) = \fro{\mW\hadamard(\m M -\m U \m V\tr)} + \frac\mu2(\fro \mU + \fro \mV)
+\eqlabel{E}
+\end{equation}
+over unknown matrices $\m U, \m V$ each with $r$ columns.   The operator~$\hadamard$ is Hadamard (or elementwise) product, and the norms are Frobenius.  For this paper, we will focus on the 2-norm problem as stated above, but we expect that our observations will shed light on the 1-norm and other variants also.  We further note that although the question of choice of hyperparameters~$r, \mu$ is of great interest, our focus here is on finding the global optimum of~\eqref{E}, assuming the hyperparameters have been set.  Furthermore, there are other settings of the problem, for example using the nuclear norm, but as shown by Cabral et al.~\cite{cabral2013unifying}, there are many scenarios in which \eqref{E} is equivalent to nuclear norm factorization.
+
+It is known that optimization of \eqref{E} with a nontrivial~$\mW$ is an intrinsically hard problem~\cite{cabral2013unifying}.   It is also known that for some standard representative datasets, it is hard in practice.   Recently however, great strides forward in the practical solution of these problems have been made using variants of the Wiberg algorithm~\cite{Wiberg76}.   In particular the family of damped Wiberg algorithms of Okatani et al.~\cite{okatani2011efficient} dramatically improved performance on real-world problems.   These algorithms may be loosely characterized as Levenberg-Marquardt algorithms applied to the function
+\def\erru{\varepsilon}
+\def\verru{{\boldsymbol\varepsilon}}
+\begin{align}
+\erru(\mU) = \min_\mV \err(\m U, \m V)
+\end{align}
+with a certain approximation to the Jacobian appearing in $\partial\erru/\partial\mU$.  Because the Wiberg algorithm derives the Jacobian in a somewhat oblique way, terms in the true Jacobian are discarded, and it has not previously been known what effect these neglected terms may have.   Generalizations of the Wiberg algorithm~\cite{strelow2012general} inherit this approximation, so our results on the specific case of matrix factorization may impact those generalizations, but that is beyond our scope here.
+
+The contributions of this paper are as follows:
+\begin{enumerate}
+\item We provide a simple new derivation of the Wiberg algorithm directly applying (extensions of) the matrix calculus rules of~\cite{minka00}.
+\item This new derivation allows us to easily include the derivative terms neglected in previous Wiberg-based methods, so that we are using the true analytic derivatives for the Levenberg-Marquardt algorithm.   We show that inclusion of these terms makes little difference to the performance of the algorithm, so that earlier approximations were indeed justified.
+\item We further develop the relationship between Wiberg and Schur-complement Gauss-Newton, showing how there is opportunity for further damping in the Damped Wiberg algorithm~\cite{okatani2011efficient}, which further improves covergence.   This yields a practical algorithm for factorization which converges almost always in practice on problems once considered difficult.
+\end{enumerate}
+
+%-------------------------------------------------------------------------
+
+
+\def\sym{\operatorname{sym}}
+\def\inv#1{{#1}^{\mathsf{-1}}}
+\def\mA{\m A}
+
+\def\Id#1{\m{I}_{#1}}
+\def\kron#1#2{{#1}\otimes{#2}}
+\def\pinv#1{{{#1}^\dagger}}
+\definecolor{diffcol}{rgb}{0,0,.35}
+%\def\diff[#1]{\textcolor{diffcol}{\partial[}#1\textcolor{diffcol}{]}}
+\def\diff[#1]{\textcolor{diffcol}{\partial[#1]}}
+
+\section{Matrix calculus rules}
+As a preliminary step, we recall some standard matrix calculus rules from~\cite{minka00}, and derive some extensions which will prove useful in the following.   The derivative operator passes through matrix inverse as follows
+\begin{equation}
+\diff[\inv \mA] = -\inv \mA \diff[\mA] \inv \mA
+\end{equation}
+where the colouring of arguments has no mathematical significance, but makes it easier to follow the ``drilling down'' of the derivative operator.  
+
+Defining the Moore-Penrose pseudoinverse as
+\begin{equation}
+\pinv \mA = \inv{(\mA\tr \mA)}\mA\tr
+\end{equation}
+we obtain a rule for differentiating through pseudoinverse (see appendix for derivation):
+\begin{align}
+\diff[\pinv \mA] = -\pinv \mA \diff[\mA] \pinv \mA +
+\inv{(\mA\tr\mA)}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
+\eqlabel{diffpinv}
+\end{align}
+and we observe that the second term is zero for invertible \mA.  We will also use a rule for $\mA \pinv \mA$ as follows:
+\begin{align}
+\diff[\mA \pinv \mA] = \sym((\Id{} - \mA\pinv \mA) \diff[\mA] \pinv \mA)
+\end{align}
+where $\sym(\mA) := \mA\tr + \mA$. 
+
+%\def\mupinv#1{{{#1}^{-\mu}}}
+%Defining the $\mu$-pseudoinverse as
+%\begin{equation}
+%\mupinv \mA = \inv{(\mA\tr \mA + \mu\Id{})}\mA\tr
+%\end{equation}
+%we obtain a very similar rule for differentiating through it:
+%\begin{align}
+%\diff[\mupinv \mA] = -\pinv \mA \diff[\mA] \pinv \mA +
+%\inv{(\mA\tr\mA+\mu\Id{})}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
+%\eqlabel{diffpinv}
+%\end{align}
+%and
+%\begin{align}
+%\diff[\mA \mupinv \mA] = \sym((\Id{} - \mA\mupinv \mA) \diff[\mA] \pinv \mA)
+%\end{align}
+
+\section{Method}
+Observing that 
+
+\begin{coq_example}
+(*!- \coqadd{\*:}{ } *)
+(*!- \coqadd{:\*}{ } *)
+(*!- \coqadd{\*m:}{ } *)
+(*!- \coqadd{\*ml:}{ } *)
+(*!- \coqadd{\*m\b}{ } *)
+(*!- \coqadd{\*ml\b}{ } *)
+(*!- \coqadd{\*mr\b}{ } *)
+(*!- \coqadd{\.\*}{\hadamard} *)
+(*!- \coqadd{\bvec\b}{\vec} *)
+(*!- \coqadd{\bsym\b}{\mathrm{sym}} *)
+(*!- \coqadd{\\\\d}{\partial} *)
+(*!- \coqadd{\*o\b}{\otimes} *)
+(*!- \coqadd{\*ol\b}{\otimes} *)
+(*!- \coqadd{\*or\b}{\otimes} *)
+(*!- \coqadd{\^T\b}{\tr} *)
+(*!- \coqadd{\^\+}{^\dagger} *)
+(*!- \coqadd{\^\^\s*-1}{^{-1}} *)
+(*!- \coqadd{\^-\s*(\w+)}{^{-\1}} *)
+(*!- \coqadd{\\m\b}{\v m} *)
+(*!- \coqadd{~WR\b}{\widetilde{WR}} *)
+(*!- \coqadd{~W\b}{\tW} *)
+(*!- \coqadd{~U\b}{\widetilde{U}} *)
+(*!- \coqadd{\bV\*}{{V^*}} *)
+(*!- \coqadd{~V\*}{{\widetilde{V}^*}} *)
+(*!- \coqadd{\bv\*}{{v^*}} *)
+(*!- \coqadd{\beps1\b}{\epsilon_1} *)
+(*!- \coqadd{\bW\b}{\mW} *)
+(*!- \coqadd{\bM\b}{\mM} *)
+(*!- \coqadd{\bU\b}{\mU} *)
+(*!- \coqadd{\bV\b}{\mV} *)
+
+(* Corresponds to Equation (10)~(13) *)
+(*! \begin{align} *)
+Lemma vec_dot V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
+Proof.
+  set goal := RHS.
+  rewrite vec_elemprod.
+  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*!n & \comment{ Define $\tW := \operatorname{diag}(\vec\mW)$ } *)
+  rewrite !raddfB /=.
+  (*! \\ &= \coqvar{lhs} *)
+  (*!n & \xcomment{ Define $\v m := \vec\mM$} \eqlabel{resvec1} *)
+  by rewrite vec_kron !mulmxA.
+  (*! \\ &= \coqvar{to} *)
+  (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} \eqlabel{\coqvar{name}} *)
+Qed.
+(*! \end{align} *)
+End Section3.
+\end{coq_example}
+
+%% \begin{align}
+%% \vec(\mW \hadamard (\mM - \mU \mV\tr))
+%%   & = \tW \vec(\mM - \mU \mV\tr) & \comment{ Define $\tW := \operatorname{diag}(\vec\mW)$ }
+%% \\& = \tW \vec(\mM) - \tW \vec(\mU \mV\tr)
+%% \\& = \tW \v m - \tW (\kron{\Id n}{\mU}) \vec(\mV\tr) & \xcomment{ Define $\v m := \vec\mM$ }
+%% \eqlabel{resvec1}
+%% \\& = \tW\v m - \tW \twiddle \mU \vec(\mV\tr) &
+%% \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$}
+%% \eqlabel{resvec2}
+%% \end{align}
+
+\end{document}
