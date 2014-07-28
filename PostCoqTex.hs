@@ -39,14 +39,14 @@ data St = St {
 data Lemma = Lemma {
   name :: String,
   equation :: Equation
-  }
+  } deriving (Show)
 
 data Equation = Equation {
   lhs :: String,
   rhs :: String
-}
+} deriving (Show)
   
-process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
+process = unlines . getOutput . run initState . mapM_ processRegion . pf length . coqRegions . map strip . lines
 
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
@@ -71,7 +71,7 @@ processRegion (r, b) = case r of
   Off -> tell b
   _ -> return ()
 
-onCoqRegion = mapM_ onConversation . conversations
+onCoqRegion = mapM_ onConversation . pf length . conversations
 
 conversations = itemizeBeginOn . partitionByBegin beginCmd
 
@@ -85,7 +85,7 @@ onConversation (cmds, resp) = do
   
 onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
-data Cmd = LemmaCmd Lemma | InCommentCmd (Bool, String)
+data Cmd = LemmaCmd Lemma | InCommentCmd (Bool, String) deriving (Show)
 
 getCmds = mapMaybe getCmd
 
@@ -103,7 +103,7 @@ getInCommentCmd s = do
   _ : isPrint : c : _ <- s =~~ "\\(\\*(!-?)(.*?)\\*\\)"
   return $ InCommentCmd (isPrint /= "!-", c)
 
-runCmd = \case
+runCmd c = case c of
   LemmaCmd c -> runLemmaCmd c
   InCommentCmd c -> runInCommentCmd c
 
@@ -219,7 +219,9 @@ subM regex func str =
     (before, matched, after, groups) <- str =~~~ regex
     return $ do
       s <- func (matched : groups)
-      k <- subM regex func after
+      k <- if length after < length str then -- avoid infinite loop
+             subM regex func after
+           else return str
       return $ before ++ s ++ k
 
 subF r f = runIdentity . subM r (return . f)
@@ -330,7 +332,7 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
--- p x = traceShow x x
+p x = traceShow x x
 
--- pf f x = traceShow (f x) x
+pf f x = traceShow (f x) x
 

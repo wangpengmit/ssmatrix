@@ -171,7 +171,6 @@ Notation "v*" := ((~W *m ~U)^-v *m ~W *m \m).
 Notation J2 := (0 - (~W *m ~U)^-v *m ~W *m (V* *o I) + ((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((W .* R)^T *o I) *m T).
 Notation J1 := (-(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *o I) *m T)).
 Notation "~WR" := ((W .* R) *o I).
-Notation "A ^+" := (A^-0) (at level 2, format "A ^+").
 
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
 
@@ -272,6 +271,8 @@ Qed.
 
 Hypothesis v_0 : v = 0.
 
+Notation "A ^+" := (A^-0) (at level 3, format "A ^+").
+
 Lemma mulpinvmx m n (A : 'M[E]_(m,n)) : invertible (mupinv_core 0 A) -> A^+ *m A = I.
 Proof.
   rewrite unlock /mupinv /mupinv_core lscale0mx addr0.
@@ -314,6 +315,9 @@ Proof.
   move: h_invertible; rewrite v_0 => h.
   by rewrite (pinv_pinv h).
 Qed.
+
+(* This notation works better with Latex *)
+Notation "{( A )^+}" := (A^-0) (at level 3).
 
 (* Corresponds to Equation (54)~(56) *)
 Lemma J1_J1 : J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T.
