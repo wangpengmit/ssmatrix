@@ -14,35 +14,19 @@ main = do
     hSetBuffering inn NoBuffering
     hSetBuffering err LineBuffering
     hSetBuffering out LineBuffering
-    forkIO $ parseUntilPrompt "stdin" out >> return ()
-    waitPrompt err
-    forkIO $ hPutStrLn inn "Require Import matrix."
-    waitPrompt err
-    putStrLn "input"
-    forkIO $ hPutStrLn inn "About bool."
-    waitPrompt err
-    putStrLn "input"
-    forkIO $ hPutStrLn inn "Quit."
+    forkIO $ getResp out >> return ()
+    waitPrompt err >>= putStr
+    mapM_ ($ "Require Import matrix.") [putStrLn, (input inn)] 
+    waitPrompt err >>= putStr
+    mapM_ ($ "About bool.") [putStrLn, (input inn)] 
+    waitPrompt err >>= putStr
+    mapM_ ($ "Quit.") [(input inn)] 
 
-waitPrompt h = hGetUntil h "Coq <"
+waitPrompt h = hGetUntil h "Coq < "
 
-  -- do
-  -- ln <- hGetLine h
-  -- putStrLn $ "stderr: " ++ ln
-  -- if isPrefixOf "Coq <" ln then do
-  --   return ln
-  -- else
-  --   waitPrompt h
+input inn str = (forkIO $ hPutStrLn inn str) >> return ()
 
-parseUntilPrompt src out = do
-  tryIOError (hGetLine out) >>= \case
-    Left e ->
-        if isEOFError e
-           then return []
-           else ioError e
-    Right latest -> do
-        putStrLn $ src ++ ": " ++ latest
-        (:) <$> return latest <*> parseUntilPrompt src out
+getResp out = hGetLine out >>= putStrLn >> getResp out
 
 hGetUntil h str = 
   if null str then
