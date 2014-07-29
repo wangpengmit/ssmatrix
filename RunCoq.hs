@@ -10,13 +10,12 @@ import Text.Parsec (runParserT, many, try, string, (<|>), letter, anyChar, alpha
 import Control.Monad.Cont
 import Yield
 import Control.Applicative ((<$>), (<*>), pure)
+import Util
 
 main = do
-  let input = getInput
-  -- let input = getInput2
-  promptStream input
+  getPromptStream getInput3
   
-promptStream k = do                                                    
+getPromptStream k = do                                                    
     (toCoq, fromCoq, fromCoqErr, handleCoq) <- runInteractiveCommand "coqtop 2>&1"
     -- (toCoq, fromCoq, fromCoqErr, handleCoq) <- runInteractiveCommand "coqtop -emacs 2>&1"
     mapM_ (flip hSetBinaryMode True) [toCoq, fromCoqErr, fromCoq]             
@@ -46,16 +45,20 @@ getInput
      -> ((Char -> t2 IO ()) -> (String -> t IO ()) -> t1 IO b)
      -> t1 IO ()
 getInput toCoq waitPrompt = do    
-    input <- lift $ getContents
-    input <- return $ lines input
-    input <- return $ flip mapM_ input
-    waitPrompt noop (lift . putStr)
-    input $ \ln -> do
-      mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
-      waitPrompt (lift . putStr . pure) (\_ -> lift $ putStr "Coq > ")
+  input <- lift $ getContents
+  input <- return $ lines input
+  input <- return $ flip mapM_ input
+  waitPrompt (lift . putStr . pure) (lift . putStr)
+  input $ \ln -> do
+    mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
+    waitPrompt (lift . putStr . pure) (lift . putStr) -- (\_ -> lift $ putStr "Coq > ")
 
 noop x = return ()
 
+getInput2
+  :: (Monad (t IO), Monad (t2 IO), Monad m, MonadTrans t,
+      MonadTrans t2) =>
+     Handle -> ((Char -> t2 IO ()) -> (t1 -> m ()) -> t IO a) -> t IO ()
 getInput2 toCoq waitPrompt = do
   lift $ putStrLn "Before"
   waitPrompt noop noop
@@ -67,6 +70,67 @@ getInput2 toCoq waitPrompt = do
   mapM_ (lift . flip hPutStrLn "About bool.") [stdout, toCoq] 
   waitPrompt (lift . putStr . pure) noop
   lift $ putStrLn "After"
+
+getInput3 toCoq waitPrompt = do
+  waitPrompt noop noop
+  input <- lift $ getContents
+  input <- return $ lines input
+  flip runStateT noCoq $ mapM_ process input
+  where
+    process ln = do
+      st <- get
+      if notCoqMode st then do
+        lift $ putStrLn ln
+        put $ transit st ln
+      else do
+        put $ transit st ln
+        st <- get
+        if notCoqMode st then
+          lift $ putStrLn ln
+        else do
+          if isShowCmd st then do
+            lift $ putStr "Coq > "
+            lift $ putStrLn ln
+          else
+            return ()
+          lift $ hPutStrLn toCoq ln
+          if isShowResp st then
+            waitPrompt (lift . putStr . pure) noop
+          else
+            waitPrompt noop noop
+
+transit NoCoq ln | beginCoq ln = Coq
+                 | beginCoqCmd ln = CoqCmd
+                 | beginCoqCmdResp ln = CoqCmdResp
+transit Coq ln | endCoq ln = NoCoq
+transit CoqCmd ln | endCoqCmd ln = NoCoq
+transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
+
+                                        
+
+  --     On -> onCoqRegion b
+  --     _ -> mapM_ (lift . putStrLn) b
+  --   onCoqRegion = mapM_ $ \ln -> do
+  --     lift $ putStr "Coq > "
+  --     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
+  --     waitPrompt (lift . putStr . pure) noop
+
+  
+  -- mapM_ processRegion . coqRegions $ input
+  -- where
+  --   processRegion (r, b) = case r of
+  --     On -> onCoqRegion b
+  --     _ -> mapM_ (lift . putStrLn) b
+  --   onCoqRegion = mapM_ $ \ln -> do
+  --     lift $ putStr "Coq > "
+  --     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
+  --     waitPrompt (lift . putStr . pure) noop
+
+coqRegions = partitionByBeginEnd beginCoq endCoq
+
+beginCoq s = isInfixOf "\\begin{coq_example}" s || isInfixOf "\\begin{coq_eval}" s
+
+endCoq s = isInfixOf "\\end{coq_example}" s || isInfixOf "\\end{coq_eval}" s
 
 promptParser yield = many $ try onPrompt <|> onNonprompt
   where
