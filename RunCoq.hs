@@ -75,36 +75,36 @@ getInput3 toCoq waitPrompt = do
   waitPrompt noop noop
   input <- lift $ getContents
   input <- return $ lines input
-  flip runStateT noCoq $ mapM_ process input
-  where
-    process ln = do
-      st <- get
-      if notCoqMode st then do
-        lift $ putStrLn ln
-        put $ transit st ln
-      else do
-        put $ transit st ln
-        st <- get
-        if notCoqMode st then
-          lift $ putStrLn ln
-        else do
-          if isShowCmd st then do
-            lift $ putStr "Coq > "
-            lift $ putStrLn ln
-          else
-            return ()
-          lift $ hPutStrLn toCoq ln
-          if isShowResp st then
-            waitPrompt (lift . putStr . pure) noop
-          else
-            waitPrompt noop noop
+--   flip runStateT noCoq $ mapM_ process input
+--   where
+--     process ln = do
+--       st <- get
+--       if notCoqMode st then do
+--         lift $ putStrLn ln
+--         put $ transit st ln
+--       else do
+--         put $ transit st ln
+--         st <- get
+--         if notCoqMode st then
+--           lift $ putStrLn ln
+--         else do
+--           if isShowCmd st then do
+--             lift $ putStr "Coq > "
+--             lift $ putStrLn ln
+--           else
+--             return ()
+--           lift $ hPutStrLn toCoq ln
+--           if isShowResp st then
+--             waitPrompt (lift . putStr . pure) noop
+--           else
+--             waitPrompt noop noop
 
-transit NoCoq ln | beginCoq ln = Coq
-                 | beginCoqCmd ln = CoqCmd
-                 | beginCoqCmdResp ln = CoqCmdResp
-transit Coq ln | endCoq ln = NoCoq
-transit CoqCmd ln | endCoqCmd ln = NoCoq
-transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
+-- transit NoCoq ln | beginCoq ln = Coq
+--                  | beginCoqCmd ln = CoqCmd
+--                  | beginCoqCmdResp ln = CoqCmdResp
+-- transit Coq ln | endCoq ln = NoCoq
+-- transit CoqCmd ln | endCoqCmd ln = NoCoq
+-- transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
 
                                         
 
@@ -116,15 +116,15 @@ transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
   --     waitPrompt (lift . putStr . pure) noop
 
   
-  -- mapM_ processRegion . coqRegions $ input
-  -- where
-  --   processRegion (r, b) = case r of
-  --     On -> onCoqRegion b
-  --     _ -> mapM_ (lift . putStrLn) b
-  --   onCoqRegion = mapM_ $ \ln -> do
-  --     lift $ putStr "Coq > "
-  --     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
-  --     waitPrompt (lift . putStr . pure) noop
+  mapM_ processRegion . coqRegions $ input
+  where
+    processRegion (r, b) = case r of
+      On -> onCoqRegion b
+      _ -> mapM_ (lift . putStrLn) b
+    onCoqRegion = mapM_ $ \ln -> do
+      lift $ putStr "Coq > "
+      mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
+      waitPrompt (lift . putStr . pure) noop
 
 coqRegions = partitionByBeginEnd beginCoq endCoq
 
