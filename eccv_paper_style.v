@@ -27,4 +27,4 @@
 (*!- \coqadd{\bW\b}{\mW} *)
 (*!- \coqadd{\bM\b}{\mM} *)
 (*!- \coqadd{\bU\b}{\mU} *)
-(*!- \coqadd{\bV\b}{V} *)
+(*!- \coqadd{\bV\b}{\mV} *)

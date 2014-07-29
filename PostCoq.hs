@@ -97,10 +97,10 @@ data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Sho
 
 getCmds = mapMaybe getCmd
 
-getCmd = p . choice [
+getCmd = choice [
   getLemmaCmd,
   getInCommentCmd
-  ] . p
+  ]
 
 getLemmaCmd s = do
   s <- return $ removeForall s
@@ -306,7 +306,7 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
-p x = traceShow x x
+-- p x = traceShow x x
 
-pf f x = traceShow (f x) x
+-- pf f x = traceShow (f x) x
 
