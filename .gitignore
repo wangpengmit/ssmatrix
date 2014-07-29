@@ -27,7 +27,6 @@ timing/
 *.html
 *.v.tex
 *.css
-*.sty
 *.pdf
 *.toc
 *.orig

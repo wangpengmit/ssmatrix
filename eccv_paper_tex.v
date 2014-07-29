@@ -104,6 +104,7 @@ Proof.
   (*! \\ &= \coqvar{lhs} *)
   by rewrite tr_diag_mx -vec_elemprod.
   (*! \\ &= \coqvar{to} \eqlabel{\coqvar{name}} *)
+  (*!n & \comment{ Some comments } *)
 Qed.
 (*! \end{align} *)
 (*! } *)

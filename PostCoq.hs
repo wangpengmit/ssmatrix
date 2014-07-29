@@ -33,10 +33,10 @@ main = do
   hClose fin
   hClose fout
 
-doIncludes = subM "\\\\coq_input{(.*?)}" $ \(_ : filename : _) -> do
+doIncludes = subM "\\\\coq_output{(.*?)}" $ \(_ : filename : _) -> do
   (tryIOError $ readFile filename) >>= \case
     Left _ -> return $ "Can read file: " ++ filename
-    Right s -> return $ s
+    Right s -> return $ beginCoqOutputStr ++ "\n" ++ s ++ "\n" ++ endCoqOutputStr ++ "\n"
 
 data St = St {
   lemma :: Lemma,
@@ -70,9 +70,13 @@ getOutput = snd
 
 coqRegions = partitionByBeginEnd beginCoq endCoq
 
-beginCoq = oneIsInfixOf ["\\begin{coq_example}", "\\begin{coq_example*}", "\\begin{coq_eval}"]
+beginCoq = isInfixOf beginCoqOutputStr
 
-endCoq = oneIsInfixOf ["\\end{coq_example}", "\\end{coq_example*}", "\\end{coq_eval}"]
+beginCoqOutputStr = "\\begin{coq_output}"
+
+endCoq = isInfixOf endCoqOutputStr
+
+endCoqOutputStr = "\\end{coq_output}"
 
 processRegion (r, b) = case r of
   On -> onCoqRegion b

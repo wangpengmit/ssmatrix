@@ -4,7 +4,7 @@
 \documentclass[runningheads]{llncs}
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb,mathtools} % define this before the line numbering.
-\usepackage{ruler}
+%% \usepackage{ruler}
 \usepackage{color}
 \usepackage[width=122mm,left=12mm,paperwidth=146mm,height=193mm,top=12mm,paperheight=217mm]{geometry}
 
@@ -117,9 +117,39 @@ The contributions of this paper are as follows:
 }
 
 \begin{coq_example}
-\coq_input{eccv_paper.style.coq.txt}
-\coq_input{eccv_paper.coq.txt}
+(*!- \coqadd{\*:}{ } *)
+(*!- \coqadd{:\*}{ } *)
+(*!- \coqadd{\*m:}{ } *)
+(*!- \coqadd{\*ml:}{ } *)
+(*!- \coqadd{\*m\b}{ } *)
+(*!- \coqadd{\*ml\b}{ } *)
+(*!- \coqadd{\*mr\b}{ } *)
+(*!- \coqadd{\.\*}{\hadamard} *)
+(*!- \coqadd{\bvec\b}{\vec} *)
+(*!- \coqadd{\bsym\b}{\mathrm{sym}} *)
+(*!- \coqadd{\\\\d}{\partial} *)
+(*!- \coqadd{\*o\b}{\otimes} *)
+(*!- \coqadd{\*ol\b}{\otimes} *)
+(*!- \coqadd{\*or\b}{\otimes} *)
+(*!- \coqadd{\^T\b}{\tr} *)
+(*!- \coqadd{\^\+}{^\dagger} *)
+(*!- \coqadd{\^\^\s*-1}{^{-1}} *)
+(*!- \coqadd{\^-\s*(\w+)}{^{-\1}} *)
+(*!- \coqadd{\\m\b}{\v m} *)
+(*!- \coqadd{~WR\b}{\widetilde{WR}} *)
+(*!- \coqadd{~W\b}{\tW} *)
+(*!- \coqadd{~U\b}{\widetilde{U}} *)
+(*!- \coqadd{\bV\*}{{V^*}} *)
+(*!- \coqadd{~V\*}{{\widetilde{V}^*}} *)
+(*!- \coqadd{\bv\*}{{v^*}} *)
+(*!- \coqadd{\beps1\b}{\epsilon_1} *)
+(*!- \coqadd{\bW\b}{\mW} *)
+(*!- \coqadd{\bM\b}{\mM} *)
+(*!- \coqadd{\bU\b}{\mU} *)
+(*!- \coqadd{\bV\b}{\mV} *)
 \end{coq_example}
+
+\coq_output{eccv_paper.coq.txt}
 
 \section{Matrix calculus rules}
 As a preliminary step, we recall some standard matrix calculus rules from~\cite{minka00}, and derive some extensions which will prove useful in the following.   The derivative operator passes through matrix inverse as follows

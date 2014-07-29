@@ -27,19 +27,20 @@ main = do
     void $ getPromptStream $ interactive $ elem Echo options
   else do
     let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig
-    void $ getPromptStream $ regionSub hIn hOut config
+    void $ getPromptStream $ regionSub hIn [hOut] config $ elem Verbose options && fout /= "-"
   hClose hIn
   hClose hOut
   
 -- commandline interface
 
-data Flag = Help | Interactive | Echo | Tex
+data Flag = Help | Interactive | Echo | Tex | Verbose
             deriving (Eq)
                    
 flags = [
  Option ['t'] ["tex"] (NoArg Tex) "Run Coq in regions delimited by \\begin{coq_example}, \\begin{coq_example*} or \\begin{coq_eval}",
  Option ['i'] ["interact"] (NoArg Interactive) "Run interactive mode",
  Option ['e'] ["echo"] (NoArg Echo) "Echo command in interactive mode",
+ Option ['v'] ["verbose"] (NoArg Verbose) "Verbose mode, print more information",
  Option ['h'] ["help"] (NoArg Help) "Print this help message"
  ]
 
@@ -75,7 +76,7 @@ interactive isEcho toCoq waitPrompt = do
     else
       void $ lift $ waitPrompt (lift . putStr . pure) (lift . putStr)
 
-regionSub hIn hOut config toCoq waitPrompt = do
+regionSub hIn hOuts config isVerbose toCoq waitPrompt = do
   waitPrompt noop noop
   input <- lift $ hGetContents hIn
   input <- return $ lines input
@@ -84,22 +85,23 @@ regionSub hIn hOut config toCoq waitPrompt = do
     process ln = do
       st <- get
       if not $ isCoqMode config st then do
-        lift $ lift $ hPutStrLn hOut ln
+        lift $ lift $ multi hPutStrLn hOuts $ translateNonCoq config ln
         put $ transit config st ln
       else do
         put $ transit config st ln
         st <- get
         if not $ isCoqMode config st then
-          lift $ lift $ hPutStrLn hOut ln
+          lift $ lift $ multi hPutStrLn hOuts ln
         else do
           if isShowCmd config st then do
-            lift $ lift $ hPutStr hOut "Coq < "
-            lift $ lift $ hPutStrLn hOut ln
+            hOuts <- return $ if isVerbose then stdout : hOuts else hOuts
+            lift $ lift $ multi hPutStr hOuts "Coq < "
+            lift $ lift $ multi hPutStrLn hOuts ln
           else
             return ()
           lift $ lift $ hPutStrLn toCoq ln
           if isShowResp config st then
-            void $ lift $ waitPrompt (lift . hPutStr hOut . pure) noop
+            void $ lift $ waitPrompt (lift . multi hPutStr hOuts . pure) noop
           else
             void $ lift $ waitPrompt noop noop
 
@@ -107,10 +109,11 @@ data CoqState = NoCoq | Coq | CoqCmd | CoqCmdResp deriving (Eq)
 
 data RegionConfig = RegionConfig {
   initCoqState :: CoqState,
-  isCoqMode ::CoqState-> Bool,
-  isShowCmd ::CoqState-> Bool,
-  isShowResp ::CoqState-> Bool,
-  transit ::CoqState-> String -> CoqState
+  isCoqMode :: CoqState -> Bool,
+  isShowCmd :: CoqState -> Bool,
+  isShowResp :: CoqState -> Bool,
+  transit :: CoqState -> String -> CoqState,
+  translateNonCoq :: String -> String
   }
 
 vRegionConfig = RegionConfig {
@@ -118,7 +121,8 @@ vRegionConfig = RegionConfig {
   isCoqMode = \_ -> True,
   isShowCmd = \_ -> True,
   isShowResp = \_ -> True,
-  transit = \_ -> \_ -> CoqCmdResp
+  transit = \_ -> \_ -> CoqCmdResp,
+  translateNonCoq = id
   }
                 
 texRegionConfig = RegionConfig {
@@ -126,7 +130,8 @@ texRegionConfig = RegionConfig {
   isCoqMode = (/= NoCoq),
   isShowCmd = (== CoqCmd) <||> (== CoqCmdResp),
   isShowResp = (== CoqCmdResp),
-  transit = texTransit
+  transit = texTransit,
+  translateNonCoq = texTranslateNonCoq
 }
 
 texTransit NoCoq ln | beginCoq ln = Coq
@@ -137,6 +142,14 @@ texTransit CoqCmd ln | endCoqCmd ln = NoCoq
 texTransit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
 texTransit st _ = st
 
+texTranslateNonCoq ln =
+  if beginCoq ln || beginCoqCmd ln || beginCoqCmdResp ln then
+    "\\begin{coq_output}"
+  else if endCoq ln || endCoqCmd ln || endCoqCmdResp ln then
+         "\\end{coq_output}"
+       else
+         ln
+         
 beginCoq = isInfixOf "\\begin{coq_eval}"
 beginCoqCmd = isInfixOf "\\begin{coq_example*}"
 beginCoqCmdResp = isInfixOf "\\begin{coq_example}"
@@ -188,4 +201,6 @@ noop x = return ()
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
+
+multi f ls x = sequence_ $ map ($ x) $ map f ls
 
