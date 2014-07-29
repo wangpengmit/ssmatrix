@@ -11,6 +11,7 @@ import Control.Monad.Cont
 import Yield
 import Control.Applicative ((<$>), (<*>), pure)
 import Util
+import Control.Monad.State (runStateT, get, put)
 
 main = do
   getPromptStream getInput3
@@ -75,39 +76,10 @@ getInput3 toCoq waitPrompt = do
   waitPrompt noop noop
   input <- lift $ getContents
   input <- return $ lines input
---   flip runStateT noCoq $ mapM_ process input
---   where
---     process ln = do
---       st <- get
---       if notCoqMode st then do
---         lift $ putStrLn ln
---         put $ transit st ln
---       else do
---         put $ transit st ln
---         st <- get
---         if notCoqMode st then
---           lift $ putStrLn ln
---         else do
---           if isShowCmd st then do
---             lift $ putStr "Coq > "
---             lift $ putStrLn ln
---           else
---             return ()
---           lift $ hPutStrLn toCoq ln
---           if isShowResp st then
---             waitPrompt (lift . putStr . pure) noop
---           else
---             waitPrompt noop noop
 
--- transit NoCoq ln | beginCoq ln = Coq
---                  | beginCoqCmd ln = CoqCmd
---                  | beginCoqCmdResp ln = CoqCmdResp
--- transit Coq ln | endCoq ln = NoCoq
--- transit CoqCmd ln | endCoqCmd ln = NoCoq
--- transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
-
-                                        
-
+  -- mapM_ processRegion . coqRegions $ input
+  -- where
+  --   processRegion (r, b) = case r of
   --     On -> onCoqRegion b
   --     _ -> mapM_ (lift . putStrLn) b
   --   onCoqRegion = mapM_ $ \ln -> do
@@ -115,22 +87,57 @@ getInput3 toCoq waitPrompt = do
   --     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
   --     waitPrompt (lift . putStr . pure) noop
 
-  
-  mapM_ processRegion . coqRegions $ input
+  flip runStateT noCoq $ mapM_ process input
   where
-    processRegion (r, b) = case r of
-      On -> onCoqRegion b
-      _ -> mapM_ (lift . putStrLn) b
-    onCoqRegion = mapM_ $ \ln -> do
-      lift $ putStr "Coq > "
-      mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
-      waitPrompt (lift . putStr . pure) noop
+    process ln = do
+      st <- get
+      if notCoqMode st then do
+        lift $ lift $ putStrLn ln
+        put $ transit st ln
+      else do
+        put $ transit st ln
+        st <- get
+        if notCoqMode st then
+          lift $ lift $ putStrLn ln
+        else do
+          if isShowCmd st then do
+            lift $ lift $ putStr "Coq > "
+            lift $ lift $ putStrLn ln
+          else
+            return ()
+          lift $ lift $ hPutStrLn toCoq ln
+          if isShowResp st then
+            void $ lift $ waitPrompt (lift . putStr . pure) noop
+          else
+            void $ lift $ waitPrompt noop noop
 
-coqRegions = partitionByBeginEnd beginCoq endCoq
+data CoqState = NoCoq | Coq | CoqCmd | CoqCmdResp deriving (Eq)
 
-beginCoq s = isInfixOf "\\begin{coq_example}" s || isInfixOf "\\begin{coq_eval}" s
+transit NoCoq ln | beginCoq ln = Coq
+                 | beginCoqCmd ln = CoqCmd
+                 | beginCoqCmdResp ln = CoqCmdResp
+transit Coq ln | endCoq ln = NoCoq
+transit CoqCmd ln | endCoqCmd ln = NoCoq
+transit CoqCmdResp ln | endCoqCmdResp ln = NoCoq
+transit st _ = st
 
-endCoq s = isInfixOf "\\end{coq_example}" s || isInfixOf "\\end{coq_eval}" s
+beginCoq = isInfixOf "\\begin{coq_eval}"
+beginCoqCmd = isInfixOf "\\begin{coq_example*}"
+beginCoqCmdResp = isInfixOf "\\begin{coq_example}"
+endCoq = isInfixOf "\\end{coq_eval}"
+endCoqCmd = isInfixOf "\\end{coq_example*}"
+endCoqCmdResp = isInfixOf "\\end{coq_example}"
+
+noCoq = NoCoq
+notCoqMode st = st == NoCoq
+isShowCmd st = st == CoqCmd || st == CoqCmdResp
+isShowResp st = st == CoqCmdResp
+
+coqRegions = partitionByBeginEnd beginCoqRegion endCoqRegion
+
+beginCoqRegion s = isInfixOf "\\begin{coq_example}" s || isInfixOf "\\begin{coq_eval}" s
+
+endCoqRegion s = isInfixOf "\\end{coq_example}" s || isInfixOf "\\end{coq_eval}" s
 
 promptParser yield = many $ try onPrompt <|> onNonprompt
   where
