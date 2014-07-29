@@ -26,7 +26,7 @@ main = do
   if elem Interactive options then
     void $ getPromptStream $ interactive $ elem Echo options
   else do
-    let config = if elem Tex options then texRegionConfig else vRegionConfig
+    let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig
     void $ getPromptStream $ regionSub hIn hOut config
   hClose hIn
   hClose hOut

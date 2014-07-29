@@ -45,3 +45,5 @@ RunCoq
 YieldParser
 YieldParseTree
 *.trace.tex
+*.coq.txt
+*.coq.style.txt

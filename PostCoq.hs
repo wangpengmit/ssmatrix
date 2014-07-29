@@ -19,16 +19,24 @@ import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
 import Util
+import System.IO.Error (tryIOError)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
   fin <- if length fs >= 1 then openFile (fs !! 0) ReadMode else return stdin
   fout <- if length fs >= 2 then openFile (fs !! 1) WriteMode else return stdout
   str <- hGetContents fin
-  str <- return $ process str
+  str <- doIncludes str
+  -- putStrLn str
+  str <- return $ process $ str
   hPutStr fout str
   hClose fin
   hClose fout
+
+doIncludes = subM "\\\\coq_input{(.*?)}" $ \(_ : filename : _) -> do
+  (tryIOError $ readFile filename) >>= \case
+    Left _ -> return $ "Can read file: " ++ filename
+    Right s -> return $ s
 
 data St = St {
   lemma :: Lemma,
@@ -89,10 +97,10 @@ data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Sho
 
 getCmds = mapMaybe getCmd
 
-getCmd = choice [
+getCmd = p . choice [
   getLemmaCmd,
   getInCommentCmd
-  ]
+  ] . p
 
 getLemmaCmd s = do
   s <- return $ removeForall s
