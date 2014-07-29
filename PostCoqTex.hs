@@ -62,12 +62,12 @@ getOutput = snd
 
 coqRegions = partitionByBeginEnd beginCoq endCoq
 
-beginCoq = isInfixOf "\\begin{flushleft}"
+beginCoq = oneIsInfixOf ["\\begin{coq_example}", "\\begin{coq_example*}", "\\begin{coq_eval}"]
 
-endCoq = isInfixOf "\\end{flushleft}"
+endCoq = oneIsInfixOf ["\\end{coq_example}", "\\end{coq_example*}", "\\end{coq_eval}"]
 
 processRegion (r, b) = case r of
-  On -> onCoqRegion . map untex $ b
+  On -> onCoqRegion b
   Off -> tell b
   _ -> return ()
 
@@ -75,7 +75,7 @@ onCoqRegion = mapM_ onConversation . conversations
 
 conversations = itemizeBeginOn . partitionByBegin beginCmd
 
-beginCmd = isPrefixOf cmdPrefix
+beginCmd = isPrefixOf cmdPrefix . strip
 
 cmdPrefix = "Coq < "
 
@@ -298,7 +298,7 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
--- p x = traceShow x x
+p x = traceShow x x
 
--- pf f x = traceShow (f x) x
+pf f x = traceShow (f x) x
 

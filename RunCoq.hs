@@ -52,7 +52,7 @@ getInput toCoq waitPrompt = do
   waitPrompt (lift . putStr . pure) (lift . putStr)
   input $ \ln -> do
     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
-    waitPrompt (lift . putStr . pure) (lift . putStr) -- (\_ -> lift $ putStr "Coq > ")
+    waitPrompt (lift . putStr . pure) (lift . putStr) -- (\_ -> lift $ putStr "Coq < ")
 
 noop x = return ()
 
@@ -63,11 +63,11 @@ getInput2
 getInput2 toCoq waitPrompt = do
   lift $ putStrLn "Before"
   waitPrompt noop noop
-  lift $ putStr "Coq > "
+  lift $ putStr "Coq < "
   mapM_ (lift . flip hPutStrLn "About nat.") [stdout, toCoq] 
   waitPrompt (lift . putStr . pure) noop
   lift $ putStrLn "Middle"
-  lift $ putStr "Coq > "
+  lift $ putStr "Coq < "
   mapM_ (lift . flip hPutStrLn "About bool.") [stdout, toCoq] 
   waitPrompt (lift . putStr . pure) noop
   lift $ putStrLn "After"
@@ -76,17 +76,6 @@ getInput3 toCoq waitPrompt = do
   waitPrompt noop noop
   input <- lift $ getContents
   input <- return $ lines input
-
-  -- mapM_ processRegion . coqRegions $ input
-  -- where
-  --   processRegion (r, b) = case r of
-  --     On -> onCoqRegion b
-  --     _ -> mapM_ (lift . putStrLn) b
-  --   onCoqRegion = mapM_ $ \ln -> do
-  --     lift $ putStr "Coq > "
-  --     mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
-  --     waitPrompt (lift . putStr . pure) noop
-
   flip runStateT noCoq $ mapM_ process input
   where
     process ln = do
@@ -101,7 +90,7 @@ getInput3 toCoq waitPrompt = do
           lift $ lift $ putStrLn ln
         else do
           if isShowCmd st then do
-            lift $ lift $ putStr "Coq > "
+            lift $ lift $ putStr "Coq < "
             lift $ lift $ putStrLn ln
           else
             return ()

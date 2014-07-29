@@ -70,7 +70,13 @@ Notation "~WR" := ((W .* R) *o I).
 Notation "A ^+" := (A^-0) (at level 3, format "A ^+").
 
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
+\end{coq_eval}
 
+\begin{document}
+
+Before.
+
+\begin{coq_example}
 (*!- \coqadd{\*:}{ } *)
 (*!- \coqadd{:\*}{ } *)
 (*!- \coqadd{\*m:}{ } *)
@@ -98,13 +104,7 @@ Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
 (*!- \coqadd{\bv\*}{{v^*}} *)
 (*!- \coqadd{\bv\b}{\nu} *)
 (*!- \coqadd{\beps1\b}{\epsilon_1} *)
-\end{coq_eval}
 
-\begin{document}
-
-Before.
-
-\begin{coq_example}
 (* Corresponds to Equation (10)~(13) *)
 (*! \begin{align} *)
 Lemma vec_dot V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
