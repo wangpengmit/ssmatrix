@@ -79,8 +79,31 @@ Proof.
   (*! \\ &= \coqvar{lhs} *)
   (*!n & \xcomment{ Define $\v m := \vec\mM$} \eqlabel{resvec1} *)
   by rewrite vec_kron !mulmxA.
-  (*! \\ &= \coqvar{to} *)
-  (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} \eqlabel{\coqvar{name}} *)
+  (*! \\ &= \coqvar{to} \eqlabel{\coqvar{name}} *)
+  (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} *)
+Qed.
+(*! \end{align} *)
+(*! } *)
+
+Lemma to_Vstar : (~W *m ~U)^-v *m ~W *m \m = vec V*^T.
+Proof.
+  by rewrite (trmxK V*) cvec_mxK.
+Qed.
+
+(* Corresponds to Equation (28)~(31) *)
+(*! \def\tovecdot{ *)
+(*! \begin{align} *)
+Lemma to_vec_dot : ~W^T *m H *m ~W *m \m = vec (W .* R).
+Proof.
+  set goal := RHS.
+  rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
+  (*! \coqvar{from} &= \coqvar{lhs} *)
+  rewrite -(mulmxA _ _ ~W) -(mulmxA _ (_ *m _) \m) to_Vstar.
+  (*! \\ &= \coqvar{lhs} *)
+  rewrite -!mulmxA -mulmxBr !mulmxA -vec_dot.
+  (*! \\ &= \coqvar{lhs} *)
+  by rewrite tr_diag_mx -vec_elemprod.
+  (*! \\ &= \coqvar{to} \eqlabel{\coqvar{name}} *)
 Qed.
 (*! \end{align} *)
 (*! } *)
