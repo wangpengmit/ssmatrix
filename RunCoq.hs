@@ -6,46 +6,69 @@ import Debug.Trace
 import System.IO.Error
 import Control.Concurrent
 import Data.List
-import Text.Parsec
+import Text.Parsec (runParserT, many, try, string, (<|>), letter, anyChar, alphaNum, oneOf)
 import Control.Monad.Cont
 import Yield
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<*>), pure)
 
-main = do                                                    
-    (inn, out, err, idd) <- runInteractiveCommand "coqtop 1>&2"
-    -- (inn, out, err, idd) <- runInteractiveCommand "coqtop -emacs 1>&2"
-    mapM_ (flip hSetBinaryMode True) [inn, err, out]             
-    -- hSetBuffering err NoBuffering
-    hSetBuffering inn NoBuffering
-    -- hSetBuffering out NoBuffering
+main = do
+  -- let input = getInput
+  let input = getInput2
+  promptStream input
+  
+promptStream k = do                                                    
+    (toCoq, fromCoq, fromCoqErr, handleCoq) <- runInteractiveCommand "coqtop 2>&1"
+    -- (toCoq, fromCoq, fromCoqErr, handleCoq) <- runInteractiveCommand "coqtop -emacs 2>&1"
+    mapM_ (flip hSetBinaryMode True) [toCoq, fromCoqErr, fromCoq]             
+    -- hSetBuffering fromCoqErr NoBuffering
+    hSetBuffering toCoq NoBuffering
+    -- hSetBuffering fromCoq NoBuffering
     -- hSetBuffering stdout NoBuffering
-    forkIO $ getResp out
-    strErr <- hGetContents err
-    -- strErr <- return $ map (\x -> p x) $ strErr
-    strStdin <- getContents
-    -- strStdin <- return $ "About nat. \n(*\nAbout bool.\n"
+    strFromCoq <- hGetContents fromCoq
     flip runContT return $ do
-      g <- mkgen (\yield _ -> runParserT (pmain (lift . yield)) () "" strErr)
-      let waitPrompt = do
+      g <- mkgen (\yield _ -> runParserT (promptParser (lift . yield)) () "strFromCoq" strFromCoq)
+      let waitPrompt onNonPrompt onPrompt = do
             g () >>= \case
               More (Left c) -> do
-                liftIO $ putStr $ [c]
-                waitPrompt
+                onNonPrompt c
+                (np, p) <- waitPrompt onNonPrompt onPrompt
+                return (c : np, p)
               More (Right s) -> do
-                liftIO $ putStr s
-              _ -> return ()
-      waitPrompt
-      strStdin <- return $ lines strStdin
-      -- strStdin <- return $ filter (\x -> not $ null x) strStdin
-      flip mapM_ strStdin $ \ln -> do
-        -- liftIO $ putStrLn $ "Sending: " ++ ln
-        -- liftIO $ threadDelay 1000000
-        mapM_ (liftIO . flip hPutStrLn ln) [stdout, inn] 
-        -- liftIO $ putStrLn $ "Sent: " ++ ln
-        waitPrompt
-        -- liftIO $ putStr $ "[prompt got]"
+                onPrompt s
+                return ("", s)
+              _ -> return ("", "")
+      k toCoq waitPrompt
 
-pmain yield = many $ try onPrompt <|> onNonprompt
+getInput
+  :: (Monad (t1 IO), Monad (t2 IO), MonadTrans t1, MonadTrans t,
+      MonadTrans t2) =>
+     Handle
+     -> ((Char -> t2 IO ()) -> (String -> t IO ()) -> t1 IO b)
+     -> t1 IO ()
+getInput toCoq waitPrompt = do    
+    input <- lift $ getContents
+    input <- return $ lines input
+    input <- return $ flip mapM_ input
+    waitPrompt noop (lift . putStr)
+    input $ \ln -> do
+      mapM_ (lift . flip hPutStrLn ln) [stdout, toCoq] 
+      waitPrompt (lift . putStr . pure) (\_ -> lift $ putStr "Coq > ")
+
+noop x = return ()
+
+getInput2 toCoq waitPrompt = do
+  lift $ putStrLn "Before"
+  waitPrompt noop noop
+  lift $ putStr "Coq > "
+  mapM_ (lift . flip hPutStrLn "About nat.") [stdout, toCoq] 
+  waitPrompt (lift . putStr . pure) noop
+  lift $ putStrLn "Middle"
+  lift $ putStr "Coq > "
+  mapM_ (lift . flip hPutStrLn "About bool.") [stdout, toCoq] 
+  waitPrompt (lift . putStr . pure) noop
+  lift $ putStrLn "After"
+
+promptParser yield = many $ try onPrompt <|> onNonprompt
   where
     onPrompt = do
       s <- prompt
@@ -57,12 +80,10 @@ pmain yield = many $ try onPrompt <|> onNonprompt
       c <- anyChar
       yield $ Left c
       return ()
-    word = letter <:> (many $ alphaNum <|> oneOf "_")
+    word = letter <:> (many $ alphaNum <|> oneOf "_'")
 
 (<++>) a b = (++) <$> a <*> b
 (<:>) a b = (:) <$> a <*> b
-
-getResp out = hGetLine out >>= putStrLn >> getResp out
 
 p x = traceShow x x
 
