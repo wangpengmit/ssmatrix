@@ -12,8 +12,8 @@ import Yield
 import Control.Applicative ((<$>), (<*>), pure)
 
 main = do
-  -- let input = getInput
-  let input = getInput2
+  let input = getInput
+  -- let input = getInput2
   promptStream input
   
 promptStream k = do                                                    
