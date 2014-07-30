@@ -146,7 +146,7 @@ runInCommentCmd (opts, s) = do
   else
     return ()
 
-texLocalSub = subF "\\\\coqsub{(.*?)}{(.*?)}(.*)" $ \(_ : r : s : body : _) -> sub r s body
+texLocalSub = subF "\\\\coqsub/(.*?)/(.*?)/(.*)" $ \(_ : r : s : body : _) -> sub r s body
 
 texCmds = [
   -- \coqadd{}{}
@@ -155,7 +155,7 @@ texCmds = [
   texVar
   ]
 
-texAddRule = subM "\\\\coqadd{(.*)}{(.*)}" $ 
+texAddRule = subM "\\\\coqadd/(.*?)/(.*)/" $ 
   \(_ : p : s : _) -> do
     addRule p s
     return ""

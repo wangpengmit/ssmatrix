@@ -104,40 +104,41 @@ The contributions of this paper are as follows:
 \def\diff[#1]{\textcolor{diffcol}{\partial[#1]}}
 
 \begin{coq_example}
-(*!- \coqadd{\*:}{ } *)
-(*!- \coqadd{:\*}{ } *)
-(*!- \coqadd{\*m:}{ } *)
-(*!- \coqadd{\*ml:}{ } *)
-(*!- \coqadd{\*m\b}{ } *)
-(*!- \coqadd{\*ml\b}{ } *)
-(*!- \coqadd{\*mr\b}{ } *)
-(*!- \coqadd{\.\*}{\hadamard} *)
-(*!- \coqadd{\bvec\b}{\vec} *)
-(*!- \coqadd{\bsym\b}{\mathrm{sym}} *)
-(*!- \coqadd{\\\\d\s*}{\diff} *)
-(*!- \coqadd{\*o\b}{\otimes} *)
-(*!- \coqadd{\*ol\b}{\otimes} *)
-(*!- \coqadd{\*or\b}{\otimes} *)
-(*!- \coqadd{\^T\b}{\tr} *)
-(*!- \coqadd{\^\+}{^\dagger} *)
-(*!- \coqadd{\^\^\s*-1}{^{-1}} *)
-(*!- \coqadd{\^-\s*(\w+)}{^{-\1}} *)
-(*!- \coqadd{\\m\b}{\v m} *)
-(*!- \coqadd{~WR\b}{\widetilde{WR}} *)
-(*!- \coqadd{~W\b}{\tW} *)
-(*!- \coqadd{~U\b}{\widetilde{U}} *)
-(*!- \coqadd{\bV\*}{{V^*}} *)
-(*!- \coqadd{~V\*}{{\widetilde{V}^*}} *)
-(*!- \coqadd{\bv\*}{{v^*}} *)
-(*!- \coqadd{\beps1\b}{\epsilon_1} *)
-(*!- \coqadd{\bW\b}{\mW} *)
-(*!- \coqadd{\bM\b}{\mM} *)
-(*!- \coqadd{\bU\b}{\mU} *)
-(*!- \coqadd{\bV\b}{\mV} *)
-(*!- \coqadd{\b0\s*-}{-} *)
-(*- \coqadd{\)\s*-\s*\(}{)\\ & -(} *)
-(*!- \coqadd{\bH\b}{\m H} *)
-(*!- \coqadd{\bI\b}{\m I} *)
+(*!- \coqadd/\*:/ / *)
+(*!- \coqadd/:\*/ / *)
+(*!- \coqadd/\*m:/ / *)
+(*!- \coqadd/\*ml:/ / *)
+(*!- \coqadd/\*m\b/ / *)
+(*!- \coqadd/\*ml\b/ / *)
+(*!- \coqadd/\*mr\b/ / *)
+(*!- \coqadd/\.\*/\hadamard/ *)
+(*!- \coqadd/\bvec\b/\vec/ *)
+(*!- \coqadd/\bsym\b/\mathrm{sym}/ *)
+(*!- \coqadd/\\\\d\s*/\diff/ *)
+(*!- \coqadd/\*o\b/\otimes/ *)
+(*!- \coqadd/\*ol\b/\otimes/ *)
+(*!- \coqadd/\*or\b/\otimes/ *)
+(*!- \coqadd/\^T\b/\tr/ *)
+(*!- \coqadd/\^\+/^\dagger/ *)
+(*!- \coqadd/\^\^\s*-1/^{-1}/ *)
+(*!- \coqadd/\^-\s*(\w+)/^{-\1}/ *)
+(*!- \coqadd/\\m\b/\v m/ *)
+(*!- \coqadd/~WR\b/\WRT/ *)
+(*!- \coqadd/~W\b/\tW/ *)
+(*!- \coqadd/~U\b/\widetilde{U}/ *)
+(*!- \coqadd/\bV\*/{V^*}/ *)
+(*!- \coqadd/~V\*/{\widetilde{V}^*}/ *)
+(*!- \coqadd/\bv\*/{v^*}/ *)
+(*!- \coqadd/\beps1\b/\epsilon_1/ *)
+(*!- \coqadd/\bW\b/\mW/ *)
+(*!- \coqadd/\bM\b/\mM/ *)
+(*!- \coqadd/\bU\b/\mU/ *)
+(*!- \coqadd/\bV\b/\mV/ *)
+(*!- \coqadd/\b0\s*-/-/ *)
+(*!- \coqadd/\bH\b/\m H/ *)
+(*!- \coqadd/\bI\b/\m I/ *)
+(*!- \coqadd/\bJ1\b/\m J/ *)
+(*!- \coqadd/\bT\b/\Ttrans/ *)
 \end{coq_example}
 
 \coq_output{eccv_paper.coq.txt}
@@ -225,30 +226,10 @@ Now the Kronecker product rule
 will allow us to move the $\diff[\mU]$ terms to the end of the expression, and hence recover~$\m J$.   To do so, the bracketed terms in~\eqref{Jbrackets} are expressed as vectorizations of appropriate matrices.
 The first bracketed term $\pinv{(\tW\tU)} \tW \v m$ is simply the minimizing~$\mV$ in \eqref{erru}, and we write it $\vec(\Vstar\tr)$. The second term is
 \toVecDot
-\begin{align}
-\tW\tr \m H \tW \v m & = \tW\tr\tW \v m - \tW\tr\tW\tU \pinv{(\tW\tU)}\tW \v m & \comment{Expand \m H}\\
-& = \tW\tr\tW \v m - \tW\tr\tW\tU \vec(\Vstar\tr) &\comment{Substitute $\Vstar$}\\
-& = \tW\tr\vec\bigl(\mW\hadamard(\mM - \mU \Vstar\tr)\bigr) &\comment{Reversing \eqref{erru}}\\
-& = \vec (\mW\hadamard\m R) & \comment{Defining $\m R := \mW\hadamard(\mM - \mU \Vstar\tr)$}
-\end{align}
 and the Jacobian calculation continues by replacing those terms
 %\def\Ttrans{\mathsf{T}}
 \def\Ttrans{\m{T}}
-\begin{align}
-\diff[\verru]
-  & = - \m H \tW(\kron{\Id n}{\diff[\mU]}) \vec(\Vstar\tr) -
-      \pinv{(\tW\tU)}\tr (\kron{\Id n}{\diff[\mU]\tr}) \vec(\mW\hadamard\m R)
-\\& = - \m H \tW(\kron{\Vstar}{\Id m})\vec{\diff[\mU]}  -
-      \pinv{(\tW\tU)}\tr (\kron{(\mW\hadamard\m R) \tr}{\Id r})\vec(\diff[\mU]\tr) & \xcomment{By \eqref{kronvec}}
-\\& = -\Biggl[\m H \tW \tVstar  +
-      \pinv{(\tW\tU)}\tr (\kron{(\mW\hadamard\m R) \tr}{\Id r})\Ttrans
-      \Biggl] \diff[\vec\mU] & 
-\kern-2cm\comment{Defining $\tVstar:=\kron{\Vstar}{\Id m}$}
-% \\&= \sym\bigl((\Id{} - \tW (\kron{\mU}{\Id m}) \pinv{(\tW(\kron{\Id m}\mU))})
-% \tW (\kron{\Id m}{\diff[\mU]}) \pinv{(\tW(\kron{\Id m}\mU))} \bigr) \tW \v m
-% & \text{from 1}
-\eqlabel{jacobian}
-\end{align}
+\dEpsOne
 where $\Ttrans$ is the permutation matrix such that $\Ttrans\vec\mU = \vec(\mU\tr)$.   The object in the square brackets is the desired Jacobian, which to the best of our knowledge has not previously been derived. Moreover, we believe that the family of Wiberg algorithms illustrated by \cite{okatani2006wiberg} uses an approximation of the object above
 \begin{align}
 &\m J \approx - \m H \tW \tVstar.
@@ -264,27 +245,7 @@ The Levenberg algorithm incorporates damping factor $\lambda \m I$ to the Gauss-
 \end{align}
 \def\WRT{\widetilde{\mathtt{WR}}}
 so that, writing $\WRT= (\kron{(\mW\hadamard\m R)}{\Id r})$,
-\begin{align}
-\m J \tr \m J &= \begin{multlined}[c][5cm]
-\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \tilde{\m V}^* +
-\tilde{\m V}^{*\top} \tW \tr \m H \tr \pinv{(\tW\tU)}\tr \WRT\tr\Ttrans \\
-+ \Ttrans \tr \WRT \pinv{(\tW\tU)} \m H \tW \tilde{\m V}^*
-+ \Ttrans \tr \WRT \pinv{(\tW\tU)} \pinv{(\tW\tU)} \tr \WRT\tr\Ttrans
-\end{multlined} & \comment{Using \eqref{jacobian}}
-\\ & = \begin{multlined}[c][5cm]
-\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \tilde{\m V}^*  + \Ttrans \tr \WRT \pinv{(\tW\tU)} \pinv{(\tW\tU)} \tr \WRT\tr\Ttrans
-\end{multlined} &
-\begin{comment}
-Noting\textrm{ }(\tW \tU)^\dagger \m H = \m 0
-\end{comment}
-\\ & = \begin{multlined}[c][5cm]
-\tilde{\m V}^{*\top} \tW \tr \m H \tW \tilde{\m V}^*  + \Ttrans \tr \WRT \left((\tW\tU) \tr (\tW\tU)\right)^{-1} \WRT\tr\Ttrans
-\end{multlined} &
-\begin{comment}
-Noting\textrm{ } \m H^2 = \m H
-\end{comment}
-\eqlabel{jtj}
-\end{align}
+\JOneJOne
 and the right-hand side of the equation becomes
 \begin{align}
 - \m J \tr \verru &= \begin{multlined}[c][5cm]
