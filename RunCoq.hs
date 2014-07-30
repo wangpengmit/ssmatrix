@@ -32,48 +32,48 @@ main = do
   hClose hOut
   
 interactive isEcho (toCoq, waitPrompt) = do    
-  lift $ hSetBuffering stdout NoBuffering
-  waitPrompt (lift . putStr . pure) (lift . putStr)
-  input <- lift $ getContents
+  liftIO $ hSetBuffering stdout NoBuffering
+  waitPrompt (liftIO . putStr . pure) (liftIO . putStr)
+  input <- liftIO $ getContents
   input <- return $ lines input
   input <- return $ runMaybeT . flip mapM_ input
   input $ \ln -> do
     if isEcho then
-      lift $ lift $ putStrLn ln
+      liftIO $ putStrLn ln
     else
       return ()
-    lift $ lift $ hPutStrLn toCoq ln
+    liftIO $ hPutStrLn toCoq ln
     if strip ln == "Quit." then
       fail ""
     else
-      void $ lift $ waitPrompt (lift . putStr . pure) (lift . putStr)
+      void $ lift $ waitPrompt (liftIO . putStr . pure) (liftIO . putStr)
 
 regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
   waitPrompt noop noop
-  input <- lift $ hGetContents hIn
+  input <- liftIO $ hGetContents hIn
   input <- return $ lines input
   flip runStateT (initCoqState regionCfg) $ mapM_ process input
   where
     process ln = do
       st <- get
       if not $ isCoqMode regionCfg st then do
-        lift $ lift $ hPutStrLn hOut $ translateNonCoq regionCfg ln
+        liftIO $ hPutStrLn hOut $ translateNonCoq regionCfg ln
         put $ transit regionCfg st ln
       else do
         put $ transit regionCfg st ln
         st <- get
         if not $ isCoqMode regionCfg st then
-          lift $ lift $ hPutStrLn hOut $ translateNonCoq regionCfg ln
+          liftIO $ hPutStrLn hOut $ translateNonCoq regionCfg ln
         else do
           if isShowCmd regionCfg st then do
             let hOuts = if isVerbose then [stdout, hOut] else [hOut]
-            lift $ lift $ hPutStr hOut "Coq < "
-            lift $ lift $ multi hPutStrLn hOuts ln
+            liftIO $ hPutStr hOut "Coq < "
+            liftIO $ multi hPutStrLn hOuts ln
           else
             return ()
-          lift $ lift $ hPutStrLn toCoq ln
+          liftIO $ hPutStrLn toCoq ln
           if isShowResp regionCfg st then
-            void $ lift $ waitPrompt (lift . hPutStr hOut . pure) noop
+            void $ lift $ waitPrompt (liftIO . hPutStr hOut . pure) noop
           else
             void $ lift $ waitPrompt noop noop
 
