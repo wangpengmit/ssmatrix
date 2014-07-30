@@ -67,7 +67,7 @@ regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
         else do
           if isShowCmd regionCfg st then do
             let hOuts = if isVerbose then [stdout, hOut] else [hOut]
-            lift $ lift $ multi hPutStr hOuts "Coq < "
+            lift $ lift $ hPutStr hOut "Coq < "
             lift $ lift $ multi hPutStrLn hOuts ln
           else
             return ()

@@ -67,7 +67,7 @@ Notation "A ^+" := (A^-0) (at level 3, format "A ^+").
 Hypothesis h_invertible : invertible (mupinv_core v (~W *m ~U)).
 
 (* Corresponds to Equation (10)~(13) *)
-(*! \def\vecdot{ *)
+(*! \def\vecDot{ *)
 (*! \begin{align} *)
 Lemma vec_dot V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
 Proof.
@@ -84,14 +84,39 @@ Proof.
 Qed.
 (*! \end{align} *)
 (*! } *)
+(*
+Lemma dmmr {p} (A : 'M[E]_(p, _)) : \\d (A *m \m) = \\d A *mr \m.
+Proof.
+  by rewrite -!lift_vec !dmcr.
+Qed.
 
+Lemma dmWr {p} (A : 'M[E]_(p, _)) : \\d (A *m ~W) = \\d A *mr ~W.
+Proof.
+  by rewrite -!lift_vec map_trmx -map_diag_mx !dmcr.
+Qed.
+
+Lemma dmWl {p} (A : 'M[E]_(_, p)) : \\d (~W *m A) = ~W *ml \\d A.
+Proof.
+  by rewrite -!lift_vec map_trmx -map_diag_mx !dmcl.
+Qed.
+
+(* Corresponds to Equation (20)~(26) *)
+Lemma d_eps1_part1 : \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m).
+Proof.
+  set goal := RHS.
+  rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
+  rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
+  rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
+  by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
+Qed.
+*)
 Lemma to_Vstar : (~W *m ~U)^-v *m ~W *m \m = vec V*^T.
 Proof.
   by rewrite (trmxK V*) cvec_mxK.
 Qed.
 
 (* Corresponds to Equation (28)~(31) *)
-(*! \def\tovecdot{ *)
+(*! \def\toVecDot{ *)
 (*! \begin{align} *)
 Lemma to_vec_dot : ~W^T *m H *m ~W *m \m = vec (W .* R).
 Proof.
