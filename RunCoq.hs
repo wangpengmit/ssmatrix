@@ -27,39 +27,11 @@ main = do
     void $ getPromptStream $ interactive $ elem Echo options
   else do
     let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig
-    void $ getPromptStream $ regionSub hIn [hOut] config $ elem Verbose options && fout /= "-"
+    void $ getPromptStream $ regionSub hIn hOut config $ elem Verbose options && fout /= "-"
   hClose hIn
   hClose hOut
   
--- commandline interface
-
-data Flag = Help | Interactive | Echo | Tex | Verbose
-            deriving (Eq)
-                   
-flags = [
- Option ['t'] ["tex"] (NoArg Tex) "Run Coq in regions delimited by \\begin{coq_example}, \\begin{coq_example*} or \\begin{coq_eval}",
- Option ['i'] ["interact"] (NoArg Interactive) "Run interactive mode",
- Option ['e'] ["echo"] (NoArg Echo) "Echo command in interactive mode",
- Option ['v'] ["verbose"] (NoArg Verbose) "Verbose mode, print more information",
- Option ['h'] ["help"] (NoArg Help) "Print this help message"
- ]
-
-parseOpt argv = case getOpt Permute flags argv of
-  (args, files, []) -> do
-    if Help `elem` args then do
-      hPutStrLn stderr usage
-      exitWith ExitSuccess
-    else return (args, files)
-  (_,_,errs) -> do
-    hPutStrLn stderr (concat errs ++ usage)
-    exitWith (ExitFailure 1)
-
-usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]" flags
-
--- main processing
-
-interactive isEcho toCoq waitPrompt = do    
-  -- hSetBuffering fromCoq NoBuffering
+interactive isEcho (toCoq, waitPrompt) = do    
   lift $ hSetBuffering stdout NoBuffering
   waitPrompt (lift . putStr . pure) (lift . putStr)
   input <- lift $ getContents
@@ -76,32 +48,32 @@ interactive isEcho toCoq waitPrompt = do
     else
       void $ lift $ waitPrompt (lift . putStr . pure) (lift . putStr)
 
-regionSub hIn hOuts config isVerbose toCoq waitPrompt = do
+regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
   waitPrompt noop noop
   input <- lift $ hGetContents hIn
   input <- return $ lines input
-  flip runStateT (initCoqState config) $ mapM_ process input
+  flip runStateT (initCoqState regionCfg) $ mapM_ process input
   where
     process ln = do
       st <- get
-      if not $ isCoqMode config st then do
-        lift $ lift $ multi hPutStrLn hOuts $ translateNonCoq config ln
-        put $ transit config st ln
+      if not $ isCoqMode regionCfg st then do
+        lift $ lift $ hPutStrLn hOut $ translateNonCoq regionCfg ln
+        put $ transit regionCfg st ln
       else do
-        put $ transit config st ln
+        put $ transit regionCfg st ln
         st <- get
-        if not $ isCoqMode config st then
-          lift $ lift $ multi hPutStrLn hOuts ln
+        if not $ isCoqMode regionCfg st then
+          lift $ lift $ hPutStrLn hOut ln
         else do
-          if isShowCmd config st then do
-            hOuts <- return $ if isVerbose then stdout : hOuts else hOuts
+          if isShowCmd regionCfg st then do
+            let hOuts = if isVerbose then [stdout, hOut] else [hOut]
             lift $ lift $ multi hPutStr hOuts "Coq < "
             lift $ lift $ multi hPutStrLn hOuts ln
           else
             return ()
           lift $ lift $ hPutStrLn toCoq ln
-          if isShowResp config st then
-            void $ lift $ waitPrompt (lift . multi hPutStr hOuts . pure) noop
+          if isShowResp regionCfg st then
+            void $ lift $ waitPrompt (lift . hPutStr hOut . pure) noop
           else
             void $ lift $ waitPrompt noop noop
 
@@ -116,15 +88,7 @@ data RegionConfig = RegionConfig {
   translateNonCoq :: String -> String
   }
 
-vRegionConfig = RegionConfig {
-  initCoqState = CoqCmdResp,
-  isCoqMode = \_ -> True,
-  isShowCmd = \_ -> True,
-  isShowResp = \_ -> True,
-  transit = \_ -> \_ -> CoqCmdResp,
-  translateNonCoq = id
-  }
-                
+-- Region configuration for .tex files
 texRegionConfig = RegionConfig {
   initCoqState = NoCoq,
   isCoqMode = (/= NoCoq),
@@ -134,6 +98,16 @@ texRegionConfig = RegionConfig {
   translateNonCoq = texTranslateNonCoq
 }
 
+-- Region configuration for .v files, which trivially treats the whole file as a region
+vRegionConfig = RegionConfig {
+  initCoqState = CoqCmdResp,
+  isCoqMode = \_ -> True,
+  isShowCmd = \_ -> True,
+  isShowResp = \_ -> True,
+  transit = \_ -> \_ -> CoqCmdResp,
+  translateNonCoq = id
+  }
+                
 texTransit NoCoq ln | beginCoq ln = Coq
                | beginCoqCmd ln = CoqCmd
                | beginCoqCmdResp ln = CoqCmdResp
@@ -157,6 +131,7 @@ endCoq = isInfixOf "\\end{coq_eval}"
 endCoqCmd = isInfixOf "\\end{coq_example*}"
 endCoqCmdResp = isInfixOf "\\end{coq_example}"
 
+-- k : continuation
 getPromptStream k = do                                                    
     (toCoq, fromCoq, _, handleCoq) <- runInteractiveCommand "coqtop 2>&1"
     -- (toCoq, fromCoq, _, handleCoq) <- runInteractiveCommand "coqtop -emacs 2>&1"
@@ -169,13 +144,11 @@ getPromptStream k = do
             g () >>= \case
               More (Left c) -> do
                 onNonPrompt c
-                (np, p) <- waitPrompt onNonPrompt onPrompt
-                return (c : np, p)
+                waitPrompt onNonPrompt onPrompt
               More (Right s) -> do
-                onPrompt s
-                return ("", s)
-              _ -> return ("", "")
-      k toCoq waitPrompt
+                void $ onPrompt s
+              _ -> return ()
+      k (toCoq, waitPrompt)
 
 promptParser yield = many $ try onPrompt <|> onNonprompt
   where
@@ -191,6 +164,33 @@ promptParser yield = many $ try onPrompt <|> onNonprompt
       return ()
     word = letter <:> (many $ alphaNum <|> oneOf "_'")
 
+-- commandline interface
+
+data Flag = Help | Interactive | Echo | Tex | Verbose
+            deriving (Eq)
+                   
+flags = [
+ Option ['i'] ["interact"] (NoArg Interactive) "Run interactive mode",
+ Option ['e'] ["echo"] (NoArg Echo) "Echo command in interactive mode",
+ Option ['v'] ["verbose"] (NoArg Verbose) "Verbose mode, print more information",
+ Option ['t'] ["tex"] (NoArg Tex) "Run Coq in regions delimited by \\begin{coq_example}, \\begin{coq_example*} or \\begin{coq_eval} (and corresponding \\end{...} tags), and replace them with Coq responses surrounded by \\begin{coq_output} and \\end{coq_output}. This mode will be automatically chosen if the input file name ends with .tex",
+ Option ['h'] ["help"] (NoArg Help) "Print this help message"
+ ]
+
+parseOpt argv = case getOpt Permute flags argv of
+  (args, files, []) -> do
+    if Help `elem` args then do
+      hPutStrLn stderr usage
+      exitWith ExitSuccess
+    else return (args, files)
+  (_,_,errs) -> do
+    hPutStrLn stderr (concat errs ++ usage)
+    exitWith (ExitFailure 1)
+
+usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (output) file name can be -, indicating stdin (stdout)" flags
+
+-- utilitites
+
 (<++>) a b = (++) <$> a <*> b
 (<:>) a b = (:) <$> a <*> b
 
@@ -198,9 +198,9 @@ promptParser yield = many $ try onPrompt <|> onNonprompt
 
 noop x = return ()
 
+multi f ls x = sequence_ $ map ($ x) $ map f ls
+
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
-
-multi f ls x = sequence_ $ map ($ x) $ map f ls
 

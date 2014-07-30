@@ -23,15 +23,17 @@ import System.IO.Error (tryIOError)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
-  fin <- if length fs >= 1 then openFile (fs !! 0) ReadMode else return stdin
-  fout <- if length fs >= 2 then openFile (fs !! 1) WriteMode else return stdout
-  str <- hGetContents fin
+  let fin = if length fs >= 1 then fs !! 0 else "-"
+  let fout = if length fs >= 2 then fs !! 1 else "-"
+  hIn <- if fin /= "-" then openFile fin ReadMode else return stdin
+  hOut <- if fout /= "-" then openFile fout WriteMode else return stdout
+  str <- hGetContents hIn
   str <- doIncludes str
   -- putStrLn str
   str <- return $ process $ str
-  hPutStr fout str
-  hClose fin
-  hClose fout
+  hPutStr hOut str
+  hClose hIn
+  hClose hOut
 
 doIncludes = subM "\\\\coq_output{(.*?)}" $ \(_ : filename : _) -> do
   (tryIOError $ readFile filename) >>= \case
@@ -230,7 +232,7 @@ parseOpt argv = case getOpt Permute flags argv of
     hPutStrLn stderr (concat errs ++ usage)
     exitWith (ExitFailure 1)
 
-usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]" flags
+usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (output) file name can be -, indicating stdin (stdout)" flags
 
 -- utilities
 
