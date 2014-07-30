@@ -63,7 +63,7 @@ regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
         put $ transit regionCfg st ln
         st <- get
         if not $ isCoqMode regionCfg st then
-          lift $ lift $ hPutStrLn hOut ln
+          lift $ lift $ hPutStrLn hOut $ translateNonCoq regionCfg ln
         else do
           if isShowCmd regionCfg st then do
             let hOuts = if isVerbose then [stdout, hOut] else [hOut]

@@ -146,7 +146,9 @@ runInCommentCmd (opts, s) = do
   else
     return ()
 
-texLocalSub = subF (format "\\\\coqLocalSub{0}(.*)" [subPattern]) $ \(_ : r : s : body : _) -> sub r s body
+texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern $ \(_ : r : s : body : _) -> sub r s body
+
+localSubPattern = format "\\\\coqLocalSub{0}(.*)" [subPattern]
 
 texCmds = [
   -- \coqAddRule{}{}
