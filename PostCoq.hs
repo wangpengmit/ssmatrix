@@ -35,7 +35,7 @@ main = do
   hClose hIn
   hClose hOut
 
-doIncludes = subM "\\\\coq_output{(.*?)}" $ \(_ : filename : _) -> do
+doIncludes = subM "\\\\coqOutput{(.*?)}" $ \(_ : filename : _) -> do
   (tryIOError $ readFile filename) >>= \case
     Left _ -> return $ "Can read file: " ++ filename
     Right s -> return $ beginCoqOutputStr ++ "\n" ++ s ++ "\n" ++ endCoqOutputStr ++ "\n"
@@ -146,16 +146,16 @@ runInCommentCmd (opts, s) = do
   else
     return ()
 
-texLocalSub = subF (format "\\\\coqsub{0}(.*)" [subPattern]) $ \(_ : r : s : body : _) -> sub r s body
+texLocalSub = subF (format "\\\\coqLocalSub{0}(.*)" [subPattern]) $ \(_ : r : s : body : _) -> sub r s body
 
 texCmds = [
-  -- \coqadd{}{}
+  -- \coqAddRule{}{}
   texAddRule,
-  -- \coqvar{}
+  -- \coqVar{}
   texVar
   ]
 
-texAddRule = subM (format "\\\\coqadd{0}" [subPattern]) $ 
+texAddRule = subM (format "\\\\coqAddRule{0}" [subPattern]) $ 
   \(_ : p : s : _) -> do
     addRule p s
     return ""
@@ -168,7 +168,7 @@ addRule a b = do
   st <- get
   put st{ rules = rules st ++ [(a, b)] }
 
--- replace \coqvar{...} with corresponding value according to vars
+-- replace \coqVar{...} with corresponding value according to vars
 texVar = chainM $ map (uncurry subVar) vars
 
 vars = [
@@ -181,7 +181,7 @@ vars = [
 
 subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
 
-varTag name =  printf "\\\\coqvar{%s}" name
+varTag name =  printf "\\\\coqVar{%s}" name
 
 -- process coqtop responses
 -- currently only process the first subgoal

@@ -73,13 +73,13 @@ Lemma vec_dot V : vec (W .* (M - U *m V^T)) = ~W *m \m - ~W *m ~U *m vec V^T.
 Proof.
   set goal := RHS.
   rewrite vec_elemprod.
-  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*! \coqVar{from} &= \coqVar{lhs} *)
   (*!n & \comment{ Define $\tW := \operatorname{diag}(\vec\mW)$ } *)
   rewrite !raddfB /=.
-  (*! \\ &= \coqvar{lhs} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \xcomment{ Define $\v m := \vec\mM$} \eqlabel{resvec1} *)
   by rewrite vec_kron !mulmxA.
-  (*! \\ &= \coqvar{to} \eqlabel{\coqvar{name}} *)
+  (*! \\ &= \coqVar{to} \eqlabel{\coqVar{name}} *)
   (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} *)
 Qed.
 (*! \end{align} *)
@@ -110,17 +110,17 @@ Lemma d_eps1_part1 : \\d[eps1] = 0 - H *m ~W *ml (I *ol \\d[U]) *mr ((~W *m ~U)^
 Proof.
   set goal := RHS.
   rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
-  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*! \coqVar{from} &= \coqVar{lhs} *)
   (*!n & \kern-1in\comment{Sum/product rule, and $\partial[\tW\v m] = 0$} *)
   rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
-  (*! \\ &= \coqvar{lhs} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \comment{From \eqref{diffpinv}} *)
   rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
-  (*! \\ &= \coqvar{lhs} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \comment{Using \cite[(7)]{minka00}} *)
   (*!n \\ & & \comment{Defining $\m H$, note $\m H=\m H\tr$} *)
   by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
-  (*! \coqsub/\)\s*-/)\\ & \phantom{{}=00} -/ \\ &= \coqvar{to} *)
+  (*! \coqLocalSub/\)\s*-/)\\ & \phantom{{}=00} -/ \\ &= \coqVar{to} *)
   (*!n & \comment{Expand $\sym$} *)
   (*! \eqlabel{Jbrackets} *)
 Qed.
@@ -139,17 +139,17 @@ Lemma to_vec_dot : ~W^T *m H *m ~W *m \m = vec (W .* R).
 Proof.
   set goal := RHS.
   rewrite mulmxBr !mulmxBl !mulmxA mulmx1.
-  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*! \coqVar{from} &= \coqVar{lhs} *)
   (*!n & \comment{Expand \m H} *)
   rewrite -(mulmxA _ _ ~W) -(mulmxA _ (_ *m _) \m) to_Vstar.
-  (*! \\ &= \coqvar{lhs} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \comment{Substitute $\Vstar$} *)
   rewrite -!mulmxA -mulmxBr !mulmxA -vec_dot.
-  (*! \\ &= \coqvar{lhs} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \comment{Reversing \eqref{erru}} *)
   (*!n \\ & & \comment{Defining $\m R := \mW\hadamard(\mM - \mU \Vstar\tr)$} *)
   by rewrite tr_diag_mx -vec_elemprod.
-  (*! \\ &= \coqvar{to} \eqlabel{\coqvar{name}} *)
+  (*! \\ &= \coqVar{to} \eqlabel{\coqVar{name}} *)
 Qed.
 (*! \end{align} *)
 (*! } *)
@@ -161,9 +161,9 @@ Lemma d_eps1 : \\d[eps1] = -(H *m ~W *m ~V* + ((~W *m ~U)^-v)^T *m ((W .* R)^T *
 Proof.
   set goal := RHS.
   rewrite d_eps1_part1 to_vec_dot {1}to_Vstar.
-  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*! \coqVar{from} &= \coqVar{lhs} *)
   by rewrite -!lrmulmxA !lkron_shift (trmxK V* )!lmulmxA -trTPcrmul !lmulmxA sub0r -opprD -!(lmulmxDl _ _ (vec (\\d U))) -(map_vec _ U) -(lmulNmx _ (\\d _)).
-  (*! \\ &= \coqvar{to} *)
+  (*! \\ &= \coqVar{to} *)
   (*!n & \xcomment{By \eqref{kronvec}} *)
   (*!n \\ & & \kern-2cm\comment{Defining $\tVstar:=\kron{\Vstar}{\Id m}$} *)
   (*!n \eqlabel{jacobian} *)
@@ -227,16 +227,16 @@ Lemma J1_J1 : J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W 
 Proof.
   set goal := RHS.
   rewrite J1_simpl [in _^T] raddfN /= mulNmx mulmxN opprK [in _^T] raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) [_ *m (_ + _)]mulmxDl mulmxDr mulmxDr !mulmxA !addrA.
-  (*! \coqvar{from} &= *)
-  (*! \coqsub/\\Ttrans\s*\+/\Ttrans \\ & \phantom{{}=00} +/ \coqvar{lhs} *)
+  (*! \coqVar{from} &= *)
+  (*! \coqLocalSub/\\Ttrans\s*\+/\Ttrans \\ & \phantom{{}=00} +/ \coqVar{lhs} *)
   (*!n & \comment{Using \eqref{jacobian}} *)
   rewrite -!(mulmxA _ _ H) WU_H_0 -!(mulmxA _ _ _^+^T) -[H^T *m _^+^T]trmx_mul WU_H_0 !mulmxA trmx0 !mulmx0 !mul0mx !addr0.
-  (*! \\ &= \coqvar{to} *)
+  (*! \\ &= \coqVar{to} *)
   (*!n & \begin{comment} *)
   (*!n Noting\textrm{ }(\tW \tU)^\dagger \m H = \m 0 *)
   (*!n \end{comment} *)
   by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
-  (*! \\ &= \coqvar{to} *)
+  (*! \\ &= \coqVar{to} *)
   (*!n & \begin{comment} *)
   (*!n Noting\textrm{ } \m H^2 = \m H *)
   (*!n \end{comment} *)
