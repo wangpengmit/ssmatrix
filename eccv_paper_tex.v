@@ -84,7 +84,7 @@ Proof.
 Qed.
 (*! \end{align} *)
 (*! } *)
-(*
+
 Lemma dmmr {p} (A : 'M[E]_(p, _)) : \\d (A *m \m) = \\d A *mr \m.
 Proof.
   by rewrite -!lift_vec !dmcr.
@@ -100,16 +100,32 @@ Proof.
   by rewrite -!lift_vec map_trmx -map_diag_mx !dmcl.
 Qed.
 
+Notation "\\d [ A ]" := (\\d A) (format "\\d [ A ]").
+
 (* Corresponds to Equation (20)~(26) *)
-Lemma d_eps1_part1 : \\d eps1 = 0 - H *m ~W *ml (I *ol \\d U) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d U)^T) *mr (~W^T *m H *m ~W *m \m).
+(*! \def\dEpsOnePartOne{ *)
+(*! \begin{align} *)
+Lemma d_eps1_part1 : \\d[eps1] = 0 - H *m ~W *ml (I *ol \\d[U]) *mr ((~W *m ~U)^-v *m ~W *m \m) - ((~W *m ~U)^-v)^T *ml (I *ol (\\d[U])^T) *mr (~W^T *m H *m ~W *m \m).
 Proof.
   set goal := RHS.
   rewrite raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx.
+  (*! \coqvar{from} &= \coqvar{lhs} *)
+  (*!n & \kern-1in\comment{Sum/product rule, and $\partial[\tW\v m] = 0$} *)
   rewrite (dm_AmupinvA _ h_invertible). (* (22) *)
+  (*! \\ &= \coqvar{lhs} *)
+  (*!n & \comment{From \eqref{diffpinv}} *)
   rewrite dmWl (dm_lkron1mx _ _ U) !lmulmxA /=. (* (25) *)
+  (*! \\ &= \coqvar{lhs} *)
+  (*!n & \comment{Using \cite[(7)]{minka00}} *)
+  (*!n \\ & & \comment{Defining $\m H$, note $\m H=\m H\tr$} *)
   by rewrite /sym [in _^T + _]addrC !trmx_rmulmx !trmx_lmulmx !trmx_mul /= (trmx_lkron I (\\d U)) raddfB /= AmupinvA_sym !trmx1 !rmulmxDl opprD addrA !lrmulmxA !rmulmxA -!rmulmxA !mulmxA.
+  (*! \coqsub{\)\s*-\s*\(}{)\\ & \;\; -(} \\ &= \coqvar{to} *)
+  (*!n & \comment{Expand $\sym$} *)
+  (*! \eqlabel{Jbrackets} *)
 Qed.
-*)
+(*! \end{align} *)
+(*! } *)
+
 Lemma to_Vstar : (~W *m ~U)^-v *m ~W *m \m = vec V*^T.
 Proof.
   by rewrite (trmxK V*) cvec_mxK.

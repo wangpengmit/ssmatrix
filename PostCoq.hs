@@ -141,9 +141,12 @@ runInCommentCmd (opts, s) = do
              return . chain (map (uncurry sub) rules) $ s
          else
              return s
+    s <- return $ texLocalSub s
     tell . singleton $ s
   else
     return ()
+
+texLocalSub = subF "\\\\coqsub{(.*?)}{(.*?)}(.*)" $ \(_ : r : s : body : _) -> sub r s body
 
 texCmds = [
   -- \coqadd{}{}
@@ -312,7 +315,7 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
--- p x = traceShow x x
+p x = traceShow x x
 
--- pf f x = traceShow (f x) x
+pf f x = traceShow (f x) x
 

@@ -103,19 +103,6 @@ The contributions of this paper are as follows:
 %\def\diff[#1]{\textcolor{diffcol}{\partial[}#1\textcolor{diffcol}{]}}
 \def\diff[#1]{\textcolor{diffcol}{\partial[#1]}}
 
-\def\equations1{
-\begin{align}
-\vec(\mW \hadamard (\mM - \mU \mV\tr))
-  & = \tW \vec(\mM - \mU \mV\tr) & \comment{ Define $\tW := \operatorname{diag}(\vec\mW)$ }
-\\& = \tW \vec(\mM) - \tW \vec(\mU \mV\tr)
-\\& = \tW \v m - \tW (\kron{\Id n}{\mU}) \vec(\mV\tr) & \xcomment{ Define $\v m := \vec\mM$ }
-\eqlabel{resvec1}
-\\& = \tW\v m - \tW \twiddle \mU \vec(\mV\tr) &
-\comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$}
-\eqlabel{resvec2}
-\end{align}
-}
-
 \begin{coq_example}
 (*!- \coqadd{\*:}{ } *)
 (*!- \coqadd{:\*}{ } *)
@@ -127,7 +114,7 @@ The contributions of this paper are as follows:
 (*!- \coqadd{\.\*}{\hadamard} *)
 (*!- \coqadd{\bvec\b}{\vec} *)
 (*!- \coqadd{\bsym\b}{\mathrm{sym}} *)
-(*!- \coqadd{\\\\d}{\partial} *)
+(*!- \coqadd{\\\\d\s*}{\diff} *)
 (*!- \coqadd{\*o\b}{\otimes} *)
 (*!- \coqadd{\*ol\b}{\otimes} *)
 (*!- \coqadd{\*or\b}{\otimes} *)
@@ -147,6 +134,10 @@ The contributions of this paper are as follows:
 (*!- \coqadd{\bM\b}{\mM} *)
 (*!- \coqadd{\bU\b}{\mU} *)
 (*!- \coqadd{\bV\b}{\mV} *)
+(*!- \coqadd{\b0\s*-}{-} *)
+(*- \coqadd{\)\s*-\s*\(}{)\\ & -(} *)
+(*!- \coqadd{\bH\b}{\m H} *)
+(*!- \coqadd{\bI\b}{\m I} *)
 \end{coq_example}
 
 \coq_output{eccv_paper.coq.txt}
@@ -192,16 +183,7 @@ where $\sym(\mA) := \mA\tr + \mA$.
 
 \section{Method}
 Observing that 
-
-Here is the original equation:
-\equations1
-
-Here is the equation generated from Coq:
 \vecDot
-
-Another Coq generated equation:
-\toVecDot
-
 we write
 \def\vecnorm#1{\|\!\vec{#1}\|^2}
 \begin{align}
@@ -234,28 +216,7 @@ we obtain $\erru(\mU) = \|\v \verru(\m U)\|^2$.
 
 In order to minimize $\erru$ using algorithms of the Gauss-Newton family, we need the Jacobian~$\m J$ which obeys $\diff[\verru] = \m J \diff[\vec\mU]$.  While previous approaches have used an indirect approach to approximate~\m J, the matrix calculus rules defined above allow a direct derivation.  First, the derivative operator is drilled down:
 \def\awfhl#1{\Bigl[#1\Bigr]}
-\begin{align}
-\diff[\verru]& = \diff[ \tW \v m - \tW \tU \pinv{(\tW\tU)} \tW \v m ]
-\\& = - \diff[\tW \tU \pinv{(\tW\tU)}]\tW \v m  & \kern-1in\comment{Sum/product rule, and $\partial[\tW\v m] = 0$}
-\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
-                \diff[\tW \tU]
-                \pinv{(\tW\tU)} \bigr) \tW \v m     & \comment{From \eqref{diffpinv}}
-\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
-                \diff[\tW (\kron{\Id n}{\mU})]
-                \pinv{(\tW\tU)} \bigr) \tW \v m      & \comment{Expanding $\tU$}
-\\& = - \sym\bigl((\Id{} - \tW \tU \pinv{(\tW\tU)})
-                \tW (\kron{\Id n}{\diff[\mU]})
-                \pinv{(\tW\tU)} \bigr) \tW \v m    & \comment{Using \cite[(7)]{minka00}}
-\\& = - \sym\bigl(\m H
-                \tW (\kron{\Id n}{\diff[\mU]})
-                \pinv{(\tW\tU)} \bigr) \tW \v m    & \comment{Defining $\m H$, note $\m H=\m H\tr$}
-\\& = \begin{multlined}[c][5cm]
-- \m H \tW (\kron{\Id n}{\diff[\mU]}) \awfhl{\pinv{(\tW\tU)} \tW \v m} \\
-       - \pinv{(\tW\tU)}\tr (\kron{\Id n}{\diff[\mU]\tr}) \awfhl{\tW\tr \m H \tW \v m}
-\end{multlined}
-                                               & \comment{Expand $\sym$}
-\eqlabel{Jbrackets}
-\end{align}
+\dEpsOnePartOne
 Now the Kronecker product rule
 \begin{equation}
 (\kron{\Id{}}{\m A}) \vec \m B = (\kron{\m B \tr}{\Id{}}) \vec{\m A}
@@ -263,6 +224,7 @@ Now the Kronecker product rule
 \end{equation}
 will allow us to move the $\diff[\mU]$ terms to the end of the expression, and hence recover~$\m J$.   To do so, the bracketed terms in~\eqref{Jbrackets} are expressed as vectorizations of appropriate matrices.
 The first bracketed term $\pinv{(\tW\tU)} \tW \v m$ is simply the minimizing~$\mV$ in \eqref{erru}, and we write it $\vec(\Vstar\tr)$. The second term is
+\toVecDot
 \begin{align}
 \tW\tr \m H \tW \v m & = \tW\tr\tW \v m - \tW\tr\tW\tU \pinv{(\tW\tU)}\tW \v m & \comment{Expand \m H}\\
 & = \tW\tr\tW \v m - \tW\tr\tW\tU \vec(\Vstar\tr) &\comment{Substitute $\Vstar$}\\
