@@ -146,7 +146,7 @@ runInCommentCmd (opts, s) = do
   else
     return ()
 
-texLocalSub = subF "\\\\coqsub/(.*?)/(.*?)/(.*)" $ \(_ : r : s : body : _) -> sub r s body
+texLocalSub = subF (format "\\\\coqsub{0}(.*)" [subPattern]) $ \(_ : r : s : body : _) -> sub r s body
 
 texCmds = [
   -- \coqadd{}{}
@@ -155,10 +155,14 @@ texCmds = [
   texVar
   ]
 
-texAddRule = subM "\\\\coqadd/(.*?)/(.*)/" $ 
+texAddRule = subM (format "\\\\coqadd{0}" [subPattern]) $ 
   \(_ : p : s : _) -> do
     addRule p s
     return ""
+
+subPattern = format "/({0})/({0})/" [subPatternContent]
+
+subPatternContent = "(?:[^/]|\\/)*?"
 
 addRule a b = do
   st <- get
@@ -315,6 +319,12 @@ instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
 
+format a b = doFormat a (0::Int,b)
+    where
+    doFormat a (_,[]) = a
+    doFormat a (n,(b:bs)) = replace (old n) b a `doFormat` (n+1,bs)
+    old n = "{" ++ show n ++ "}"
+    
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
