@@ -23,33 +23,36 @@ main = do
   let fout = if length fs >= 2 then fs !! 1 else "-"
   hIn <- if fin /= "-" then openFile fin ReadMode else return stdin
   hOut <- if fout /= "-" then openFile fout WriteMode else return stdout
-  if elem Interactive options then
-    void $ getPromptStream $ interactive $ elem Echo options
-  else do
-    let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig
-    void $ getPromptStream $ regionSub hIn hOut config $ elem Verbose options && fout /= "-"
+  cmain <- return $
+    if elem Interactive options then
+      interactive $ elem Echo options
+    else
+      let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig in
+      regionSub hIn hOut config $ elem Verbose options && fout /= "-"
+  flip runContT return $ (lift $ getPromptGenerator) >>= cmain
   hClose hIn
   hClose hOut
-  
-interactive isEcho (toCoq, waitPrompt) = do    
+
+-- g : prompt generator
+interactive isEcho (toCoq, g) = do    
   liftIO $ hSetBuffering stdout NoBuffering
-  waitPrompt (liftIO . putStr . pure) (liftIO . putStr)
+  waitPrompt g (liftIO . putStr . pure) (liftIO . putStr)
   input <- liftIO $ getContents
   input <- return $ lines input
   input <- return $ runMaybeT . flip mapM_ input
-  input $ \ln -> do
+  void . input $ \ln -> do
     when isEcho $ liftIO $ putStrLn ln
     liftIO $ hPutStrLn toCoq ln
     if strip ln == "Quit." then
       fail ""
     else
-      void $ lift $ waitPrompt (liftIO . putStr . pure) (liftIO . putStr)
+      void $ lift $ waitPrompt g (liftIO . putStr . pure) (liftIO . putStr)
 
-regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
-  waitPrompt noop noop
+regionSub hIn hOut regionCfg isVerbose (toCoq, g) = do
+  waitPrompt g noop noop
   input <- liftIO $ hGetContents hIn
   input <- return $ lines input
-  flip runStateT (initCoqState regionCfg) $ mapM_ process input
+  void . flip runStateT (initCoqState regionCfg) $ mapM_ process input
   where
     process ln = do
       st <- get
@@ -68,9 +71,9 @@ regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
             liftIO $ multi hPutStrLn hOuts ln
           liftIO $ hPutStrLn toCoq ln
           if isShowResp regionCfg st then
-            void $ lift $ waitPrompt (liftIO . hPutStr hOut . pure) noop
+            void $ lift $ waitPrompt g (liftIO . hPutStr hOut . pure) noop
           else
-            void $ lift $ waitPrompt noop noop
+            void $ lift $ waitPrompt g noop noop
 
 data CoqState = NoCoq | Coq | CoqCmd | CoqCmdResp deriving (Eq)
 
@@ -126,24 +129,14 @@ endCoq = isInfixOf "\\end{coq_eval}"
 endCoqCmd = isInfixOf "\\end{coq_example*}"
 endCoqCmdResp = isInfixOf "\\end{coq_example}"
 
--- k : continuation
-getPromptStream k = do                                                    
-    (toCoq, fromCoq, _, handleCoq) <- runInteractiveCommand "coqtop 2>&1"
-    -- (toCoq, fromCoq, _, handleCoq) <- runInteractiveCommand "coqtop -emacs 2>&1"
-    mapM_ (flip hSetBinaryMode True) [toCoq, fromCoq]             
-    hSetBuffering toCoq NoBuffering
-    strFromCoq <- hGetContents fromCoq
-    flip runContT return $ do
-      g <- mkgen (\yield _ -> runParserT (promptGenerator (lift . yield)) () "strFromCoq" strFromCoq)
-      let waitPrompt onNonPrompt onPrompt = do
-            g () >>= \case
-              More (Left c) -> do
-                onNonPrompt c
-                waitPrompt onNonPrompt onPrompt
-              More (Right s) -> do
-                void $ onPrompt s
-              _ -> return ()
-      k (toCoq, waitPrompt)
+getPromptGenerator = do                                                    
+    (toCoq, fromCoq, _, handleCoq) <- liftIO $ runInteractiveCommand "coqtop 2>&1"
+    -- (toCoq, fromCoq, _, handleCoq) <- liftIO $ runInteractiveCommand "coqtop -emacs 2>&1"
+    mapM_ (liftIO . flip hSetBinaryMode True) [toCoq, fromCoq]             
+    liftIO $ hSetBuffering toCoq NoBuffering
+    strFromCoq <- liftIO $ hGetContents fromCoq
+    g <- mkgen (\yield _ -> runParserT (promptGenerator (lift . yield)) () "strFromCoq" strFromCoq)
+    return (toCoq, g)
 
 promptGenerator yield = many $ try onPrompt <|> onNonprompt
   where
@@ -156,6 +149,15 @@ promptGenerator yield = many $ try onPrompt <|> onNonprompt
       c <- anyChar
       yield $ Left c
     word = letter <:> (many $ alphaNum <|> oneOf "_'")
+
+waitPrompt g onNonPrompt onPrompt = 
+  g () >>= \case
+    More (Left c) -> do
+      onNonPrompt c
+      waitPrompt g onNonPrompt onPrompt
+    More (Right s) -> do
+      void $ onPrompt s
+    _ -> return ()
 
 -- commandline interface
 

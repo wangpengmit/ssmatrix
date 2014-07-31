@@ -1,3 +1,5 @@
+-- Copied from: http://www.vex.net/~trebla/haskell/parsec-generally.xhtml
+
 {-| Yield-style generators. -}
 module Yield where
 
