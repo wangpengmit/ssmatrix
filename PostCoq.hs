@@ -12,7 +12,7 @@ import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
 import Text.Regex.PCRE
 import Data.Array (elems)
-import Control.Monad ((>=>))
+import Control.Monad ((>=>), when)
 import Control.Monad.Writer (runWriter, tell)
 import Control.Monad.State (runStateT, get, put, modify)
 import Control.Monad.Identity (runIdentity)
@@ -133,18 +133,15 @@ runLemmaCmd c = modify $ \x -> x {lemma = c}
 runInCommentCmd (opts, s) = do
   -- run builtin \coqXXX commands
   s <- chainM texCmds s
-  if not $ elem NoPrint opts then do
-    s <- if not $ elem NoSub opts then
-           do
-             -- string substitution using rules registered on-the-fly
-             St {rules = rules} <- get
-             return . chain (map (uncurry sub) rules) $ s
+  when (not $ elem NoPrint opts) $ do
+    s <- if not $ elem NoSub opts then do
+           -- string substitution using rules registered on-the-fly
+           St {rules = rules} <- get
+           return . chain (map (uncurry sub) rules) $ s
          else
-             return s
+           return s
     s <- return $ texLocalSub s
     tell . singleton $ s
-  else
-    return ()
 
 texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern $ \(_ : r : s : body : _) -> sub r s body
 

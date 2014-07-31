@@ -38,10 +38,7 @@ interactive isEcho (toCoq, waitPrompt) = do
   input <- return $ lines input
   input <- return $ runMaybeT . flip mapM_ input
   input $ \ln -> do
-    if isEcho then
-      liftIO $ putStrLn ln
-    else
-      return ()
+    when isEcho $ liftIO $ putStrLn ln
     liftIO $ hPutStrLn toCoq ln
     if strip ln == "Quit." then
       fail ""
@@ -65,12 +62,10 @@ regionSub hIn hOut regionCfg isVerbose (toCoq, waitPrompt) = do
         if not $ isCoqMode regionCfg st then
           liftIO $ hPutStrLn hOut $ translateNonCoq regionCfg ln
         else do
-          if isShowCmd regionCfg st then do
+          when (isShowCmd regionCfg st) $ do
             let hOuts = if isVerbose then [stdout, hOut] else [hOut]
             liftIO $ hPutStr hOut "Coq < "
             liftIO $ multi hPutStrLn hOuts ln
-          else
-            return ()
           liftIO $ hPutStrLn toCoq ln
           if isShowResp regionCfg st then
             void $ lift $ waitPrompt (liftIO . hPutStr hOut . pure) noop
@@ -104,7 +99,7 @@ vRegionConfig = RegionConfig {
   isCoqMode = \_ -> True,
   isShowCmd = \_ -> True,
   isShowResp = \_ -> True,
-  transit = \_ -> \_ -> CoqCmdResp,
+  transit = \_ _ -> CoqCmdResp,
   translateNonCoq = id
   }
                 
@@ -139,7 +134,7 @@ getPromptStream k = do
     hSetBuffering toCoq NoBuffering
     strFromCoq <- hGetContents fromCoq
     flip runContT return $ do
-      g <- mkgen (\yield _ -> runParserT (promptParser (lift . yield)) () "strFromCoq" strFromCoq)
+      g <- mkgen (\yield _ -> runParserT (promptGenerator (lift . yield)) () "strFromCoq" strFromCoq)
       let waitPrompt onNonPrompt onPrompt = do
             g () >>= \case
               More (Left c) -> do
@@ -150,18 +145,16 @@ getPromptStream k = do
               _ -> return ()
       k (toCoq, waitPrompt)
 
-promptParser yield = many $ try onPrompt <|> onNonprompt
+promptGenerator yield = many $ try onPrompt <|> onNonprompt
   where
     onPrompt = do
       s <- prompt
       yield $ Right s
-      return ()
     prompt = word <++> string " < "
     -- prompt = string "<prompt>" <++> word <++> string " < " <++> word <++> string " |" <++> option "" word <++> string "| " <++> word <++> string " < </prompt>"
     onNonprompt = do
       c <- anyChar
       yield $ Left c
-      return ()
     word = letter <:> (many $ alphaNum <|> oneOf "_'")
 
 -- commandline interface
