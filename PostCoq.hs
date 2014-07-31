@@ -14,12 +14,13 @@ import Text.Regex.PCRE
 import Data.Array (elems)
 import Control.Monad ((>=>), when)
 import Control.Monad.Writer (runWriter, tell)
-import Control.Monad.State (runStateT, get, put, modify)
+import Control.Monad.State (runStateT, get, put, modify, runState)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
 import System.IO.Error (tryIOError)
 import Data.Function (on)
+import Control.Applicative ((<$>))
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -101,7 +102,16 @@ onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
 
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
-getCmds = mapMaybe getCmd
+getCmds = mapMaybe getCmd . concatMap onSplit . splitByComment . unwords
+-- getCmds = mapMaybe getCmd
+
+onSplit = \case
+  Left s -> breakCoqCommands s
+  Right s -> [s]
+
+splitByComment = splitBy "\\(\\*.*?\\*\\)"
+
+breakCoqCommands = lines . sub "\\.\\s" ".\n" . unwords . lines
 
 getCmd = choice [
   getLemmaCmd,
@@ -110,7 +120,7 @@ getCmd = choice [
 
 getLemmaCmd s = do
   s <- return $ removeForall s
-  _ : name : lhs : rhs : _ <- s =~~ "\\b(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)\\."
+  _ : name : lhs : rhs : _ <- s =~~ "\\b(?:Lemma|Theorem)\\s+([^\\s:]+)[^:]*:(.*)=(.*)\\.(?:\\s|$)"
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
@@ -245,16 +255,25 @@ usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (out
 -- regex utilities
 
 -- subsitute all occurances of regex
-subM :: Monad m => String -> ([String] -> m String) -> String -> m String
-subM regex func str =
+matchAllM :: Monad m => String -> ((String , String , String, [String]) -> m String) -> String -> m String
+matchAllM regex func str =
   fromMaybe (return str) $ do
     (before, matched, after, groups) <- str =~~~ regex
     return $ do
-      s <- func (matched : groups)
+      s <- func (before, matched, after, groups)
       k <- if length after < length str then -- avoid infinite loop
-             subM regex func after
+             matchAllM regex func after
            else return str
-      return $ before ++ s ++ k
+      return $ s ++ k
+
+splitBy r s = let (remain, ls) = runState m [] in reverse (Left remain : ls)
+  where
+    m = flip (matchAllM r) s $ \(before, matched, _, _) -> do
+      modify $ (Left before :)
+      modify $ (Right matched :)
+      return ""
+ 
+subM r f = matchAllM r (\(before, matched, _, groups) -> (before ++) <$> f (matched : groups))
 
 subF r f = runIdentity . subM r (return . f)
 

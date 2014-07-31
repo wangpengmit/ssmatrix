@@ -4,7 +4,6 @@ import System.IO
 import System.Process    
 import Debug.Trace
 import System.IO.Error
-import Control.Concurrent
 import Data.List
 import Text.Parsec (runParserT, many, try, string, (<|>), letter, anyChar, alphaNum, oneOf)
 import Control.Monad.Cont
