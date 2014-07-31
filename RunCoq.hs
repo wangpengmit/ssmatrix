@@ -198,6 +198,7 @@ usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (out
 -- utilitites
 
 (<++>) a b = (++) <$> a <*> b
+
 (<:>) a b = (:) <$> a <*> b
 
 (<||>) a b = \x -> a x || b x

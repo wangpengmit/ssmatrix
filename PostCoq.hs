@@ -21,6 +21,7 @@ import Data.Monoid
 import System.IO.Error (tryIOError)
 import Data.Function (on)
 import Control.Applicative ((<$>))
+import MatchParen (matchParen, original, Paren(..))
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -110,6 +111,10 @@ onSplit = \case
   Right s -> [s]
 
 splitByComment = splitBy "\\(\\*.*?\\*\\)"
+-- splitByComment = map post . fromMaybe [] . matchParen [("(*", "*)")] where
+--   post n = let s = original n in case n of
+--     NonParen _ -> Left s
+--     Paren _ _ _ -> Right s 
 
 breakCoqCommands = lines . sub "\\.\\s" ".\n" . unwords . lines
 
