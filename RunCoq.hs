@@ -10,12 +10,13 @@ import Text.Parsec (runParserT, many, try, string, (<|>), letter, anyChar, alpha
 import Control.Monad.Cont
 import Yield
 import Control.Applicative ((<$>), (<*>), pure)
-import Control.Monad.State (runStateT, get, put)
+import Control.Monad.State
 import System.Console.GetOpt
 import System.Exit
 import System.Environment (getArgs)
 import Data.String.Utils (strip)
-import Control.Monad.Trans.Maybe (runMaybeT)
+import Control.Monad.Trans.Maybe
+import Data.Maybe (fromMaybe, isNothing)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -34,46 +35,60 @@ main = do
   hClose hOut
 
 -- g : prompt generator
-interactive isEcho (toCoq, g) = do    
+interactive isEcho (toCoq, g) = void $ runMaybeT $ do    
   liftIO $ hSetBuffering stdout NoBuffering
-  waitPrompt g (liftIO . putStr . pure) (liftIO . putStr)
+  (MaybeT $ waitPrompt g (liftIO . putStr . pure)) >>= liftIO . putStr
   input <- liftIO $ getContents
-  input <- return $ lines input
-  input <- return $ runMaybeT . flip mapM_ input
-  void . input $ \ln -> do
+  flip mapM_ (lines input) $ \ln -> do
     when isEcho $ liftIO $ putStrLn ln
     liftIO $ hPutStrLn toCoq ln
     if strip ln == "Quit." then
       fail ""
-    else
-      void $ lift $ waitPrompt g (liftIO . putStr . pure) (liftIO . putStr)
+    else do
+      (MaybeT $ waitPrompt g (liftIO . putStr . pure)) >>= liftIO . putStr
 
-regionSub hIn hOut regionCfg isVerbose (toCoq, g) = do
-  waitPrompt g noop noop
+regionSub hIn hOut regionCfg isVerbose (toCoq, g) = void $ flip runStateT (initCoqState regionCfg, True) $ do
+  (lift $ waitPrompt g noop) >>= checkCoqLiveness
   input <- liftIO $ hGetContents hIn
   input <- return $ lines input
-  void . flip runStateT (initCoqState regionCfg) $ mapM_ process input
+  mapM_ process input
   where
     process ln = do
-      st <- get
+      st <- getState
       if not $ isCoqMode regionCfg st then do
         liftIO $ hPutStrLn hOut $ translateNonCoq regionCfg ln
-        put $ transit regionCfg st ln
+        putState $ transit regionCfg st ln
       else do
-        put $ transit regionCfg st ln
-        st <- get
+        putState $ transit regionCfg st ln
+        st <- getState
         if not $ isCoqMode regionCfg st then
           liftIO $ hPutStrLn hOut $ translateNonCoq regionCfg ln
         else do
-          when (isShowCmd regionCfg st) $ do
-            let hOuts = if isVerbose then [stdout, hOut] else [hOut]
-            liftIO $ hPutStr hOut "Coq < "
-            liftIO $ multi hPutStrLn hOuts ln
-          liftIO $ hPutStrLn toCoq ln
-          if isShowResp regionCfg st then
-            void $ lift $ waitPrompt g (liftIO . hPutStr hOut . pure) noop
-          else
-            void $ lift $ waitPrompt g noop noop
+          whenM isAlive $ do
+            when (isShowCmd regionCfg st) $ do
+              let hOuts = if isVerbose then [stdout, hOut] else [hOut]
+              liftIO $ hPutStr hOut "Coq < "
+              liftIO $ multi hPutStrLn hOuts ln
+            liftIO $ hPutStrLn toCoq ln
+            onNonPrompt <- return $ if isShowResp regionCfg st then
+              liftIO . hPutStr hOut . pure
+            else
+              noop
+            (lift $ waitPrompt g onNonPrompt) >>= checkCoqLiveness
+    checkCoqLiveness = whenF isNothing $ do
+      putSnd False
+      liftIO $ hPutStrLn stderr "Coq quitted."
+    isAlive = snd <$> get
+    getState = fst <$> get
+    putState st = putFst st
+
+whenM m a = m >>= flip when a
+
+whenF f a x = when (f x) a
+
+putFst v = modify $ \(_, b) -> (v, b)
+
+putSnd v = modify $ \(a, _) -> (a, v)
 
 data CoqState = NoCoq | Coq | CoqCmd | CoqCmdResp deriving (Eq)
 
@@ -150,14 +165,11 @@ promptGenerator yield = many $ try onPrompt <|> onNonprompt
       yield $ Left c
     word = letter <:> (many $ alphaNum <|> oneOf "_'")
 
-waitPrompt g onNonPrompt onPrompt = 
+waitPrompt g onNonPrompt = 
   g () >>= \case
-    More (Left c) -> do
-      onNonPrompt c
-      waitPrompt g onNonPrompt onPrompt
-    More (Right s) -> do
-      void $ onPrompt s
-    _ -> return ()
+    More (Left c) -> onNonPrompt c >> waitPrompt g onNonPrompt
+    More (Right s) -> return $ Just s
+    _ -> return Nothing
 
 -- commandline interface
 
