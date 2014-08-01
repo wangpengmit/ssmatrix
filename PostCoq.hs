@@ -6,7 +6,7 @@ import System.Console.GetOpt
 import Data.List
 import Data.Maybe
 import Data.Char (chr)
-import Debug.Trace (traceShow)
+-- import Debug.Trace (traceShow)
 import Numeric (readOct)
 import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
@@ -110,11 +110,14 @@ onSplit = \case
   Left s -> breakCoqCommands s
   Right s -> [s]
 
-splitByComment = splitBy "\\(\\*.*?\\*\\)"
--- splitByComment = map post . fromMaybe [] . matchParen [("(*", "*)")] where
---   post n = let s = original n in case n of
---     NonParen _ -> Left s
---     Paren _ _ _ -> Right s 
+-- splitByComment = splitBy "\\(\\*.*?\\*\\)"
+splitByComment s = post . matchParen [("(*", "*)")] $ s where
+  post = \case
+    Left e -> [Left $ s]
+    Right ls -> map tag ls
+  tag a = let s = original a in case a of
+    NonParen _ -> Left s
+    Paren _ _ _ -> Right s 
 
 breakCoqCommands = lines . sub "\\.\\s" ".\n" . unwords . lines
 
@@ -129,7 +132,7 @@ getLemmaCmd s = do
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
-  _ : opts : c : _ <- s =~~ "\\(\\*(![-n]*)(.*?)\\*\\)"
+  _ : opts : c : _ <- s =~~ "\\(\\*(![-n]*)(.*)\\*\\)"
   return $ InCommentCmd (parseInCommentOpts opts, c)
 
 parseInCommentOpts s = concat [
@@ -394,7 +397,7 @@ format a b = doFormat a (0::Int,b)
     doFormat a (n,(b:bs)) = replace (old n) b a `doFormat` (n+1,bs)
     old n = "{" ++ show n ++ "}"
     
-p x = traceShow x x
+-- p x = traceShow x x
 
-pf f x = traceShow (f x) x
+-- pf f x = traceShow (f x) x
 

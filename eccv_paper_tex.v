@@ -129,7 +129,7 @@ Qed.
 
 Lemma to_Vstar : (~W *m ~U)^-v *m ~W *m \m = vec V*^T.
 Proof.
-  by rewrite (trmxK V*) cvec_mxK.
+  by rewrite (trmxK V* ) cvec_mxK.
 Qed.
 
 (* Corresponds to Equation (28)~(31) *)

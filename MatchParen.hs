@@ -1,14 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 module MatchParen where
 
-import Text.Parsec (parse, string, anyChar, choice, try, (<|>), lookAhead, eof)
+import Text.Parsec (parse, string, anyChar, choice, try, (<|>), lookAhead, eof, ParseError)
 import Control.Applicative ((<$>), (*>), (<*), (<*>))
 import Debug.Trace
 import Control.Monad (void)
 
 data Paren = Paren String String [Paren] | NonParen String deriving (Show)
 
-matchParen :: [(String, String)] -> String -> Maybe [Paren]
+matchParen :: [(String, String)] -> String -> Either ParseError [Paren]
 matchParen ls = post . parse (parens <* eof) ""  where
 
   parens = nonParen <:> sepEndBy' paren nonParen
@@ -22,8 +22,8 @@ matchParen ls = post . parse (parens <* eof) ""  where
   parenMark = oneOf' . map string . concatMap (\(a, b) -> [a, b]) $ ls
 
 post = \case
-  Right n -> Just $ trim n
-  Left _ -> Nothing
+  Right n -> Right $ trim n
+  e -> e
 
 trim = concatMap trimOne
 
