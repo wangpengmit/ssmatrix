@@ -3,7 +3,7 @@ module MatchParen where
 
 import Text.Parsec (parse, string, anyChar, choice, try, (<|>), lookAhead, eof, ParseError)
 import Control.Applicative ((<$>), (*>), (<*), (<*>))
-import Debug.Trace
+-- import Debug.Trace
 import Control.Monad (void)
 
 data Paren = Paren String String [Paren] | NonParen String deriving (Show)
@@ -45,23 +45,29 @@ sepEndBy' p sep = sepEndBy'1' p sep <|> return []
 
 (<:>) a b = (:) <$> a <*> b
 
-pretty = pp 0 where
+pretty = pp1 0 where
   pp n = unlines . map (pp1 n)
   pp1 n = \case
     NonParen s -> lead n ++ show s
     Paren open close ls -> lead n ++ open ++ "\n" ++ pp (n+1) ls ++ lead n ++ close
   lead n = replicate n '\t'
 
+prettyAll = unlines . map pretty
+
 original = \case
   NonParen s -> s
   Paren open close ls -> open ++ concatMap original ls ++ close
 
 -- main = print $ matchParen [("(", ")")] "a (b (c d) (e f)) (g h) i"
--- main = putStrLn . concatMap original $ matchParen [("(", ")"), ("{", "}")] "a {b (c d) {e f}} (g h) i"
+-- main = print $ matchParen [("(", ")"), ("{", "}")] "a {b (c d) {e f}} (g h) i"
+main = putStrLn $ onError prettyAll $ matchParen [("(", ")"), ("{", "}")] "{b (c d){e f}} i (g h)"
 -- main = print $ matchParen [("(", ")")] "()(()) "
 -- main = print $ matchParen [("(", ")")] ""
 
-p x = traceShow x x
+-- p x = traceShow x x
+onError f = \case
+  Left e -> show e
+  Right ls -> f ls
 
 manyTill p end = scan
   where

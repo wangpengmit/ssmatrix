@@ -2,7 +2,7 @@
 
 import System.IO                                             
 import System.Process    
-import Debug.Trace
+-- import Debug.Trace
 import System.IO.Error
 import Data.List
 import Text.Parsec (runParserT, many, try, string, (<|>), letter, anyChar, alphaNum, oneOf)
@@ -207,7 +207,7 @@ noop x = return ()
 
 multi f ls x = sequence_ $ map ($ x) $ map f ls
 
-p x = traceShow x x
+-- p x = traceShow x x
 
-pf f x = traceShow (f x) x
+-- pf f x = traceShow (f x) x
 
