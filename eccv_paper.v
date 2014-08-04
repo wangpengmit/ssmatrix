@@ -328,6 +328,26 @@ Proof.
   by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
 Qed.
 
+Lemma mulmx1Bl : forall {E : ringType} m n A (B : 'M[E]_(m,n)), (I - A) *m B = B - A *m B.
+Proof. intros; by rewrite mulmxBl mul1mx. Qed.
+
+Lemma J1_eps1 : -J1^T *m eps1 = ~V*^T *m ~W^T *m H *m ~W *m \m.
+Proof.
+  set goal := RHS.
+  rewrite -mulmxBl -mulmx1Bl J1_simpl raddfN /= opprK raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) !mulmxA !mulmxDl.
+  by rewrite -!(mulmxA _ _ H) H_H -!(mulmxA _ _ H) WU_H_0 !mulmx0 !mul0mx !addr0 !mulmxA.
+Qed.
+
+Variable V : 'M[E]_(n, r).
+Notation eps1_UV := (vec (W .* (M - U *m V^T))).
+
+Lemma d_eps1_UV : \\d eps1_UV = 0 - ~W *m ~U *ml \\d (vec V^T) - ~W *m (V *o I) *ml \\d (vec U).
+Proof.
+  set goal := RHS.
+  rewrite vec_elemprod !raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx dmWl.
+  by rewrite vec_kron dmM /= (dm_lkron1mx _ _ U) /= lkron_shift [in _ *o _](trmxK V) -(map_vec _ U) lmulmxDr !lmulmxA [in _ *ml _ + _]addrC opprD addrA.
+Qed.
+
 End Section3.
 
 Require Import nfun.
@@ -378,28 +398,5 @@ Lemma J_vstar : \J v* = -(((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o 
 Proof.
   by apply jacob_intro; rewrite (d_vstar _ _ h_invertible) cvec_mxK.
 Qed.
-
-(* An exercise to find the Jacobian matrix of vec (U^T *m U) *)
-Lemma exercise xxx : \J (vec (U^T *m U)) = xxx.
-Proof.
-  apply jacob_intro.
-  set goal := RHS.
-
-  rewrite vec_kron.
-  rewrite dmM.
-  rewrite /=.
-  rewrite dm_lkron1mx /=.
-  rewrite lkron_shift.
-  rewrite -map_trmx.
-  rewrite -trTPcrmul.
-  rewrite lmulmxA.
-  rewrite -map_vec.
-  rewrite -lmulmxDl.
-  rewrite cvec_mxK.
-  
-  subst goal.
-  congr (_ *ml _).
-  (* Now we see the answer is (U^T *o I *m T + I *o U^T) *)
-  Abort.
 
 End Jacobian.
