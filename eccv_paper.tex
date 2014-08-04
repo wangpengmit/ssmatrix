@@ -130,7 +130,6 @@ The contributions of this paper are as follows:
 \coqAddRule/\bV\*/{V^*}/
 \coqAddRule/~V\*/{\widetilde{V}^*}/
 \coqAddRule/\bv\*/{v^*}/
-\coqAddRule/\beps1\b/\epsilon_1/
 \coqAddRule/\bW\b/\mW/
 \coqAddRule/\bM\b/\mM/
 \coqAddRule/\bU\b/\mU/
@@ -140,9 +139,13 @@ The contributions of this paper are as follows:
 \coqAddRule/\bI\b/\m I/
 \coqAddRule/\bJ1\b/\m J/ 
 \coqAddRule/\bT\b/\Ttrans/ 
+\coqAddRule/\beps1_UV\b/\erru/
+\coqAddRule/\beps1\b/\erru/
+\coqAddRule/\bA\b/\mA/
 *)
 \end{coq_example}
 
+\coqOutput{eccv_paper_appendix.coq.txt}
 \coqOutput{eccv_paper.coq.txt}
 
 \section{Matrix calculus rules}
@@ -160,7 +163,6 @@ we obtain a rule for differentiating through pseudoinverse (see appendix for der
 \begin{align}
 \diff[\pinv \mA] = -\pinv \mA \diff[\mA] \pinv \mA +
 \inv{(\mA\tr\mA)}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
-\eqlabel{diffpinv}
 \end{align}
 and we observe that the second term is zero for invertible \mA.  We will also use a rule for $\mA \pinv \mA$ as follows:
 \begin{align}
@@ -249,19 +251,7 @@ The Levenberg algorithm incorporates damping factor $\lambda \m I$ to the Gauss-
 so that, writing $\WRT= (\kron{(\mW\hadamard\m R)}{\Id r})$,
 \JOneJOne
 and the right-hand side of the equation becomes
-\begin{align}
-- \m J \tr \verru &= \begin{multlined}[c][5cm]
-\tilde{\m V}^{*\top} \tW \tr \m H \tr \m H \tW \v m  + \Ttrans \tr \WRT \pinv{(\tW\tU)} \m H \tW \v m
-\end{multlined} &
-\begin{comment}
-Noting\textrm{ }\verru = - \m H \tW \v m
-\end{comment}
-\\&= \tilde{\m V}^{*\top} \tW \tr \m H \tW \v m. &
-\begin{comment}
-Noting\textrm{ } \m H^2 = \m H\textrm{, }(\tW \tU)^\dagger \m H = \m 0
-\end{comment}
-\eqlabel{-jtf}
-\end{align}
+\JOneEpsOne
 Above is considered to be the exact iteration step for solving our problem using the Damped Wiberg approach, and is the update in the ``Exact Damped Wiberg'' algorithm tested below.   The $\lambda$ initialization and update strategy is as in~\cite{okatani2006wiberg}.  In fact, the family of Wiberg algorithm introduced by \cite{okatani2006wiberg} uses 
 \begin{align}
 \m J \tr \m J \approx \tilde{\m V}^{*\top} \tW \tr \m H \tW \tV^*
@@ -270,12 +260,7 @@ which arises from the algorithm's approximation on the Jacobian.
 
 \section{Further damping}
 Suppose we were to solve this factorization problem using a standard Levenberg method where all the parameters are independent. If we define $ \verr $ as the vector of residuals, we note that
-\begin{align}
-\diff[\verr] &= - \tW \diff[\vec(\m U \m V \tr)] & \comment{ From \eqref{resvec1} }
-\\ &= - \tW \tU \diff[\vec (\m V \tr)] & \comment{From \eqref{resvec2}}
-\\ &= - \tW (\kron{\m V}{\m I_m}) \diff[\vec \m U].
-& \comment{Using \eqref{kronvec}}
-\end{align}
+\dEpsOneUV
 Hence, the corresponding Levenberg iteration step can be written as (using $\tV:=\kron{\mV}{\Id m}$)
 \begin{align}
 \begin{multlined}[c][5cm]
@@ -410,34 +395,11 @@ The standard datasets tested, which were considered difficult a decade ago, are 
 %  &= \sym((\Id{} - \mA\mupinv \mA) \diff[\mA] \mupinv \mA)
 % \end{align}
 Derivations of the matrix calculus rules are supplied in this section.   The derivative of pseudoinverse is:
-\begin{align*}
-\diff[\pinv \mA] 
-&= \diff[\inv{(\mA\tr\mA)}]\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
-\\& = - \inv{(\mA\tr\mA)}\diff[\mA\tr\mA]\inv{(\mA\tr\mA)}\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
-\\& = - \inv{(\mA\tr\mA)}(\diff[\mA\tr]\mA - \mA\tr\diff[\mA])\inv{(\mA\tr\mA)}\mA\tr + \inv{(\mA\tr\mA)}\diff[\mA]\tr
-\\& = - \inv{(\mA\tr\mA)}\diff[\mA\tr]\mA\pinv{\mA} - \inv{(\mA\tr\mA)}\mA\tr\diff[\mA]\pinv{\mA} +
- \inv{(\mA\tr\mA)}\diff[\mA]\tr
-\\& = -\pinv \mA \diff[\mA] \pinv \mA +
-\inv{(\mA\tr\mA)}\diff[\mA]\tr(\Id{}-\mA\pinv\mA)
-\eqlabel{diffpinv}
-\end{align*}
+\dmMupinv
 and we observe that the last term is zero for invertible \mA.  
 The derivative of pseudoinverse is then simply the above for $\mu=0$.
 Let's further look at 
-\begin{align}
-\diff[\mA \pinv \mA]
- &= \diff[\mA]\pinv \mA + \mA \diff[\pinv \mA]\\
- &= \diff[\mA]\pinv \mA -
-    \mA\pinv \mA \diff[\mA] \pinv \mA +
-    \mA\inv{(\mA\tr\mA)} \diff[\mA]\tr(\Id{}-\mA\pinv\mA)\\
- &= \diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA +
-\pinv\mA\tr \diff[\mA]\tr(\Id{}-\mA\pinv\mA)\\
- &= \diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA +
-\pinv\mA\tr \diff[\mA]\tr -
-\pinv\mA\tr \diff[\mA]\tr\mA\pinv\mA\\
- &= \sym(\diff[\mA]\pinv \mA-\mA\pinv \mA \diff[\mA] \pinv \mA)\\
- &= \sym((\Id{} - \mA\pinv \mA) \diff[\mA] \pinv \mA)
-\end{align}
+\dmAmupinvA
 
 
 \section{Schur-complement equations}

@@ -79,8 +79,8 @@ Proof.
   (*! \\ &= \coqVar{lhs} *)
   (*!n & \xcomment{ Define $\v m := \vec\mM$} \eqlabel{resvec1} *)
   by rewrite vec_kron !mulmxA.
-  (*! \\ &= \coqVar{to} \eqlabel{\coqVar{name}} *)
-  (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} *)
+  (*! \\ &= \coqVar{to} *)
+  (*!n & \comment{ Define $\twiddle\mU := \kron{\Id n}{\mU}$} \eqlabel{resvec2} *)
 Qed.
 (*! \end{align} *)
 (*! } *)
@@ -231,7 +231,7 @@ Proof.
   (*! \coqLocalSub/\\Ttrans\s*\+/\Ttrans \\ & \phantom{{}=00} +/ \coqVar{lhs} *)
   (*!n & \comment{Using \eqref{jacobian}} *)
   rewrite -!(mulmxA _ _ H) WU_H_0 -!(mulmxA _ _ _^+^T) -[H^T *m _^+^T]trmx_mul WU_H_0 !mulmxA trmx0 !mulmx0 !mul0mx !addr0.
-  (*! \\ &= \coqVar{to} *)
+  (*! \\ &= \coqVar{lhs} *)
   (*!n & \begin{comment} *)
   (*!n Noting\textrm{ }(\tW \tU)^\dagger \m H = \m 0 *)
   (*!n \end{comment} *)
@@ -241,6 +241,47 @@ Proof.
   (*!n Noting\textrm{ } \m H^2 = \m H *)
   (*!n \end{comment} *)
   (*!n \eqlabel{jtj} *)
+Qed.
+(*! \end{align} *)
+(*! } *)
+
+(* Corresponds to Equation (57)~(58) *)
+(*! \def\JOneEpsOne{ *)
+(*! \begin{align} *)
+Lemma J1_eps1 : -J1^T *m eps1 = ~V*^T *m ~W^T *m H *m ~W *m \m.
+Proof.
+  set goal := RHS.
+  rewrite -mulmxBl -mulmx1Bl J1_simpl raddfN /= opprK raddfD /= !trmx_mul (trmxK ~WR) (trmxK _^+) !mulmxA !mulmxDl.
+  (*! \coqVar{from} &= \coqVar{lhs} *)
+  (*!n & \begin{comment}
+    Noting\textrm{ }\verru = \m H \tW \v m
+    \end{comment} *)
+  by rewrite -!(mulmxA _ _ H) H_H -!(mulmxA _ _ H) WU_H_0 !mulmx0 !mul0mx !addr0 !mulmxA.
+  (*! \\ &= \coqVar{to} *)
+  (*!n & \begin{comment}
+    Noting\textrm{ } \m H^\top \m H = \m H\textrm{, }(\tW \tU)^\dagger \m H = \m 0
+    \end{comment}
+    \eqlabel{-jtf} *)
+Qed.
+(*! \end{align} *)
+(*! } *)
+
+Variable V : 'M[E]_(n, r).
+Notation eps1_UV := (vec (W .* (M - U *m V^T))).
+
+(* Corresponds to Equation (60)~(62) *)
+(*! \def\dEpsOneUV{ *)
+(*! \begin{align} *)
+Lemma d_eps1_UV : \\d[eps1_UV] = 0 - ~W *m ~U *ml \\d[vec V^T] - ~W *m (V *o I) *ml \\d[vec U].
+Proof.
+  set goal := RHS.
+  rewrite vec_elemprod !raddfB /= -(mul1mx (~W *m \m)) !mulmxA !dmmr !dmWr dmI !rmul0mx dmWl.
+  (*! \coqVar{from} &= \coqVar{lhs} *)
+  (*!n & \comment{ From \eqref{resvec1} } *)
+  by rewrite vec_kron dmM /= (dm_lkron1mx _ _ U) /= lkron_shift [in _ *o _](trmxK V) -(map_vec _ U) lmulmxDr !lmulmxA [in _ *ml _ + _]addrC opprD addrA.
+  (*! \\ &= \coqVar{to} *)
+  (*!n & \comment{From \eqref{resvec2}} *)
+  (*!n \\ & & \comment{Using \eqref{kronvec}} *)
 Qed.
 (*! \end{align} *)
 (*! } *)

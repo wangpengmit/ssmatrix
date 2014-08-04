@@ -260,6 +260,9 @@ End CommMx.
 
 (* Miscellaneous results *)
 
+Lemma mulmx1Bl {E : ringType} m n A (B : 'M[E]_(m,n)) : (I - A) *m B = B - A *m B.
+Proof. by rewrite mulmxBl mul1mx. Qed.
+
 Lemma mulmx1Br {E : ringType} m n (A : 'M[E]_(m,n)) B : A *m (I - B) = A - A *m B.
 Proof. by rewrite mulmxBr mulmx1. Qed.
 

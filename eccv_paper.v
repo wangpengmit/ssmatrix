@@ -74,11 +74,22 @@
 
     d_vstar : 
       \\d v* = - (((~W *m ~U)^T *m (~W *m ~U) + v *ml: I)^^-1 *m ((I *o U^T)*m ~W^T *m ~W *m (V* *o I) - ((W .* R)^T *o I) *m T)) *ml \\d (vec U)
-      direct corollary from d_vstar_part2 and J2_simpl.
+      direct corollary from d_vstar_part2 and J2_simpl
 
     J1_J1 : 
       J1^T *m J1 = ~V*^T *m ~W^T *m H *m ~W *m ~V* + T^T *m ~WR *m ((~W *m ~U)^T *m (~W *m ~U))^^-1 *m ~WR^T *m T
       Corresponds to Equation (54)~(56) 
+
+    J1_eps1 : 
+      -J1^T *m eps1 = ~V*^T *m ~W^T *m H *m ~W *m \m
+      Corresponds to Equation (57)~(58) 
+
+    d_eps1_UV : 
+      \\d eps1_UV = 0 - ~W *m ~U *ml \\d (vec V^T) - ~W *m (V *o I) *ml \\d (vec U)
+      Corresponds to Equation (60)~(62) where
+        V : 'M[E]_(n, r)
+        eps1_UV == vec (W .* (M - U *m V^T))
+
 
   When instantiate the previous results with the following instantiation:
         p == r * m. The number of free variables (which is also the 
@@ -328,9 +339,7 @@ Proof.
   by rewrite -!(mulmxA _ _ H) H_H -(mulmxA _ _ _^+^T) pinvWU_pinvWU.
 Qed.
 
-Lemma mulmx1Bl : forall {E : ringType} m n A (B : 'M[E]_(m,n)), (I - A) *m B = B - A *m B.
-Proof. intros; by rewrite mulmxBl mul1mx. Qed.
-
+(* Corresponds to Equation (57)~(58) *)
 Lemma J1_eps1 : -J1^T *m eps1 = ~V*^T *m ~W^T *m H *m ~W *m \m.
 Proof.
   set goal := RHS.
@@ -341,6 +350,7 @@ Qed.
 Variable V : 'M[E]_(n, r).
 Notation eps1_UV := (vec (W .* (M - U *m V^T))).
 
+(* Corresponds to Equation (60)~(62) *)
 Lemma d_eps1_UV : \\d eps1_UV = 0 - ~W *m ~U *ml \\d (vec V^T) - ~W *m (V *o I) *ml \\d (vec U).
 Proof.
   set goal := RHS.
