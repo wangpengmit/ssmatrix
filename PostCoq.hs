@@ -6,7 +6,7 @@ import System.Console.GetOpt
 import Data.List
 import Data.Maybe
 import Data.Char (chr)
--- import Debug.Trace (traceShow)
+import Debug.Trace (traceShow)
 import Numeric (readOct)
 import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
@@ -22,6 +22,8 @@ import System.IO.Error (tryIOError)
 import Data.Function (on)
 import Control.Applicative ((<$>))
 import MatchParen (matchParen, original, Paren(..))
+import Control.Monad.Error
+import Control.Monad.Identity
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -32,8 +34,9 @@ main = do
   str <- hGetContents hIn
   str <- doIncludes str
   -- putStrLn str
-  str <- return $ process $ str
+  (str, err) <- return $ process $ str
   hPutStr hOut str
+  hPutStr stderr err
   hClose hIn
   hClose hOut
 
@@ -45,7 +48,7 @@ doIncludes = subM "\\\\coqOutput{(.*?)}" $ \(_ : filename : _) -> do
 data St = St {
   lemma :: Lemma,
   subgoal :: Equation,
-  rules :: [(String, String)]
+  rules :: [(Regex, String)]
   }
 
 data Lemma = Lemma {
@@ -58,7 +61,7 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-process = unlines . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
+process = (unlines >< unlines) . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
 
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
@@ -69,6 +72,10 @@ initState = St {
 run s = runWriter . flip runStateT s
 
 getOutput = snd
+
+tellOut a = tell (a, [])
+ 
+tellErr a = tell ([], a)
 
 -- Coq regions
 
@@ -84,7 +91,7 @@ endCoqOutputStr = "\\end{coq_output}"
 
 processRegion (r, b) = case r of
   On -> onCoqRegion b
-  Off -> tell b
+  Off -> tellOut b
   _ -> return ()
 
 onCoqRegion = mapM_ onConversation . conversations
@@ -155,11 +162,11 @@ runInCommentCmd (opts, s) = do
     s <- if not $ elem NoSub opts then do
            -- string substitution using rules registered on-the-fly
            St {rules = rules} <- get
-           return . chain (map (uncurry sub) rules) $ s
+           return . chain (map (uncurry subC) rules) $ s
          else
            return s
     s <- return $ texLocalSub s
-    tell . singleton $ s
+    tellOut . singleton $ s
 
 texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern $ \(_ : r : s : body : _) -> sub r s body
 
@@ -173,8 +180,12 @@ texCmds = [
   ]
 
 texAddRule = subM (format "\\\\coqAddRule{0}" [subPattern]) $ 
-  \(_ : p : s : _) -> do
-    addRule p s
+  \(_ : ptrn : s : _) -> do
+    case runEitherE $ makeRegexM ptrn of
+      Right re -> do
+        addRule re s
+      Left e ->
+        tellErr [format "Warning: error in regex {0} : {1}" [ptrn, e]]
     return ""
 
 subPattern = format "/({0})/({0})/" [subPatternContent]
@@ -261,18 +272,32 @@ usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (out
 -- utilities
 
 -- regex utilities
-
--- subsitute all occurances of regex
-matchAllM :: Monad m => String -> ((String , String , String, [String]) -> m String) -> String -> m String
-matchAllM regex func str =
+{- name conventions:
+   C : using the compiled version of the regex
+   M : with monads
+   F : with functions
+-}
+matchAllCM :: Monad m => Regex -> ((String , String , String, [String]) -> m String) -> String -> m String
+matchAllCM regex func str =
   fromMaybe (return str) $ do
-    (before, matched, after, groups) <- str =~~~ regex
+    (before, matched, after, groups) <- matchM regex str
     return $ do
       s <- func (before, matched, after, groups)
       k <- if length after < length str then -- avoid infinite loop
-             matchAllM regex func after
+             matchAllCM regex func after
            else return str
       return $ s ++ k
+
+subCM r f = matchAllCM r (\(before, matched, _, groups) -> (before ++) <$> f (matched : groups))
+
+subCF r f = runIdentity . subCM r (return . f)
+
+subC r s = subCF r (fromStr s)
+
+matchAllM :: Monad m => String -> ((String , String , String, [String]) -> m String) -> String -> m String
+matchAllM regex func str = do
+  regex <- makeRegexM regex
+  matchAllCM regex func str
 
 splitBy r s = let (remain, ls) = runState m [] in reverse (Left remain : ls)
   where
@@ -376,6 +401,8 @@ oct s = case readOct s of
 
 oneIsInfixOf ls s = any (flip isInfixOf s) ls
 
+f >< g = \(a, b) -> (f a, g b)
+
 -- returns the result of the first function in fs to succeed
 choice fs x = asum $  map ($ x) fs
 
@@ -396,8 +423,13 @@ format a b = doFormat a (0::Int,b)
     doFormat a (_,[]) = a
     doFormat a (n,(b:bs)) = replace (old n) b a `doFormat` (n+1,bs)
     old n = "{" ++ show n ++ "}"
-    
--- p x = traceShow x x
 
--- pf f x = traceShow (f x) x
+-- a Monad instance for Either where fail = Left
+type EitherE e = ErrorT e Identity
+
+runEitherE = runIdentity . runErrorT
+
+p x = traceShow x x
+
+pf f x = traceShow (f x) x
 
