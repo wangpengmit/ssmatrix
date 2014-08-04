@@ -12,9 +12,9 @@ import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
 import Text.Regex.PCRE
 import Data.Array (elems)
-import Control.Monad ((>=>), when)
-import Control.Monad.Writer (runWriter, tell)
-import Control.Monad.State (runStateT, get, put, modify, runState)
+import Control.Monad ((>=>), when, (<=<))
+import Control.Monad.Writer (runWriter, tell, Writer)
+import Control.Monad.State (runStateT, get, put, modify, runState, StateT)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
@@ -22,8 +22,8 @@ import System.IO.Error (tryIOError)
 import Data.Function (on)
 import Control.Applicative ((<$>))
 import MatchParen (matchParen, original, Paren(..))
-import Control.Monad.Error
-import Control.Monad.Identity
+import Control.Monad.Error (ErrorT, runErrorT)
+import Control.Monad.Identity (Identity)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -106,22 +106,20 @@ onConversation (cmds, resp) = do
   onCmds cmds
   onResp resp
   
-onCmds = mapM_ runCmd . getCmds . map (sub cmdPrefix "")
+onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
-getCmds = mapMaybe getCmd . concatMap onSplit . splitByComment . unwords
--- getCmds = mapMaybe getCmd
+getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
   Left s -> breakCoqCommands s
   Right s -> [s]
 
--- splitByComment = splitBy "\\(\\*.*?\\*\\)"
 splitByComment s = post . matchParen [("(*", "*)")] $ s where
   post = \case
-    Left e -> [Left $ s]
-    Right ls -> map tag ls
+    Left e -> tellErr [format "Warning: error in parsing comments: {0}\nin: {1}" [show e, s]] >> return [Left $ s]
+    Right ls -> return $ map tag ls
   tag a = let s = original a in case a of
     NonParen _ -> Left s
     Paren _ _ _ -> Right s 
