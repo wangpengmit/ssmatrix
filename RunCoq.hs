@@ -23,12 +23,13 @@ main = do
   let fout = if length fs >= 2 then fs !! 1 else "-"
   hIn <- if fin /= "-" then openFile fin ReadMode else return stdin
   hOut <- if fout /= "-" then openFile fout WriteMode else return stdout
+  liftIO $ hSetBuffering stderr LineBuffering
   cmain <- return $
     if elem Interactive options then
       interactive $ elem Echo options
     else
       let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig in
-      regionSub hIn hOut config $ elem Verbose options && fout /= "-"
+      regionSub hIn hOut config $ elem Verbose options
   flip runContT return $ (lift $ getPromptGenerator) >>= cmain
   hClose hIn
   hClose hOut
@@ -65,7 +66,7 @@ regionSub hIn hOut regionCfg isVerbose (toCoq, g) = void $ flip runStateT (initC
         else do
           whenM isAlive $ do
             when (isShowCmd regionCfg st) $ do
-              let hOuts = if isVerbose then [stdout, hOut] else [hOut]
+              let hOuts = if isVerbose then [stderr, hOut] else [hOut]
               liftIO $ hPutStr hOut "Coq < "
               liftIO $ multi hPutStrLn hOuts ln
             liftIO $ hPutStrLn toCoq ln
