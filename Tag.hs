@@ -10,7 +10,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Identity
 
-data TagT tag m a = TagT { runTag :: m a } deriving Show
+newtype TagT tag m a = TagT { runTag :: m a } deriving Show
 
 instance Monad m => Monad (TagT tag m) where
    return a = TagT (return a)
