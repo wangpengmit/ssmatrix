@@ -16,6 +16,9 @@ instance Monad m => Monad (T tag m) where
 instance MonadTrans (T tag) where
    lift m = T m
 
+instance Functor m => Functor (T tag m) where
+  fmap f = T . fmap f . runTag
+
 class TWith t (m :: * -> *) (n :: * -> *) | t n -> m where
    taggedLift :: t -> m a -> n a
 
@@ -31,10 +34,16 @@ runTStateT = runStateT . runTag
 tput tag x = taggedLift tag (put x)
 tget tag = taggedLift tag get
 
+type TState tag s = TStateT tag s Identity
+runTState m = runIdentity . runTStateT m
+
 type TWriterT tag w m = T tag (WriterT w m)
 runTWriterT = runWriterT . runTag
 
 ttell tag x = taggedLift tag (tell x)
+
+type TWriter tag w = TWriterT tag w Identity
+runTWriter = runIdentity . runTWriterT
 
 -- tests
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, OverlappingInstances, ScopedTypeVariables #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -12,18 +12,18 @@ import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
 import Text.Regex.PCRE
 import Data.Array (elems)
-import Control.Monad ((>=>), when, (<=<))
-import Control.Monad.Writer (runWriter, tell, Writer)
-import Control.Monad.State (runStateT, get, put, modify, runState, StateT)
+import Control.Monad ((>=>), when, (<=<), liftM)
+import Control.Monad.Writer (runWriter, tell, Writer, MonadWriter)
+import Control.Monad.State (runStateT, get, put, modify, runState, StateT, MonadState)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
 import System.IO.Error (tryIOError)
 import Data.Function (on)
-import Control.Applicative ((<$>))
 import MatchParen (matchParen, original, Paren(..))
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Identity (Identity)
+import Tag
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -45,6 +45,26 @@ doIncludes = subM "\\\\coqOutput{(.*?)}" $ \(_ : filename : _) -> do
     Left _ -> return $ "Can read file: " ++ filename
     Right s -> return $ beginCoqOutputStr ++ "\n" ++ s ++ "\n" ++ endCoqOutputStr ++ "\n"
 
+process = run initState . mapM_ processRegion . coqRegions . map strip . lines
+
+coqRegions = partitionByBeginEnd beginCoq endCoq
+
+beginCoq = isInfixOf beginCoqOutputStr
+
+beginCoqOutputStr = "\\begin{coq_output}"
+
+endCoq = isInfixOf endCoqOutputStr
+
+endCoqOutputStr = "\\end{coq_output}"
+
+processRegion :: (Region, [String]) -> M ()
+processRegion (r, b) = case r of
+  On -> onCoqRegion b
+  Off -> tellOut b
+  _ -> return ()
+
+type M = StateT St (TWriterT Out [String] (TWriter Err [String]))
+
 data St = St {
   lemma :: Lemma,
   subgoal :: Equation,
@@ -61,7 +81,14 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-process = (unlines >< unlines) . getOutput . run initState . mapM_ processRegion . coqRegions . map strip . lines
+data Out = Out
+data Err = Err
+
+run s = (unlines >< unlines) . getOutput . runM s
+
+runM s = runTWriter . runTWriterT . flip runStateT s
+
+getOutput = snd . fst |><| snd
 
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
@@ -69,30 +96,11 @@ initState = St {
   rules = []
   }
 
-run s = runWriter . flip runStateT s
+tellOut :: (MonadWriter w m, TWith Out m n) => w -> n ()
+tellOut = ttell Out
 
-getOutput = snd
-
-tellOut a = tell (a, [])
- 
-tellErr a = tell ([], a)
-
--- Coq regions
-
-coqRegions = partitionByBeginEnd beginCoq endCoq
-
-beginCoq = isInfixOf beginCoqOutputStr
-
-beginCoqOutputStr = "\\begin{coq_output}"
-
-endCoq = isInfixOf endCoqOutputStr
-
-endCoqOutputStr = "\\end{coq_output}"
-
-processRegion (r, b) = case r of
-  On -> onCoqRegion b
-  Off -> tellOut b
-  _ -> return ()
+tellErr :: (MonadWriter w m, TWith Err m n) => w -> n ()
+tellErr = ttell Err
 
 onCoqRegion = mapM_ onConversation . conversations
 
@@ -110,6 +118,8 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
+-- getCmds will only have the side-effect of generating error messages, not generating output
+getCmds :: (MonadWriter [String] m, Monad n, TWith Err m n) => [String] -> n [Cmd]
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -286,7 +296,7 @@ matchAllCM regex func str =
            else return str
       return $ s ++ k
 
-subCM r f = matchAllCM r (\(before, matched, _, groups) -> (before ++) <$> f (matched : groups))
+subCM r f = matchAllCM r (\(before, matched, _, groups) -> (before ++) <$$> f (matched : groups))
 
 subCF r f = runIdentity . subCM r (return . f)
 
@@ -303,8 +313,8 @@ splitBy r s = let (remain, ls) = runState m [] in reverse (Left remain : ls)
       modify $ (Left before :)
       modify $ (Right matched :)
       return ""
- 
-subM r f = matchAllM r (\(before, matched, _, groups) -> (before ++) <$> f (matched : groups))
+
+subM r f = matchAllM r (\(before, matched, _, groups) -> (before ++) <$$> f (matched : groups))
 
 subF r f = runIdentity . subM r (return . f)
 
@@ -399,8 +409,6 @@ oct s = case readOct s of
 
 oneIsInfixOf ls s = any (flip isInfixOf s) ls
 
-f >< g = \(a, b) -> (f a, g b)
-
 -- returns the result of the first function in fs to succeed
 choice fs x = asum $  map ($ x) fs
 
@@ -408,6 +416,7 @@ choice fs x = asum $  map ($ x) fs
 chain = appEndo . mconcat . map Endo . reverse
 
 -- chain [f, g, h, ...] = f >=> g >=> h >=> ...
+chainM :: Monad m => [a -> m a] -> a -> m a
 chainM = appEndoM . mconcat . map EndoM
 
 newtype EndoM m a = EndoM { appEndoM :: a -> m a}
@@ -427,7 +436,13 @@ type EitherE e = ErrorT e Identity
 
 runEitherE = runIdentity . runErrorT
 
+f >< g = \(a, b) -> (f a, g b)
+fork a = (a, a)
+f |><| g = (f >< g) . fork
+infixr 8 |><|
+
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
 
+f <$$> m = liftM f m
