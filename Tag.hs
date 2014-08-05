@@ -1,3 +1,6 @@
+-- Tagged monad transformer stack
+-- Adapted from http://blog.sigfpe.com/2010/02/tagging-monad-transformer-layers.html
+
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, GADTs, UndecidableInstances, KindSignatures, OverlappingInstances #-}
 
 module Tag where

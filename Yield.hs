@@ -1,6 +1,6 @@
--- Copied from: http://www.vex.net/~trebla/haskell/parsec-generally.xhtml
-
 {-| Yield-style generators. -}
+-- Adapted from http://www.vex.net/~trebla/haskell/parsec-generally.xhtml
+
 module Yield where
 
 import Control.Monad.Cont

@@ -1,3 +1,6 @@
+-- S-expression parser
+-- Adapted from http://rosettacode.org/wiki/S-Expressions#Haskell
+
 module SExprParser where
 
 import Text.Parsec

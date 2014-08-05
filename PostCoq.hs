@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -14,7 +14,7 @@ import Text.Regex.PCRE
 import Data.Array (elems)
 import Control.Monad ((>=>), when, (<=<), liftM)
 import Control.Monad.Writer (runWriter, tell, Writer, MonadWriter)
-import Control.Monad.State (runStateT, get, put, modify, runState, StateT, MonadState)
+import Control.Monad.State (runStateT, get, put, modify, runState, StateT)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
@@ -33,7 +33,6 @@ main = do
   hOut <- if fout /= "-" then openFile fout WriteMode else return stdout
   str <- hGetContents hIn
   str <- doIncludes str
-  -- putStrLn str
   (str, err) <- return $ process $ str
   hPutStr hOut str
   hPutStr stderr err
@@ -81,6 +80,17 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
+tellOut :: CanWriteOut w n m => w -> n ()
+tellOut = ttell Out
+
+tellErr :: CanWriteErr w n m => w -> n ()
+tellErr = ttell Err
+
+class (Monad n, Contains n Out m, MonadWriter w m) => CanWriteOut w n m
+instance (Monad n, Contains n Out m, MonadWriter w m) => CanWriteOut w n m
+class (Monad n, Contains n Err m, MonadWriter w m) => CanWriteErr w n m
+instance (Monad n, Contains n Err m, MonadWriter w m) => CanWriteErr w n m
+
 data Out = Out
 data Err = Err
 
@@ -95,12 +105,6 @@ initState = St {
   subgoal = (Equation "*no-lhs*" "*no-rhs*"),
   rules = []
   }
-
-tellOut :: (Contains n Out m, MonadWriter w m) => w -> n ()
-tellOut = ttell Out
-
-tellErr :: (Contains n Err m, MonadWriter w m) => w -> n ()
-tellErr = ttell Err
 
 onCoqRegion = mapM_ onConversation . conversations
 
@@ -119,7 +123,7 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 -- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: (Monad n, Contains n Err m, MonadWriter [String] m) => [String] -> n [Cmd]
+getCmds :: CanWriteErr [String] n m => [String] -> n [Cmd]
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -169,7 +173,7 @@ runInCommentCmd (opts, s) = do
   when (not $ elem NoPrint opts) $ do
     s <- if not $ elem NoSub opts then do
            -- string substitution using rules registered on-the-fly
-           St {rules = rules} <- get
+           rules <- getRules
            return . chain (map (uncurry subC) rules) $ s
          else
            return s
@@ -200,6 +204,10 @@ subPattern = format "/({0})/({0})/" [subPatternContent]
 
 subPatternContent = "(?:[^/]|\\/)*?"
 
+getRules = do
+  St {rules = rules} <- get
+  return rules
+  
 addRule a b = do
   st <- get
   put st{ rules = rules st ++ [(a, b)] }
@@ -441,8 +449,9 @@ fork a = (a, a)
 f |><| g = (f >< g) . fork
 infixr 8 |><|
 
+f <$$> m = liftM f m
+
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
 
-f <$$> m = liftM f m
