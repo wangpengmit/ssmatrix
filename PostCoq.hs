@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, OverlappingInstances, ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -96,10 +96,10 @@ initState = St {
   rules = []
   }
 
-tellOut :: (MonadWriter w m, TWith Out m n) => w -> n ()
+tellOut :: (Contains n Out m, MonadWriter w m) => w -> n ()
 tellOut = ttell Out
 
-tellErr :: (MonadWriter w m, TWith Err m n) => w -> n ()
+tellErr :: (Contains n Err m, MonadWriter w m) => w -> n ()
 tellErr = ttell Err
 
 onCoqRegion = mapM_ onConversation . conversations
@@ -119,7 +119,7 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 -- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: (MonadWriter [String] m, Monad n, TWith Err m n) => [String] -> n [Cmd]
+getCmds :: (Monad n, Contains n Err m, MonadWriter [String] m) => [String] -> n [Cmd]
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case

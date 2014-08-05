@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, GADTs, UndecidableInstances, KindSignatures, ScopedTypeVariables, OverlappingInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, GADTs, UndecidableInstances, KindSignatures, OverlappingInstances #-}
 
 module Tag where
 
@@ -7,40 +7,41 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Identity
 
-data T tag m a = T { runTag :: m a } deriving Show
+data TagT tag m a = TagT { runTag :: m a } deriving Show
 
-instance Monad m => Monad (T tag m) where
-   return a = T (return a)
-   T x >>= f = T $ x >>= (runTag . f)
+instance Monad m => Monad (TagT tag m) where
+   return a = TagT (return a)
+   TagT x >>= f = TagT $ x >>= (runTag . f)
 
-instance MonadTrans (T tag) where
-   lift m = T m
+instance MonadTrans (TagT tag) where
+   lift m = TagT m
 
-instance Functor m => Functor (T tag m) where
-  fmap f = T . fmap f . runTag
+instance Functor m => Functor (TagT tag m) where
+  fmap f = TagT . fmap f . runTag
 
-class TWith t (m :: * -> *) (n :: * -> *) | t n -> m where
-   taggedLift :: t -> m a -> n a
+-- monad transformer stack n contains monad m with tag t
+class Contains (n :: * -> *) t (m :: * -> *) | n t -> m where
+   liftFrom :: t -> m a -> n a
 
-instance (Monad m, m ~ n) => TWith tag m (T tag n) where
-   taggedLift _ x = lift x
+instance (Monad n, n ~ m) => Contains (TagT tag n) tag m where
+   liftFrom _ x = lift x
 
-instance (Monad m, Monad n, TWith tag m n, MonadTrans t) => TWith tag m (t n) where
-   taggedLift tag x = lift (taggedLift tag x)
+instance (MonadTrans t, Monad n, Contains n tag m) => Contains (t n) tag m where
+   liftFrom tag x = lift (liftFrom tag x)
 
-type TStateT tag s m = T tag (StateT s m)
+type TStateT tag s m = TagT tag (StateT s m)
 runTStateT = runStateT . runTag
 
-tput tag x = taggedLift tag (put x)
-tget tag = taggedLift tag get
+tput tag x = liftFrom tag (put x)
+tget tag = liftFrom tag get
 
 type TState tag s = TStateT tag s Identity
 runTState m = runIdentity . runTStateT m
 
-type TWriterT tag w m = T tag (WriterT w m)
+type TWriterT tag w m = TagT tag (WriterT w m)
 runTWriterT = runWriterT . runTag
 
-ttell tag x = taggedLift tag (tell x)
+ttell tag x = liftFrom tag (tell x)
 
 type TWriter tag w = TWriterT tag w Identity
 runTWriter = runIdentity . runTWriterT
