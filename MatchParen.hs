@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module MatchParen where
 
-import Text.Parsec (parse, string, anyChar, choice, try, (<|>), lookAhead, eof, ParseError)
+import Text.Parsec (parse, string, anyChar, choice, try, (<|>), lookAhead, eof, ParseError, (<?>))
 import Control.Applicative ((<$>), (*>), (<*), (<*>))
 -- import Debug.Trace
 import Control.Monad (void)
@@ -15,11 +15,11 @@ matchParen ls = post . parse (parens <* eof) ""  where
 
   paren = oneOf' . map eachParen $ ls
 
-  eachParen (open, close) = Paren open close <$> (string open *> parens <* string close)
+  eachParen (open, close) = Paren open close <$> (string open *> parens <* string close) <?> open ++ " ... " ++ close
 
-  nonParen = NonParen <$> manyTill anyChar parenMark
+  nonParen = NonParen <$> manyTill' anyChar parenMark <?> "non-parenthesis characters"
 
-  parenMark = oneOf' . map string . concatMap (\(a, b) -> [a, b]) $ ls
+  parenMark = (oneOf' . map string . concatMap (\(a, b) -> [a, b]) $ ls) <?> "parenthesis marks"
 
 post = \case
   Right n -> Right $ trim n
@@ -69,7 +69,7 @@ onError f = \case
   Left e -> show e
   Right ls -> f ls
 
-manyTill p end = scan
+manyTill' p end = scan
   where
     scan  = do{ lookAhead (try $ void end) <|> eof; return [] }
             <|>

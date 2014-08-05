@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, OverlappingInstances, FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, FunctionalDependencies #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -6,7 +6,7 @@ import System.Console.GetOpt
 import Data.List
 import Data.Maybe
 import Data.Char (chr)
-import Debug.Trace (traceShow)
+-- import Debug.Trace (traceShow)
 import Numeric (readOct)
 import Text.Printf (printf)
 import Data.String.Utils (strip, replace)
@@ -152,7 +152,7 @@ getLemmaCmd s = do
   return $ LemmaCmd $ Lemma name $ Equation lhs rhs
 
 getInCommentCmd s = do
-  _ : opts : c : _ <- s =~~ "\\(\\*(![-n]*)(.*)\\*\\)"
+  _ : opts : c : _ <- s =~~ "\\(\\*(![-n]*)(.*?)\\*\\)"
   return $ InCommentCmd (parseInCommentOpts opts, c)
 
 parseInCommentOpts s = concat [
@@ -464,6 +464,6 @@ class Monad m => ReadOnly s m | m -> s where
 instance MonadState s m => ReadOnly s m where
   get = Control.Monad.State.get
   
-p x = traceShow x x
+-- p x = traceShow x x
 
-pf f x = traceShow (f x) x
+-- pf f x = traceShow (f x) x
