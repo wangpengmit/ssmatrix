@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, FunctionalDependencies, RankNTypes #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -81,16 +81,14 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-tellOut :: CanWriteOut w m n => w -> m ()
+type CanWriteOut w m a =  forall n . (Monad m, Contains m Out n, MonadWriter w n) => a
+type CanWriteErr w m a =  forall n . (Monad m, Contains m Err n, MonadWriter w n) => a
+
+tellOut :: CanWriteOut w m (w -> m ())
 tellOut = ttell Out
 
-tellErr :: CanWriteErr w m n => w -> m ()
+tellErr :: CanWriteErr w m (w -> m ())
 tellErr = ttell Err
-
-class (Monad m, Contains m Out n, MonadWriter w n) => CanWriteOut w m n
-instance (Monad m, Contains m Out n, MonadWriter w n) => CanWriteOut w m n
-class (Monad m, Contains m Err n, MonadWriter w n) => CanWriteErr w m n
-instance (Monad m, Contains m Err n, MonadWriter w n) => CanWriteErr w m n
 
 data Out = Out
 data Err = Err
@@ -124,7 +122,7 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 -- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: CanWriteErr [String] m n => [String] -> m [Cmd]
+getCmds :: CanWriteErr [String] m ([String] -> m [Cmd])
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -173,7 +171,7 @@ runInCommentCmd (opts, s) = do
   s <- chainM texCmds s
   when (not $ elem NoPrint opts) $ printComment (not $ elem NoSub opts) s
 
-printComment :: (ReadOnly St m, CanWriteOut [String] m n) => Bool -> String -> m ()
+printComment :: ReadOnly St m => CanWriteOut [String] m (Bool -> String -> m ())
 printComment isSub s = do
   s <- if isSub then do
          -- string substitution using rules registered on-the-fly
