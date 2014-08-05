@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, FunctionalDependencies, RankNTypes #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, FunctionalDependencies, Rank2Types #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -81,8 +81,8 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-type CanWriteOut w m a =  forall n . (Monad m, Contains m Out n, MonadWriter w n) => a
-type CanWriteErr w m a =  forall n . (Monad m, Contains m Err n, MonadWriter w n) => a
+type CanWriteOut w m a =  (Monad m, Contains m Out n, MonadWriter w n) => a
+type CanWriteErr w m a =  (Monad m, Contains m Err n, MonadWriter w n) => a
 
 tellOut :: CanWriteOut w m (w -> m ())
 tellOut = ttell Out
