@@ -23,13 +23,13 @@ instance Functor m => Functor (TagT tag m) where
   fmap f = TagT . fmap f . runTag
 
 -- monad transformer stack n contains monad m with tag t
-class Contains (n :: * -> *) t (m :: * -> *) | n t -> m where
-   liftFrom :: t -> m a -> n a
+class Contains (m :: * -> *) t (n :: * -> *) | m t -> n where
+   liftFrom :: t -> n a -> m a
 
-instance (Monad n, n ~ m) => Contains (TagT tag n) tag m where
+instance (Monad m, m ~ n) => Contains (TagT tag m) tag n where
    liftFrom _ x = lift x
 
-instance (MonadTrans t, Monad n, Contains n tag m) => Contains (t n) tag m where
+instance (MonadTrans t, Monad m, Contains m tag n) => Contains (t m) tag n where
    liftFrom tag x = lift (liftFrom tag x)
 
 type TStateT tag s m = TagT tag (StateT s m)

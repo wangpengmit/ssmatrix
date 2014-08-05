@@ -14,7 +14,7 @@ import Text.Regex.PCRE
 import Data.Array (elems)
 import Control.Monad ((>=>), when, (<=<), liftM)
 import Control.Monad.Writer (runWriter, tell, Writer, MonadWriter)
-import Control.Monad.State (runStateT, get, put, modify, runState, StateT)
+import Control.Monad.State (runStateT, put, modify, runState, StateT, MonadState)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
@@ -24,6 +24,7 @@ import MatchParen (matchParen, original, Paren(..))
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Identity (Identity)
 import Tag
+import qualified Control.Monad.State as S (get)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -80,16 +81,16 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-tellOut :: CanWriteOut w n m => w -> n ()
+tellOut :: CanWriteOut w m n => w -> m ()
 tellOut = ttell Out
 
-tellErr :: CanWriteErr w n m => w -> n ()
+tellErr :: CanWriteErr w m n => w -> m ()
 tellErr = ttell Err
 
-class (Monad n, Contains n Out m, MonadWriter w m) => CanWriteOut w n m
-instance (Monad n, Contains n Out m, MonadWriter w m) => CanWriteOut w n m
-class (Monad n, Contains n Err m, MonadWriter w m) => CanWriteErr w n m
-instance (Monad n, Contains n Err m, MonadWriter w m) => CanWriteErr w n m
+class (Monad m, Contains m Out n, MonadWriter w n) => CanWriteOut w m n
+instance (Monad m, Contains m Out n, MonadWriter w n) => CanWriteOut w m n
+class (Monad m, Contains m Err n, MonadWriter w n) => CanWriteErr w m n
+instance (Monad m, Contains m Err n, MonadWriter w n) => CanWriteErr w m n
 
 data Out = Out
 data Err = Err
@@ -123,7 +124,7 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 -- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: CanWriteErr [String] n m => [String] -> n [Cmd]
+getCmds :: CanWriteErr [String] m n => [String] -> m [Cmd]
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -213,8 +214,15 @@ addRule a b = do
   put st{ rules = rules st ++ [(a, b)] }
 
 -- replace \coqVar{...} with corresponding value according to vars
+texVar :: CanReadState St m => String -> m String
 texVar = chainM $ map (uncurry subVar) vars
 
+class Monad m => CanReadState s m where
+  get :: m s
+
+instance MonadState s m => CanReadState s m where
+  get = S.get
+  
 vars = [
   ("name", name . lemma),
   ("from", lhs . equation . lemma),
@@ -223,6 +231,7 @@ vars = [
   ("rhs", rhs . subgoal)
   ]
 
+subVar :: CanReadState St m => String -> (St -> String) -> String -> m String
 subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
 
 varTag name =  printf "\\\\coqVar{%s}" name
