@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE LambdaCase, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, OverlappingInstances, FunctionalDependencies #-}
 import System.IO 
 import System.Environment (getArgs)
 import System.Exit
@@ -14,7 +14,8 @@ import Text.Regex.PCRE
 import Data.Array (elems)
 import Control.Monad ((>=>), when, (<=<), liftM)
 import Control.Monad.Writer (runWriter, tell, Writer, MonadWriter)
-import Control.Monad.State (runStateT, put, modify, runState, StateT, MonadState)
+import Control.Monad.State (runStateT, modify, runState, StateT, MonadState, put)
+import qualified Control.Monad.State (get)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
 import Data.Monoid
@@ -23,8 +24,7 @@ import Data.Function (on)
 import MatchParen (matchParen, original, Paren(..))
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Identity (Identity)
-import Tag
-import qualified Control.Monad.State as S (get)
+import Tag (TWriterT, TWriter, ttell, Contains, runTWriter, runTWriterT)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -171,15 +171,18 @@ runLemmaCmd c = modify $ \x -> x {lemma = c}
 runInCommentCmd (opts, s) = do
   -- run builtin \coqXXX commands
   s <- chainM texCmds s
-  when (not $ elem NoPrint opts) $ do
-    s <- if not $ elem NoSub opts then do
-           -- string substitution using rules registered on-the-fly
-           rules <- getRules
-           return . chain (map (uncurry subC) rules) $ s
-         else
-           return s
-    s <- return $ texLocalSub s
-    tellOut . singleton $ s
+  when (not $ elem NoPrint opts) $ printComment (not $ elem NoSub opts) s
+
+printComment :: (ReadOnly St m, CanWriteOut [String] m n) => Bool -> String -> m ()
+printComment isSub s = do
+  s <- if isSub then do
+         -- string substitution using rules registered on-the-fly
+         rules <- getRules
+         return . chain (map (uncurry subC) rules) $ s
+       else
+         return s
+  s <- return $ texLocalSub s
+  tellOut . singleton $ s
 
 texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern $ \(_ : r : s : body : _) -> sub r s body
 
@@ -205,6 +208,7 @@ subPattern = format "/({0})/({0})/" [subPatternContent]
 
 subPatternContent = "(?:[^/]|\\/)*?"
 
+getRules :: ReadOnly St m => m [(Regex, String)]
 getRules = do
   St {rules = rules} <- get
   return rules
@@ -214,15 +218,9 @@ addRule a b = do
   put st{ rules = rules st ++ [(a, b)] }
 
 -- replace \coqVar{...} with corresponding value according to vars
-texVar :: CanReadState St m => String -> m String
+texVar :: ReadOnly St m => String -> m String
 texVar = chainM $ map (uncurry subVar) vars
 
-class Monad m => CanReadState s m where
-  get :: m s
-
-instance MonadState s m => CanReadState s m where
-  get = S.get
-  
 vars = [
   ("name", name . lemma),
   ("from", lhs . equation . lemma),
@@ -231,7 +229,7 @@ vars = [
   ("rhs", rhs . subgoal)
   ]
 
-subVar :: CanReadState St m => String -> (St -> String) -> String -> m String
+subVar :: ReadOnly St m => String -> (St -> String) -> String -> m String
 subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
 
 varTag name =  printf "\\\\coqVar{%s}" name
@@ -460,7 +458,12 @@ infixr 8 |><|
 
 f <$$> m = liftM f m
 
+class Monad m => ReadOnly s m | m -> s where
+  get :: m s
+
+instance MonadState s m => ReadOnly s m where
+  get = Control.Monad.State.get
+  
 p x = traceShow x x
 
 pf f x = traceShow (f x) x
-
