@@ -81,13 +81,12 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-type CanWriteOut w m a =  (Monad m, Contains m Out n, MonadWriter w n) => a
-type CanWriteErr w m a =  (Monad m, Contains m Err n, MonadWriter w n) => a
+type CanWriteTo t w m a =  (Monad m, Contains m t n, MonadWriter w n) => a
 
-tellOut :: CanWriteOut w m (w -> m ())
+tellOut :: CanWriteTo Out w m (w -> m ())
 tellOut = ttell Out
 
-tellErr :: CanWriteErr w m (w -> m ())
+tellErr :: CanWriteTo Err w m (w -> m ())
 tellErr = ttell Err
 
 data Out = Out
@@ -122,7 +121,7 @@ onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
 -- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: CanWriteErr [String] m ([String] -> m [Cmd])
+getCmds :: CanWriteTo Err [String] m ([String] -> m [Cmd])
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -171,7 +170,7 @@ runInCommentCmd (opts, s) = do
   s <- chainM texCmds s
   when (not $ elem NoPrint opts) $ printComment (not $ elem NoSub opts) s
 
-printComment :: ReadOnly St m => CanWriteOut [String] m (Bool -> String -> m ())
+printComment :: ReadOnly St m => CanWriteTo Out [String] m (Bool -> String -> m ())
 printComment isSub s = do
   s <- if isSub then do
          -- string substitution using rules registered on-the-fly
