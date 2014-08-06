@@ -195,7 +195,7 @@ texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern
 
 localSubPattern = format "\\\\coqLocalSub{0}(.*)" [subPattern]
 
-texCmds :: AllEffects m ([String -> m String])
+texCmds :: MonadState St m => WriterEffect Err m ([String -> m String])
 texCmds = [
   -- \coqAddRule{}{}
   texAddRule,
@@ -203,7 +203,7 @@ texCmds = [
   texVar
   ]
 
-texAddRule :: AllEffects m (String -> m String)
+texAddRule :: MonadState St m => WriterEffect Err m (String -> m String)
 texAddRule = subM (format "\\\\coqAddRule{0}" [subPattern]) $ 
   \(_ : ptrn : s : _) -> do
     case runEitherE $ makeRegexM ptrn of
@@ -246,7 +246,7 @@ varTag name =  printf "\\\\coqVar{%s}" name
 -- process coqtop responses
 -- currently only process the first subgoal
 
-onResp :: AllEffects m ([String] -> m ())
+onResp :: MonadState St m => [String] -> m ()
 onResp =  onSubgoal . fromMaybe "" . listToMaybe . subgoals
 
 subgoals = map unwords . filterByEqFst On . partitionByBegin beginSubgoal
