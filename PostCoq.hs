@@ -14,7 +14,7 @@ import Text.Regex.PCRE
 import Data.Array (elems)
 import Control.Monad ((>=>), when, (<=<), liftM)
 import Control.Monad.Writer (runWriter, tell, Writer, MonadWriter)
-import Control.Monad.State (runStateT, modify, runState, StateT, MonadState, put)
+import Control.Monad.State (runStateT, modify, runState, State, StateT, MonadState, put)
 import qualified Control.Monad.State (get)
 import Control.Monad.Identity (runIdentity)
 import Data.Foldable (asum)
@@ -57,13 +57,19 @@ endCoq = isInfixOf endCoqOutputStr
 
 endCoqOutputStr = "\\end{coq_output}"
 
-processRegion :: (Region, [String]) -> M ()
 processRegion (r, b) = case r of
   On -> onCoqRegion b
   Off -> tellOut b
   _ -> return ()
 
-type M = StateT St (TWriterT Out [String] (TWriter Err [String]))
+run :: St -> M a -> (String, String)
+run s = (unlines >< unlines) . getOutput . runM s
+
+runM s = flip runState s . runTWriterT . runTWriterT
+
+getOutput = (snd . fst |><| snd) . fst
+
+type M = TWriterT Out [String] (TWriterT Err [String] (State St ))
 
 data St = St {
   lemma :: Lemma,
@@ -91,12 +97,6 @@ tellErr = ttell Err
 
 data Out = Out
 data Err = Err
-
-run s = (unlines >< unlines) . getOutput . runM s
-
-runM s = runTWriter . runTWriterT . flip runStateT s
-
-getOutput = snd . fst |><| snd
 
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
