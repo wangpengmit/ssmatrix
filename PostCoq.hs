@@ -57,11 +57,6 @@ endCoq = isInfixOf endCoqOutputStr
 
 endCoqOutputStr = "\\end{coq_output}"
 
-processRegion (r, b) = case r of
-  On -> onCoqRegion b
-  Off -> tellOut b
-  _ -> return ()
-
 run :: St -> M a -> (String, String)
 run s = (unlines >< unlines) . getOutput . runM s
 
@@ -69,7 +64,7 @@ runM s = flip runState s . runTWriterT . runTWriterT
 
 getOutput = (snd . fst |><| snd) . fst
 
-type M = TWriterT Out [String] (TWriterT Err [String] (State St ))
+type M = TWriterT Out [String] (TWriterT Err [String] (State St))
 
 data St = St {
   lemma :: Lemma,
@@ -87,23 +82,38 @@ data Equation = Equation {
   rhs :: String
 } deriving (Show)
   
-type CanWriteTo t w m a =  (Monad m, Contains m t n, MonadWriter w n) => a
-
-tellOut :: CanWriteTo Out w m (w -> m ())
-tellOut = ttell Out
-
-tellErr :: CanWriteTo Err w m (w -> m ())
-tellErr = ttell Err
-
-data Out = Out
-data Err = Err
-
 initState = St {
   lemma = Lemma "*no-name*" (Equation "*no-from*" "*no-to*"),
   subgoal = (Equation "*no-lhs*" "*no-rhs*"),
   rules = []
   }
 
+{- Each function can have a subset of the following effects:
+     - write to the "Out" writer
+     - write to the "Err" writer
+     - read the state
+     - write the state
+-}
+type WriterEffect t m a =  (Monad m, Contains m t n, MonadWriter [String] n) => a
+
+type AllEffects m a = MonadState St m => WriterEffect Out m (WriterEffect Err m a)
+
+data Out = Out
+data Err = Err
+
+tellOut :: WriterEffect Out m ([String] -> m ())
+tellOut = ttell Out
+
+tellErr :: WriterEffect Err m ([String] -> m ())
+tellErr = ttell Err
+
+processRegion :: AllEffects m ((Region, [String]) -> m ())
+processRegion (r, b) = case r of
+  On -> onCoqRegion b
+  Off -> tellOut b
+  _ -> return ()
+
+onCoqRegion :: AllEffects m ([String] -> m ())
 onCoqRegion = mapM_ onConversation . conversations
 
 conversations = itemizeBeginOn . partitionByBegin beginCmd
@@ -115,13 +125,13 @@ cmdPrefix = "Coq < "
 onConversation (cmds, resp) = do
   onCmds cmds
   onResp resp
-  
+
+onCmds :: AllEffects m ([String] -> m ())
 onCmds = mapM_ runCmd <=< getCmds . map (sub cmdPrefix "")
 
 data Cmd = LemmaCmd Lemma | InCommentCmd ([InCommentOpts], String) deriving (Show)
 
--- getCmds will only have the side-effect of generating error messages, not generating output
-getCmds :: CanWriteTo Err [String] m ([String] -> m [Cmd])
+getCmds :: WriterEffect Err m ([String] -> m [Cmd])
 getCmds = return . mapMaybe getCmd . concatMap onSplit <=< splitByComment . unwords
 
 onSplit = \case
@@ -170,7 +180,7 @@ runInCommentCmd (opts, s) = do
   s <- chainM texCmds s
   when (not $ elem NoPrint opts) $ printComment (not $ elem NoSub opts) s
 
-printComment :: ReadOnly St m => CanWriteTo Out [String] m (Bool -> String -> m ())
+printComment :: ReadOnlyState St m => WriterEffect Out m (Bool -> String -> m ())
 printComment isSub s = do
   s <- if isSub then do
          -- string substitution using rules registered on-the-fly
@@ -185,6 +195,7 @@ texLocalSub = until (\s -> s =~ localSubPattern == False) $ subF localSubPattern
 
 localSubPattern = format "\\\\coqLocalSub{0}(.*)" [subPattern]
 
+texCmds :: AllEffects m ([String -> m String])
 texCmds = [
   -- \coqAddRule{}{}
   texAddRule,
@@ -192,6 +203,7 @@ texCmds = [
   texVar
   ]
 
+texAddRule :: AllEffects m (String -> m String)
 texAddRule = subM (format "\\\\coqAddRule{0}" [subPattern]) $ 
   \(_ : ptrn : s : _) -> do
     case runEitherE $ makeRegexM ptrn of
@@ -205,7 +217,7 @@ subPattern = format "/({0})/({0})/" [subPatternContent]
 
 subPatternContent = "(?:[^/]|\\/)*?"
 
-getRules :: ReadOnly St m => m [(Regex, String)]
+getRules :: ReadOnlyState St m => m [(Regex, String)]
 getRules = do
   St {rules = rules} <- get
   return rules
@@ -215,7 +227,7 @@ addRule a b = do
   put st{ rules = rules st ++ [(a, b)] }
 
 -- replace \coqVar{...} with corresponding value according to vars
-texVar :: ReadOnly St m => String -> m String
+texVar :: ReadOnlyState St m => String -> m String
 texVar = chainM $ map (uncurry subVar) vars
 
 vars = [
@@ -226,7 +238,7 @@ vars = [
   ("rhs", rhs . subgoal)
   ]
 
-subVar :: ReadOnly St m => String -> (St -> String) -> String -> m String
+subVar :: ReadOnlyState St m => String -> (St -> String) -> String -> m String
 subVar name f = subM (varTag name) $ \ _ -> get >>= return . f
 
 varTag name =  printf "\\\\coqVar{%s}" name
@@ -234,6 +246,7 @@ varTag name =  printf "\\\\coqVar{%s}" name
 -- process coqtop responses
 -- currently only process the first subgoal
 
+onResp :: AllEffects m ([String] -> m ())
 onResp =  onSubgoal . fromMaybe "" . listToMaybe . subgoals
 
 subgoals = map unwords . filterByEqFst On . partitionByBegin beginSubgoal
@@ -455,10 +468,10 @@ infixr 8 |><|
 
 f <$$> m = liftM f m
 
-class Monad m => ReadOnly s m | m -> s where
+class Monad m => ReadOnlyState s m | m -> s where
   get :: m s
 
-instance MonadState s m => ReadOnly s m where
+instance MonadState s m => ReadOnlyState s m where
   get = Control.Monad.State.get
   
 -- p x = traceShow x x
