@@ -46,6 +46,9 @@ paper: eccv_paper.pdf
 
 eccv_paper.pdf: eccv_paper.v.tex
 	pdflatex -jobname=eccv_paper eccv_paper.v.tex
+	bibtex eccv_paper
+	pdflatex -jobname=eccv_paper eccv_paper.v.tex
+	pdflatex -jobname=eccv_paper eccv_paper.v.tex
 
 eccv_paper.v.tex: eccv_paper.tex eccv_paper.coq.txt eccv_paper_appendix.coq.txt
 	./RunCoq.exe eccv_paper.tex | ./PostCoq.exe > eccv_paper.v.tex
