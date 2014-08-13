@@ -425,7 +425,57 @@ congr (_ + _); apply: eq_bigr => j _; first by rewrite row_mxEl col_mxEu.
 by rewrite row_mxEr col_mxEd.
 Qed.
 
+Ltac split_mxE := apply/matrixP=> i j; do ![rewrite mxE | case: split => ?].
+
+Lemma lscale_row_mx m n1 n2 a (A1 : 'M[V]_(m, n1)) (A2 : 'M_(m, n2)) :
+  a *ml: row_mx A1 A2 = row_mx (a *ml: A1) (a *ml: A2).
+Proof. by split_mxE. Qed.
+
+Lemma lscale_col_mx m1 m2 n a (A1 : 'M[V]_(m1, n)) (A2 : 'M_(m2, n)) :
+  a *ml: col_mx A1 A2 = col_mx (a *ml: A1) (a *ml: A2).
+Proof. by split_mxE. Qed.
+
+Lemma lscale_block_mx m1 m2 n1 n2 a (Aul : 'M[V]_(m1, n1)) (Aur : 'M_(m1, n2))
+                                   (Adl : 'M_(m2, n1)) (Adr : 'M_(m2, n2)) :
+  a *ml: block_mx Aul Aur Adl Adr
+     = block_mx (a *ml: Aul) (a *ml: Aur) (a *ml: Adl) (a *ml: Adr).
+Proof. by rewrite lscale_col_mx !lscale_row_mx. Qed.
+
 End Util.
+
+Lemma mover {V : zmodType} (a b c : V) : a + b = c -> a = c - b.
+Proof.
+  admit.
+Qed.
+
+Lemma Schur_complement {R : comUnitRingType} m1 m2 n (A : 'M[R]_m1) B BT (C : 'M_m2) (x : 'M_(m1, n)) y a b :
+  block_mx A B BT C *m col_mx x y = col_mx a b -> 
+  invertible C ->
+  BT = B^T ->
+  (A - B *m C^^-1 *m B^T) *m x = a - B *m C^^-1 *m b /\ 
+  y = C^^-1 *m (b - B^T *m x).
+Proof.
+  move => h hi hb.
+  subst.
+  rewrite mul_block_col in h.
+  apply eq_col_mx in h.
+  move: h => [h1 h2].
+  have hy: y = C^^-1 *m (b - B^T *m x).
+  rewrite addrC in h2.
+  apply mover in h2.
+  admit.  
+  split; [ | auto].
+  set goal := _ = _.
+  move: h1.
+  rewrite hy.
+  rewrite !mulmxA.
+  rewrite !mulmxBr.
+  rewrite !mulmxA.
+  rewrite [in _ - _] addrC.
+  rewrite addrA.
+  rewrite -mulmxBl.
+  by apply mover.
+Qed.
 
 Section Section4.
 
@@ -466,7 +516,6 @@ Proof.
 Qed.
 
 Variable lambda : C.
-Hypothesis h_invertible : invertible (mupinv_core lambda (~W *m ~U)).
 Notation J := (\J eps).
 Variable delta : 'cV[E]_p.
 Hypothesis Levenberg : (J^T *m J + lambda *ml: I) *m delta = -J^T *m eps.
@@ -476,35 +525,39 @@ Hypothesis UV_delta : col_mx (vec dU) (vec dV^T) = delta.
 
 Lemma JT_J_I : J^T *m J + lambda *ml: I = block_mx (~V^T *m ~W^T *m ~W *m ~V + lambda *ml: I) (~V^T *m ~W^T *m ~W *m ~U) (~U^T *m ~W^T *m ~W *m ~V) (~U^T *m ~W^T *m ~W *m ~U + lambda *ml: I).
 Proof.
-  admit.
+  set goal := RHS.
+  rewrite J_eps !raddfN /= mulNmx opprK tr_row_mx mul_col_row scalar_mx_block lscale_block_mx add_block_mx !lscalemx0 !addr0.
+  by subst goal; rewrite !trmx_mul !mulmxA.
 Qed.
 
-Lemma Schur_complement : forall {R : comUnitRingType} m1 m2 n (A : 'M[R]_m1) B BT (C : 'M_m2) (x : 'M_(m1, n)) y a b, 
-  block_mx A B BT C *m col_mx x y = col_mx a b -> 
-  invertible C ->
-  BT = B^T ->
-  (A - B *m C^^-1 *m B^T) *m x = a - B *m C^^-1 *m b /\ 
-  y = C^^-1 *m (b - B^T *m x).
+Lemma H_sym a : (H a)^T = H a.
 Proof.
-  admit.
+  by rewrite raddfB /= AmupinvA_sym trmx1.
 Qed.
+
+Hypothesis h_invertible : invertible (mupinv_core lambda (~W *m ~U)).
 
 Lemma futher_damping_U : (~V^T *m ~W^T *m H lambda *m ~W *m ~V + lambda *ml: I) *m vec dU = ~V^T *m ~W^T *m (H lambda)^T *m eps.
 Proof.
+  set goal := _ = _.
   move: Levenberg.
-  rewrite JT_J_I.
-  move => h.
-  rewrite -UV_delta in h.
-  rewrite [in J^T]J_eps in h.
-  rewrite -raddfN /= in h.
-  rewrite opprK in h.
-  rewrite tr_row_mx in h.
-  rewrite [in R in _ =  R] mul_col_mx in h.
-  pose (Schur_complement h).
+  rewrite JT_J_I -UV_delta [in J^T]J_eps -raddfN /= opprK tr_row_mx [in R in _ =  R] mul_col_mx.
+  move => h; pose (Schur_complement h).
   edestruct a as [h1 h2].
-  admit.
-  admit.
-  admit.
+  by move: h_invertible; rewrite /mupinv_core trmx_mul !mulmxA.
+  by rewrite !trmx_mul !mulmxA !trmxK.
+  clear a h h2.
+  subst goal; symmetry; set goal := RHS.
+  set goal1 := RHS in h1.
+  set from := LHS.
+  have step1: from = goal1.
+  subst from.
+  rewrite H_sym !mulmxBr mulmx1 mulmxBl unlock /mupinv /mupinv_core.
+  by subst goal1; rewrite !trmx_mul !mulmxA.
+  rewrite step1 -h1.
+  subst goal; symmetry; set goal := RHS.
+  rewrite unlock /mupinv /mupinv_core !mulmxBr mulmx1 !mulmxBl -addrA [in - _ + _]addrC addrA.
+  by subst goal; rewrite !trmx_mul !mulmxA !trmxK.
 Qed.
 
 End Section4.
