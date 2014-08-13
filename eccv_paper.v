@@ -410,3 +410,102 @@ Proof.
 Qed.
 
 End Jacobian.
+
+Section Util.
+
+Variable R : ringType.
+Variable V : lmodType R.
+
+Lemma lmul_row_col m n1 n2 p (Al : 'M[R]_(m, n1)) (Ar : 'M_(m, n2))
+                            (Bu : 'M[V]_(n1, p)) (Bd : 'M_(n2, p)) :
+  row_mx Al Ar *ml col_mx Bu Bd = Al *ml Bu + Ar *ml Bd.
+Proof.
+apply/matrixP=> i k; rewrite !mxE big_split_ord /=.
+congr (_ + _); apply: eq_bigr => j _; first by rewrite row_mxEl col_mxEu.
+by rewrite row_mxEr col_mxEd.
+Qed.
+
+End Util.
+
+Section Section4.
+
+(* All dimensions are non-zero. All matrices are non-empty. *)
+Variable m' n' r' : nat.
+Notation m := m'.+1.
+Notation n := n'.+1.
+Notation r := r'.+1.
+(* The number of free variables, which is the number of elements of U and V *)
+Notation p := (r * m + n * r)%nat.
+
+Variable C : ringType.
+Variable E : funType p C.
+Variable d : {gradient E}.
+Notation "\d" := (Gradient.apply d).
+Notation "\\d" := (map_mx \d).
+
+Variable cW cM : 'M[C]_(m, n).
+Notation W := (lift cW).
+Notation M := (lift cM).
+Variable U : 'M[E]_(m, r).
+Variable V : 'M[E]_(n, r).
+(* Now both U and V are the free variables *)
+Hypothesis UV_x : col_mx (vec U) (vec V^T) = \x.
+Notation "~W" := (diag_mx (vec W)^T).
+Notation "~U" := (I *o U).
+Notation "~V" := (V *o I).
+Notation eps := (vec (W .* (M - U *m V^T))).
+Notation H a := (I - ~W *m ~U *m (~W *m ~U)^-a).
+Notation "\J" := (Jacob \d).
+
+Lemma J_eps : \J eps = - row_mx (~W *m ~V) (~W *m ~U).
+Proof.
+  apply jacob_intro.
+  rewrite -UV_x d_eps1_UV /=.
+  symmetry; set goal := RHS.
+  by rewrite map_col_mx lmulNmx lmul_row_col addrC opprD -sub0r.
+Qed.
+
+Variable lambda : C.
+Hypothesis h_invertible : invertible (mupinv_core lambda (~W *m ~U)).
+Notation J := (\J eps).
+Variable delta : 'cV[E]_p.
+Hypothesis Levenberg : (J^T *m J + lambda *ml: I) *m delta = -J^T *m eps.
+Variable dU : 'M[E]_(m, r).
+Variable dV : 'M[E]_(n, r).
+Hypothesis UV_delta : col_mx (vec dU) (vec dV^T) = delta.
+
+Lemma JT_J_I : J^T *m J + lambda *ml: I = block_mx (~V^T *m ~W^T *m ~W *m ~V + lambda *ml: I) (~V^T *m ~W^T *m ~W *m ~U) (~U^T *m ~W^T *m ~W *m ~V) (~U^T *m ~W^T *m ~W *m ~U + lambda *ml: I).
+Proof.
+  admit.
+Qed.
+
+Lemma Schur_complement : forall {R : comUnitRingType} m1 m2 n (A : 'M[R]_m1) B BT (C : 'M_m2) (x : 'M_(m1, n)) y a b, 
+  block_mx A B BT C *m col_mx x y = col_mx a b -> 
+  invertible C ->
+  BT = B^T ->
+  (A - B *m C^^-1 *m B^T) *m x = a - B *m C^^-1 *m b /\ 
+  y = C^^-1 *m (b - B^T *m x).
+Proof.
+  admit.
+Qed.
+
+Lemma futher_damping_U : (~V^T *m ~W^T *m H lambda *m ~W *m ~V + lambda *ml: I) *m vec dU = ~V^T *m ~W^T *m (H lambda)^T *m eps.
+Proof.
+  move: Levenberg.
+  rewrite JT_J_I.
+  move => h.
+  rewrite -UV_delta in h.
+  rewrite [in J^T]J_eps in h.
+  rewrite -raddfN /= in h.
+  rewrite opprK in h.
+  rewrite tr_row_mx in h.
+  rewrite [in R in _ =  R] mul_col_mx in h.
+  pose (Schur_complement h).
+  edestruct a as [h1 h2].
+  admit.
+  admit.
+  admit.
+Qed.
+
+End Section4.
+
