@@ -1,0 +1,44 @@
+Generating PDF from Coq proofs
+
+======
+
+To generate the PDF, follow these steps:
+(1)	Install Haskell Platform: http://www.haskell.org/platform/
+(2)	Use Haskell's "cabal" package manager to install required packages:
+                     cabal update
+                     cabal install regex-pcre-builtin
+                     cabal install MissingH
+(3)	In the ssmatrix repository, build the text processing tools (RunCoq and PostCoq):
+     make tools
+(4)	Generate eccv_paper.pdf:
+     make paper
+
+Here is a quick tutorial of how to write Coq snippets inside a latex file. The easiest way is to put any Coq code between \begin{coq_example} and \end{coq_example} in a latex file, and run this command to process the latex file:
+./RunCoq input.tex | ./PostCoq > output.tex
+By default, nothing from Coq is injected into the latex file. To inject something, use this special Coq comment in the Coq code:
+   (*!  ANYTHING HERE *)
+ANYTHING HERE will be injected into the latex file.
+Typically ANYTHING HERE will be some latex commands. Three pseudo latex commands are provided to interact with Coq:
+(1)	\coqVar{VAR} : inject the value of VAR. VAR can be:
+a)	name : the name of the current lemma under proof
+b)	from : the left-hand-side (LHS) of the current lemma
+c)	to : the right-hand-side (RHS) of the current lemma
+d)	lhs : the LHS of the current subgoal
+e)	rhs : the RHS of the current subgoal
+(2)	\coqAddRule/REGEX/REPLACEMENT/ : add a substitution rule. All occurrences of (Perl-style) regular expression pattern REGEX in the following (*! ...  *) commands' outputs will be replaced by REPLACEMENT (which can have the usual \0, \1, \2, ... placeholders)
+(3)	\coqLocalSub/REGEX/REPLACEMENT/ : only do substitution in the following contents within the current (*! ... *) command. Local substitution takes effect after global substitution rules (registered by \coqAddRule).
+There are two variants of (*! ... *) :
+(1)	(*!- ... *) : silent mode. Evaluate the contents inside (such as \coqAddRule), but don't inject the contents into the latex file.
+(2)	(*!n ... *) : no-global-sub mode. Don't apply global substitution rules (still apply local substitution).
+
+Sometimes (part of) Coq code takes a long time to run, so it's wasteful to rerun the Coq code every time the latex file is edited. To solve this, we can put the Coq code in a .v file, run the Coq code and store the output in another file, and include this output file in the latex. Here is how to do this:
+(1)	Put the Coq code in a .v file, run it and save the output:
+./RunCoq input.v output.txt
+(2)	Include the saved file in the latex using this pseudo latex command:
+\coqOutput{output.txt}
+(3)	Run the same command as before to process the latex file:
+./RunCoq input.tex | ./PostCoq > output.tex
+The above steps can be organized by a build system (e.g. make), so that editing input.tex won't cause input.v to be rerun. A good practice is to put the main proof and its intertwining (*! ... *) commands in a .v file and put typesetting commands such as \coqAddRule directly inside the latex file, so that these typesetting commands can be frequently tuned without rerunning the main proof. Since all the equations are injected at a single place, you can use Latex's \def or \newcommand to give them handles to display later.
+If the above mechanisms are not enough to typeset your formula, you can use them to put a special marker around the formula and write your own text processor to locate the marker and do further processing. But usually I found tweaking Coq notations is a better way.
+
+See eccv_paper.tex, eccv_paper_tex.v and Makefile in the ssmatrix repository for a complete example.
