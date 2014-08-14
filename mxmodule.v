@@ -333,6 +333,31 @@ Proof. by rewrite lmulmxDr lmulmxN. Qed.
 Lemma lmulmx1Br m n (A : 'M_m) (B : 'M[V]_(m,n)) : (I - A) *ml B = B - A *ml B.
 Proof. by rewrite lmulmxBl lmul1mx. Qed.
 
+Lemma lmul_row_col m n1 n2 p (Al : 'M[R]_(m, n1)) (Ar : 'M_(m, n2))
+                            (Bu : 'M[V]_(n1, p)) (Bd : 'M_(n2, p)) :
+  row_mx Al Ar *ml col_mx Bu Bd = Al *ml Bu + Ar *ml Bd.
+Proof.
+apply/matrixP=> i k; rewrite !mxE big_split_ord /=.
+congr (_ + _); apply: eq_bigr => j _; first by rewrite row_mxEl col_mxEu.
+by rewrite row_mxEr col_mxEd.
+Qed.
+
+Ltac split_mxE := apply/matrixP=> i j; do ![rewrite mxE | case: split => ?].
+
+Lemma lscale_row_mx m n1 n2 a (A1 : 'M[V]_(m, n1)) (A2 : 'M_(m, n2)) :
+  a *ml: row_mx A1 A2 = row_mx (a *ml: A1) (a *ml: A2).
+Proof. by split_mxE. Qed.
+
+Lemma lscale_col_mx m1 m2 n a (A1 : 'M[V]_(m1, n)) (A2 : 'M_(m2, n)) :
+  a *ml: col_mx A1 A2 = col_mx (a *ml: A1) (a *ml: A2).
+Proof. by split_mxE. Qed.
+
+Lemma lscale_block_mx m1 m2 n1 n2 a (Aul : 'M[V]_(m1, n1)) (Aur : 'M_(m1, n2))
+                                   (Adl : 'M_(m2, n1)) (Adr : 'M_(m2, n2)) :
+  a *ml: block_mx Aul Aur Adl Adr
+     = block_mx (a *ml: Aul) (a *ml: Aur) (a *ml: Adl) (a *ml: Adr).
+Proof. by rewrite lscale_col_mx !lscale_row_mx. Qed.
+
 (* Since matrix.v already registered matrix_lmodType for (matrix, Lmodule.sort), here we use a tag to register lmul_lmodType for (mtag, Lmodule.sort) *)
 Definition mtag M : Type := M.
 Local Notation "M ^m" := (mtag M) (at level 8, format "M ^m") : type_scope.

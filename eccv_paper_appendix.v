@@ -139,6 +139,43 @@ Qed.
 
 End Appendix.
 
+Lemma mover {V : zmodType} (a b c : V) : a + b = c -> a = c - b.
+Proof.
+  by move => h; apply (addIr b); rewrite addrNK.
+Qed.
+
+Lemma moveinvmx {R : comUnitRingType} m n A (B : 'M[R]_(m,n)) C : invertible A -> A *m B = C -> B = A^^-1 *m C.
+Proof.
+  by move => hi h; rewrite -h (mulKmx hi).
+Qed.
+
+Ltac right_first name :=
+  match goal with
+    | |- _ /\ ?R => have name: R; [ | split; [ | auto ] ]
+  end.
+
+Lemma Schur_complement {R : comUnitRingType} m1 m2 n (A : 'M[R]_m1) B BT (C : 'M_m2) (x : 'M_(m1, n)) y a b :
+  block_mx A B BT C *m col_mx x y = col_mx a b -> 
+  invertible C ->
+  BT = B^T ->
+  (A - B *m C^^-1 *m B^T) *m x = a - B *m C^^-1 *m b /\ 
+  y = C^^-1 *m (b - B^T *m x).
+Proof.
+  move => h hi hb.
+  subst.
+  rewrite mul_block_col in h.
+  apply eq_col_mx in h.
+  move: h => [h1 h2].
+  right_first hy.
+  rewrite addrC in h2.
+  apply mover in h2.
+  by apply (moveinvmx hi).
+  set goal := _ = _.
+  move: h1.
+  rewrite hy !mulmxA !mulmxBr !mulmxA [in _ - _] addrC addrA -mulmxBl.
+  by apply mover.
+Qed.
+
 Module Notations.
 
 Notation "A ^- u" := (mupinv u A) : ring_scope.
