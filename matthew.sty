@@ -1,0 +1,36 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{Source Code}[2005/09/14 Hack to make listings package a bit nicer]
+\RequirePackage{verbatim}
+\RequirePackage{listings}
+
+
+\newcounter{sourcefile}
+\renewcommand{\thesourcefile}{Code\arabic{sourcefile}}
+\newwrite \alan@out
+
+\newcommand{\sourceenvironment}[3]{%
+  \sourceenvironmenttrick{#1}{#2\displaysource#3}%
+}
+
+\newcommand{\displaysource}{\lstinputlisting{\thesourcefile.src}}
+
+\newcommand{\sourceenvironmenttrick}[2]{%
+  \newenvironment{#1}{%
+    \@bsphack%
+    \begingroup%
+    \@bsphack%
+    \addtocounter{sourcefile}{1}%
+    \immediate\openout \alan@out \thesourcefile.src%
+    \let\do\@makeother\dospecials%
+    \catcode`\^^M\active \catcode`\^^I=12%
+    \def\verbatim@processline{%
+      \immediate\write\alan@out%
+	  {\the\verbatim@line}}%
+    \verbatim@start%
+  }{%
+    \immediate\closeout\alan@out%
+    \@esphack%
+    \endgroup%
+    #2%
+    \@esphack%
+}}
