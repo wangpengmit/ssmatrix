@@ -1,0 +1,48 @@
+{\color[rgb]{0.500000,0.500000,0.500000}\documentclass[10pt]{article}
+\usepackage[usenames]{color} %used for font color
+\usepackage{amssymb} %maths
+\usepackage{amsmath} %maths
+\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
+\def\vec{\operatorname{vec}}
+\def\A{\mathbf{A}}
+\def\B{\mathbf{B}}
+\def\C{\mathbf{C}}
+\def\v{\mathbf{v}}
+\def\x{\mathbf{x}}
+\def\J{\mathbf{J}}
+\def\u{\mathbf{u}}
+\def\d{\operatorname{d}\!}
+\def\der#1#2{\frac{\d}{\d#2}#1}
+\def\pder#1#2{{\partial#1}/{\partial#2}}
+\def\flatten#1{\lfloor#1\rfloor}}
+
+%\tilde{\mathtt W}^\top
+%% \vec(\A \B \C)=(\C^\top\otimes\A)\vec(\B)
+%% \forall f, \A.\;\operatorname{lin\_mx}(f) \cdot \vec(\A) = \vec(f(\A))
+%%Let $f_{\A,\B}(\C)\equiv\A^\top \C \B$,
+%%then we can define $\A\otimes\B\equiv\operatorname{lin\_mx}(f_{\A,\B})$
+%%\der{\v(\x)}{\x}\equiv\J(\v)
+%%\der{(\u\v)}{\x}=\der{\u}{\x} \cdot \v + \u \cdot \der{\v}{\x}
+%\d\A\equiv\begin{bmatrix}
+%  \d a_{11} & \d a_{12} & \cdots\\
+%  \d a_{21} & \cdots & \cdots \\
+%  \cdots & \cdots & \cdots
+% \end{bmatrix}
+%\forall \A.\;\d\v(\x)=\A\d\x\to \A=\J(\v)
+%\d\;(ab)=\d a \cdot b + a \cdot \d b
+%\d a^{-1}=-a^{-1}\cdot\d a \cdot a^{-1}
+%\d\;(a+b)=\d a + \d b
+%\d\;(ka) = k\d a
+%\d\;(k_1 a + k_2 b) = k_1 \d a + k_2 \d b
+%\d f \equiv f'
+%\d f \equiv \nabla f
+%\nabla
+%'\;:\;F_1 \to F_1
+%\nabla\;:\;F_n \to (F_n)^n
+%\nabla f(x,y,z)\equiv\begin{bmatrix}\pder{f}{x}\\ \pder{f}{y}\\ \pder{f}{z}\end{bmatrix}
+%R\equiv F_n
+%D\equiv (F_n)^n
+%\d a \equiv (\nabla a)^\top
+%\J(\v)\equiv\J(\begin{bmatrix}a_1\\a_2\\ \vdots \\a_m\end{bmatrix})\equiv\begin{bmatrix}(\nabla a_1)^\top\\ (\nabla a_2)^\top\\ \vdots\\(\nabla a_m)^\top\end{bmatrix}\equiv\begin{bmatrix}\d a_1\\ \d a_2 \\ \vdots \\ \d a_m \end{bmatrix}\equiv\flatten{\d\v}
+%\forall \A.\;\d\v=\A\d\x\to \A=\J(\v)
+\d\v=\A\d\x\to\flatten{\d\v}=\A\flatten{\d\x}\to\J(\v)=\A\cdot\J(\x)
