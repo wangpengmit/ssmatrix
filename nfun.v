@@ -336,5 +336,89 @@ Qed.
 
 End GradientTheory.
 
+Lemma scalar_mxE {R : ringType} n (a : R) (i : 'I_n) : a%:M i i = a.
+Proof.
+  by rewrite !mxE eqxx.
+Qed.
+
+Section Hessian.
+
+Variables (n : nat) (R : ringType) (E : funType n R) (der : {gradient E}). 
+Notation "\d" := (Gradient.apply der).
+Notation J := (Jacob \d).
+Notation "\\d" := (map_mx \d).
+
+Definition Hessian f := J (\d f)^T.
+
+Lemma fold_Hessian f : J (\d f)^T = Hessian f.
+Proof. by []. Qed.
+
+(* Generalized Hessian *)
+Definition GHessian m (v : 'cV_m) := \\d (J v)^T.
+
+Lemma fold_GHessian m (v : 'cV_m) : \\d (J v)^T = GHessian v.
+Proof. by []. Qed.
+
+Lemma GHessian_Hessian f : flatten_mx (GHessian f%:M) = Hessian f.
+Proof.
+  by rewrite /GHessian /Hessian /Jacob flatten_mx11 map_mxE scalar_mxE.
+Qed.
+
+Notation H := Hessian.
+Notation GH := GHessian.
+
+Notation "A \\\o v" := (map_mx (map_mx (compose ^~ v)) A) (at level 50).
+
+Require Import mxdiff.
+
+Notation "[ x ]" := (@scalar_mx _ 1 x).
+
+Lemma jacob_single f : J [f] = \d f.
+Proof.
+  by rewrite /Jacob flatten_mx11 !mxE eqxx.
+Qed.
+
+Lemma compose_single (f : E) v : [f \o v] = [f] \\o v.
+Proof.
+  admit.
+Qed.
+
+Lemma ghessian_chain f v : GH [f \o v] = GH v *mr (\d f \\o v)^T + ((J v)^T *m (H f \\o v)) *ml \\d v.
+Proof.
+  set goal := RHS.
+  rewrite compose_single.
+  rewrite /GHessian.
+  rewrite jacob_chain.
+  rewrite trmx_mul.
+  rewrite dmM /=.
+  rewrite !fold_GHessian.
+  rewrite map_trmx.
+  rewrite jacob_chain2.
+  rewrite !lmulmxA.
+  rewrite jacob_single.
+  rewrite -/Hessian.
+  rewrite !fold_Hessian.
+  rewrite -map_trmx.
+  by [].
+Qed.
+
+Lemma hessian_chain f v xxx : H (f \o v) = xxx.
+Proof.
+  set goal := RHS.
+  rewrite -GHessian_Hessian.
+  rewrite ghessian_chain.
+Lemma flattenD : forall {V : zmodType} m n A B, flatten_mx (A + B) = flatten_mx A + flatten_mx B :> 'M[V]_(m, n).
+Proof.
+  admit.
+Qed.
+  rewrite flattenD.
+  rewrite flatten_lmul.
+Lemma fold_Jacob : forall m (v : 'cV_m), flatten_mx (\\d v) = J v.
+Proof.
+  by [].
+Qed.
+  rewrite !fold_Jacob.
+  rewrite flatten_rmul.
+
 Export Fun.Exports.
 Export Gradient.Exports.
