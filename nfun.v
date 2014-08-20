@@ -340,7 +340,7 @@ Lemma scalar_mxE {R : ringType} n (a : R) (i : 'I_n) : a%:M i i = a.
 Proof.
   by rewrite !mxE eqxx.
 Qed.
-
+(*
 Section Hessian.
 
 Variables (n : nat) (R : ringType) (E : funType n R) (der : {gradient E}). 
@@ -419,6 +419,7 @@ Proof.
 Qed.
   rewrite !fold_Jacob.
   rewrite flatten_rmul.
+*)
 
 Export Fun.Exports.
 Export Gradient.Exports.
