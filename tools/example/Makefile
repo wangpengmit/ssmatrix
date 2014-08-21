@@ -5,8 +5,8 @@
 TOOLS := ..
 THEORIES := ../../theories
 THEORY := $(THEORIES)/example.vo
-RUNCOQ := $(TOOLS)/RunCoq -f "-I $(THEORIES)"
-POSTCOQ := $(TOOLS)/PostCoq
+RUNCOQ := $(TOOLS)/RunCoq.exe -f "-I $(THEORIES)"
+POSTCOQ := $(TOOLS)/PostCoq.exe
 
 paper: example.pdf
 

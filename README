@@ -1,0 +1,13 @@
+	Coq formalization of matrix differentiation and tools to generate latex from Coq proof
+
+=============
+
+	Peng Wang (wangp.thu@gmail.com)
+
+=============
+
+Folder structure:
+
+  theories: Coq formalization of matrix differentiation
+  tools: tools to generate latex from Coq proof (see tools/README)
+  tools/example: a whole example of using the tools to generate a PDF paper
