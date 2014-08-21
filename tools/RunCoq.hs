@@ -15,7 +15,8 @@ import System.Exit
 import System.Environment (getArgs)
 import Data.String.Utils (strip)
 import Control.Monad.Trans.Maybe
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe, isNothing, mapMaybe)
+import Format (format)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -30,7 +31,7 @@ main = do
     else
       let config = if elem Tex options || isSuffixOf ".tex" fin then texRegionConfig else vRegionConfig in
       regionSub hIn hOut config $ elem Verbose options
-  flip runContT return $ (lift $ getPromptGenerator) >>= cmain
+  flip runContT return $ (lift $ getPromptGenerator (getCoqFlags options)) >>= cmain
   hClose hIn
   hClose hOut
 
@@ -144,8 +145,9 @@ endCoq = isInfixOf "\\end{coq_eval}"
 endCoqCmd = isInfixOf "\\end{coq_example*}"
 endCoqCmdResp = isInfixOf "\\end{coq_example}"
 
-getPromptGenerator = do                                                    
-    (toCoq, fromCoq, _, handleCoq) <- liftIO $ runInteractiveCommand "coqtop 2>&1"
+getPromptGenerator flags = do
+    let coqcmd = format "coqtop {0} 2>&1" [flags]
+    (toCoq, fromCoq, _, handleCoq) <- liftIO $ runInteractiveCommand coqcmd
     -- (toCoq, fromCoq, _, handleCoq) <- liftIO $ runInteractiveCommand "coqtop -emacs 2>&1"
     mapM_ (liftIO . flip hSetBinaryMode True) [toCoq, fromCoq]             
     liftIO $ hSetBuffering toCoq NoBuffering
@@ -173,13 +175,14 @@ waitPrompt g onNonPrompt =
 
 -- commandline interface
 
-data Flag = Help | Interactive | Echo | Tex | Verbose
+data Flag = Help | Interactive | Echo | Tex | Verbose | CoqFlag String
             deriving (Eq)
                    
 flags = [
  Option ['i'] ["interact"] (NoArg Interactive) "Run interactive mode",
  Option ['e'] ["echo"] (NoArg Echo) "Echo command in interactive mode",
  Option ['v'] ["verbose"] (NoArg Verbose) "Verbose mode, print more information",
+ Option ['f'] ["flags"] (ReqArg CoqFlag "FLAGS") "coqtop flags",
  Option ['t'] ["tex"] (NoArg Tex) "Run Coq in regions delimited by \\begin{coq_example}, \\begin{coq_example*} or \\begin{coq_eval} (and corresponding \\end{...} tags), and replace them with Coq responses surrounded by \\begin{coq_output} and \\end{coq_output}. This mode will be automatically chosen if the input file name ends with .tex",
  Option ['h'] ["help"] (NoArg Help) "Print this help message"
  ]
@@ -195,6 +198,12 @@ parseOpt argv = case getOpt Permute flags argv of
     exitWith (ExitFailure 1)
 
 usage = usageInfo "Usage: PostCoqTex [-h] [input file] [output file]\nInput (output) file name can be -, indicating stdin (stdout)" flags
+
+getCoqFlags = unwords . mapMaybe getFlag
+
+getFlag = \case
+  CoqFlag f -> Just f
+  _ -> Nothing
 
 -- utilitites
 

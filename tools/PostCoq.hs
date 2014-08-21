@@ -25,6 +25,7 @@ import MatchParen (matchParen, original, Paren(..))
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Identity (Identity)
 import Tag (TWriterT, TWriter, ttell, Contains, runTWriter, runTWriterT)
+import Format (format)
 
 main = do
   (options, fs) <- getArgs >>= parseOpt
@@ -449,12 +450,6 @@ newtype EndoM m a = EndoM { appEndoM :: a -> m a}
 instance Monad m => Monoid (EndoM m a) where
   mempty = EndoM return
   EndoM f `mappend` EndoM g = EndoM (f >=> g)
-
-format a b = doFormat a (0::Int,b)
-    where
-    doFormat a (_,[]) = a
-    doFormat a (n,(b:bs)) = replace (old n) b a `doFormat` (n+1,bs)
-    old n = "{" ++ show n ++ "}"
 
 -- a Monad instance for Either where fail = Left
 type EitherE e = ErrorT e Identity
