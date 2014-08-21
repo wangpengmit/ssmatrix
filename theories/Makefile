@@ -7,7 +7,6 @@ MODULES := \
 	nfun \
 	eccv_paper_appendix \
 	eccv_paper \
-	prelude \
 
 VS      := $(MODULES:%=%.v)
 

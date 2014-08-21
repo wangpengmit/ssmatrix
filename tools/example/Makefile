@@ -2,8 +2,8 @@
 
 .PHONY: paper clean_paper
 
-TOOLS := ../tools
-THEORIES := ..
+TOOLS := ..
+THEORIES := ../../theories
 THEORY := $(THEORIES)/eccv_paper.vo
 RUNCOQ := $(TOOLS)/RunCoq -f "-I $(THEORIES)"
 POSTCOQ := $(TOOLS)/PostCoq
