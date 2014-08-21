@@ -107,12 +107,13 @@ Section ClassDef.
 (* maximum arity (number of formal variables) of each function *)
 Variable n : nat.
 
-Record mixin_of (T : Type) := Mixin {
+Record mixin_of (T : ringType) := Mixin {
   (* base variables: x_1, x_2, ..., x_n *)
   arg : 'cV[T]_n;
   (* parallel compose/bind/subst/apply. 
      It is easier to define sequential substitution by parallel substitution, than the other way around. *)
-  compose : T -> 'cV[T]_n -> T
+  catcompose : 'cV[T]_n -> T -> T;
+  _ : forall v, rmorphism (catcompose v)
 }.
 
 (* the underlying ring for constant values *)
@@ -120,7 +121,7 @@ Variable R : ringType.
 
 Record class_of T := Class {
   base : UnitComAlgebra.class_of R T; 
-  mixin : mixin_of T
+  mixin : mixin_of (Ring.Pack base T)
 }.
 
 Local Coercion base : class_of >-> UnitComAlgebra.class_of.
@@ -132,7 +133,7 @@ Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
 Let xT := let: Pack T _ _ := cT in T.
 Notation xclass := (class : class_of xT).
 
-Definition pack (m0 : mixin_of T) :=
+Definition pack b0 (m0 : mixin_of (@Ring.Pack T b0 T)) :=
   fun bT b & phant_id (@UnitAlgebra.class R phR bT) b =>
   fun m & phant_id m0 m => Pack (Phant R) (@Class T b m) T.
 
@@ -176,7 +177,7 @@ Canonical comRingType.
 Canonical comUnitRingType.
 
 Notation funType n R := (type n (Phant R)).
-Notation FunType n R T a := (@pack n _ (Phant R) T a _ _ id _ id).
+Notation FunType n R T a := (@pack n _ (Phant R) T _ a _ _ id _ id).
 Notation FunMixin := Mixin.
 
 End Exports.
@@ -188,11 +189,28 @@ Definition basis n (R : ringType) (E : funType n R) := Fun.arg E.
 Notation "\x" := (basis _) : ring_scope.
 Definition arg n (R : ringType) (E : funType n R) i := basis E i 0.
 Notation "'\x_' i" := (arg _ i) (at level 0, format "'\x_' i") : ring_scope.
-Definition compose {n} {R : ringType} {E : funType n R} := Fun.compose E.
-Notation "f \o v" := (compose f v) : ring_scope.
+Definition catcompose {n} {R : ringType} {E : funType n R} := Fun.catcompose E.
+Notation "v \; f" := (catcompose v f) : ring_scope.
+Notation "f \o v" := (catcompose v f) : ring_scope.
 (* induced composition for a matrix of functions *)
-Notation "A \\o v" := (map_mx (compose ^~ v) A) (at level 50).
+Notation "v \\; A" := (map_mx (catcompose v) A) (at level 50).
+Notation "A \\o v" := (map_mx (catcompose v) A) (at level 50).
 
+Section FunTheory.
+
+Variable n : nat.
+Variable R : ringType.
+Variable E : funType n R.
+Variable v : 'cV[E]_n.
+
+Lemma catcompose_is_rmorphism : rmorphism (catcompose v).
+Proof.
+  by case: E v => ? [] ? [].
+Qed.
+
+Canonical catcompose_rmorphism := RMorphism catcompose_is_rmorphism.
+
+End FunTheory.
 
 (* Gradient: a derivation operator defined by the partial derivatives *)
 Module Gradient.
@@ -340,7 +358,12 @@ Lemma scalar_mxE {R : ringType} n (a : R) (i : 'I_n) : a%:M i i = a.
 Proof.
   by rewrite !mxE eqxx.
 Qed.
-(*
+
+Lemma flattenD {V : zmodType} m n A B : flatten_mx (A + B) = flatten_mx A + flatten_mx B :> 'M[V]_(m, n).
+Proof.
+  by apply/matrixP => i j; rewrite !mxE.
+Qed.
+
 Section Hessian.
 
 Variables (n : nat) (R : ringType) (E : funType n R) (der : {gradient E}). 
@@ -367,7 +390,7 @@ Qed.
 Notation H := Hessian.
 Notation GH := GHessian.
 
-Notation "A \\\o v" := (map_mx (map_mx (compose ^~ v)) A) (at level 50).
+Notation "A \\\o v" := (map_mx (map_mx (catcompose v)) A) (at level 50).
 
 Require Import mxdiff.
 
@@ -378,15 +401,15 @@ Proof.
   by rewrite /Jacob flatten_mx11 !mxE eqxx.
 Qed.
 
-Lemma compose_single (f : E) v : [f \o v] = [f] \\o v.
+Lemma fold_Jacob : forall m (v : 'cV_m), flatten_mx (\\d v) = J v.
 Proof.
-  admit.
+  by [].
 Qed.
 
 Lemma ghessian_chain f v : GH [f \o v] = GH v *mr (\d f \\o v)^T + ((J v)^T *m (H f \\o v)) *ml \\d v.
 Proof.
   set goal := RHS.
-  rewrite compose_single.
+  rewrite -map_scalar_mx /=.
   rewrite /GHessian.
   rewrite jacob_chain.
   rewrite trmx_mul.
@@ -402,24 +425,18 @@ Proof.
   by [].
 Qed.
 
-Lemma hessian_chain f v xxx : H (f \o v) = xxx.
+Lemma hessian_chain f v : H (f \o v) = flatten_mx (GH v *mr (\d f \\o v)^T) + (J v)^T *m (H f \\o v) *m J v.
 Proof.
   set goal := RHS.
   rewrite -GHessian_Hessian.
   rewrite ghessian_chain.
-Lemma flattenD : forall {V : zmodType} m n A B, flatten_mx (A + B) = flatten_mx A + flatten_mx B :> 'M[V]_(m, n).
-Proof.
-  admit.
-Qed.
   rewrite flattenD.
   rewrite flatten_lmul.
-Lemma fold_Jacob : forall m (v : 'cV_m), flatten_mx (\\d v) = J v.
-Proof.
+  rewrite !fold_Jacob.
   by [].
 Qed.
-  rewrite !fold_Jacob.
-  rewrite flatten_rmul.
-*)
+
+End Hessian.
 
 Export Fun.Exports.
 Export Gradient.Exports.
