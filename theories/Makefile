@@ -5,8 +5,8 @@ MODULES := \
 	mxmodule \
 	mxdiff \
 	nfun \
-	eccv_paper_appendix \
-	eccv_paper \
+	example_appendix \
+	example \
 
 VS      := $(MODULES:%=%.v)
 

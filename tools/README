@@ -10,7 +10,7 @@ To generate the PDF, follow these steps:
                      cabal install MissingH
 (3)	In the ssmatrix repository, build the text processing tools (RunCoq and PostCoq):
      make tools
-(4)	Generate eccv_paper.pdf:
+(4)	Generate example.pdf:
      make paper
 
 Here is a quick tutorial of how to write Coq snippets inside a latex file. The easiest way is to put any Coq code between \begin{coq_example} and \end{coq_example} in a latex file, and run this command to process the latex file:
@@ -41,4 +41,4 @@ Sometimes (part of) Coq code takes a long time to run, so it's wasteful to rerun
 The above steps can be organized by a build system (e.g. make), so that editing input.tex won't cause input.v to be rerun. A good practice is to put the main proof and its intertwining (*! ... *) commands in a .v file and put typesetting commands such as \coqAddRule directly inside the latex file, so that these typesetting commands can be frequently tuned without rerunning the main proof. Since all the equations are injected at a single place, you can use Latex's \def or \newcommand to give them handles to display later.
 If the above mechanisms are not enough to typeset your formula, you can use them to put a special marker around the formula and write your own text processor to locate the marker and do further processing. But usually I found tweaking Coq notations is a better way.
 
-See eccv_paper.tex, eccv_paper_tex.v and Makefile in the ssmatrix repository for a complete example.
+See example.tex, example_tex.v and Makefile in the ssmatrix repository for a complete example.

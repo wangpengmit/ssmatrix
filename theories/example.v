@@ -137,7 +137,7 @@ Require Import mxmodule.
 Import Notations.
 Require Import mxdiff.
 Import Notations.
-Require Import eccv_paper_appendix.
+Require Import example_appendix.
 Import Notations.
 
 Section Section3.

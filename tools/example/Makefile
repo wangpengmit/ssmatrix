@@ -1,33 +1,33 @@
-# Example eccv_paper.pdf paper generating
+# Example example.pdf paper generating
 
 .PHONY: paper clean_paper
 
 TOOLS := ..
 THEORIES := ../../theories
-THEORY := $(THEORIES)/eccv_paper.vo
+THEORY := $(THEORIES)/example.vo
 RUNCOQ := $(TOOLS)/RunCoq -f "-I $(THEORIES)"
 POSTCOQ := $(TOOLS)/PostCoq
 
-paper: eccv_paper.pdf
+paper: example.pdf
 
-eccv_paper.pdf: eccv_paper.v.tex
-	pdflatex -jobname=eccv_paper eccv_paper.v.tex
-	bibtex eccv_paper
-	pdflatex -jobname=eccv_paper eccv_paper.v.tex
-	pdflatex -jobname=eccv_paper eccv_paper.v.tex
+example.pdf: example.v.tex
+	pdflatex -jobname=example example.v.tex
+	bibtex example
+	pdflatex -jobname=example example.v.tex
+	pdflatex -jobname=example example.v.tex
 
-eccv_paper.v.tex: eccv_paper.tex eccv_paper.coq.txt eccv_paper_appendix.coq.txt
-	$(RUNCOQ) eccv_paper.tex | $(POSTCOQ) > eccv_paper.v.tex
+example.v.tex: example.tex example.coq.txt example_appendix.coq.txt
+	$(RUNCOQ) example.tex | $(POSTCOQ) > example.v.tex
 
-eccv_paper.coq.txt: eccv_paper_tex.v $(THEORY)
-	$(RUNCOQ) -v eccv_paper_tex.v eccv_paper.coq.txt
+example.coq.txt: example_tex.v $(THEORY)
+	$(RUNCOQ) -v example_tex.v example.coq.txt
 
-eccv_paper_appendix.coq.txt: eccv_paper_appendix_tex.v $(THEORY)
-	$(RUNCOQ) -v eccv_paper_appendix_tex.v eccv_paper_appendix.coq.txt
+example_appendix.coq.txt: example_appendix_tex.v $(THEORY)
+	$(RUNCOQ) -v example_appendix_tex.v example_appendix.coq.txt
 
 clean:
 	rm -f *.coq.txt 
-	rm -f eccv_paper.v.tex
-	rm -f eccv_paper.aux
-	rm -f eccv_paper.log
-	rm -f eccv_paper.pdf
+	rm -f example.v.tex
+	rm -f example.aux
+	rm -f example.log
+	rm -f example.pdf
