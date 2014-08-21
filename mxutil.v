@@ -275,6 +275,11 @@ Proof. by rewrite !mxE /=. Qed.
 Lemma invmx_inv {R : comUnitRingType} {n} (A : 'M[R]_n.+1) : invmx A = A^-1.
 Proof. by []. Qed.
 
+Lemma scalar_mxE {R : ringType} n (a : R) (i : 'I_n) : a%:M i i = a.
+Proof.
+  by rewrite !mxE eqxx.
+Qed.
+
 Module Notations.
 
 Notation elemprod := (map2_mx *%R).

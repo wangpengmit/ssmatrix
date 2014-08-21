@@ -979,6 +979,11 @@ Proof.
   by rewrite !mxE.
 Qed.
 
+Lemma flattenD {V : zmodType} m n A B : flatten_mx (A + B) = flatten_mx A + flatten_mx B :> 'M[V]_(m, n).
+Proof.
+  by apply/matrixP => i j; rewrite !mxE.
+Qed.
+
 Module Notations.
 
 Notation "M ^s" := (stag M) (at level 8, format "M ^s") : type_scope.

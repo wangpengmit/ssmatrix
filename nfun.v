@@ -303,6 +303,16 @@ Variables (n : nat) (R : ringType) (E : funType n R) (d : {gradient E}).
 Notation J := (Jacob d).
 Notation "\\d" := (map_mx d).
 
+Lemma fold_Jacob : forall m (v : 'cV_m), flatten_mx (\\d v) = J v.
+Proof.
+  by [].
+Qed.
+
+Lemma jacob_single f : J f%:M = d f.
+Proof.
+  by rewrite /Jacob flatten_mx11 !mxE eqxx.
+Qed.
+
 Section ChainRules.
 
 Variables (m : nat) (u : 'cV[E]_m) (v : 'cV[E]_n).
@@ -354,16 +364,6 @@ Qed.
 
 End GradientTheory.
 
-Lemma scalar_mxE {R : ringType} n (a : R) (i : 'I_n) : a%:M i i = a.
-Proof.
-  by rewrite !mxE eqxx.
-Qed.
-
-Lemma flattenD {V : zmodType} m n A B : flatten_mx (A + B) = flatten_mx A + flatten_mx B :> 'M[V]_(m, n).
-Proof.
-  by apply/matrixP => i j; rewrite !mxE.
-Qed.
-
 Section Hessian.
 
 Variables (n : nat) (R : ringType) (E : funType n R) (der : {gradient E}). 
@@ -396,44 +396,16 @@ Require Import mxdiff.
 
 Notation "[ x ]" := (@scalar_mx _ 1 x).
 
-Lemma jacob_single f : J [f] = \d f.
-Proof.
-  by rewrite /Jacob flatten_mx11 !mxE eqxx.
-Qed.
-
-Lemma fold_Jacob : forall m (v : 'cV_m), flatten_mx (\\d v) = J v.
-Proof.
-  by [].
-Qed.
-
 Lemma ghessian_chain f v : GH [f \o v] = GH v *mr (\d f \\o v)^T + ((J v)^T *m (H f \\o v)) *ml \\d v.
 Proof.
   set goal := RHS.
-  rewrite -map_scalar_mx /=.
-  rewrite /GHessian.
-  rewrite jacob_chain.
-  rewrite trmx_mul.
-  rewrite dmM /=.
-  rewrite !fold_GHessian.
-  rewrite map_trmx.
-  rewrite jacob_chain2.
-  rewrite !lmulmxA.
-  rewrite jacob_single.
-  rewrite -/Hessian.
-  rewrite !fold_Hessian.
-  rewrite -map_trmx.
-  by [].
+  by rewrite -map_scalar_mx /= /GHessian jacob_chain trmx_mul dmM /= !fold_GHessian map_trmx jacob_chain2 !lmulmxA jacob_single -/Hessian !fold_Hessian -map_trmx.
 Qed.
 
 Lemma hessian_chain f v : H (f \o v) = flatten_mx (GH v *mr (\d f \\o v)^T) + (J v)^T *m (H f \\o v) *m J v.
 Proof.
   set goal := RHS.
-  rewrite -GHessian_Hessian.
-  rewrite ghessian_chain.
-  rewrite flattenD.
-  rewrite flatten_lmul.
-  rewrite !fold_Jacob.
-  by [].
+  by rewrite -GHessian_Hessian ghessian_chain flattenD flatten_lmul !fold_Jacob.
 Qed.
 
 End Hessian.
